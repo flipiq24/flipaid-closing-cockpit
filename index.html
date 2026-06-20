@@ -454,10 +454,10 @@ function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(id
 /* ----- QB-only manual ledger entries -----
    Live in OV._qbManual (localStorage), separate from the imported/auto lines, so a
    fresh statement upload overwrites the auto lines but never touches manual entries.
-   Source label is always "QB Accounting". Reconciled against the imported ledger by
-   Category + Sub + Amount; unmatched entries flag red (see qbRecon). */
+   Source is chosen per entry ("QB" default, or "manual"). Reconciled against the
+   imported ledger by Category + Sub + Amount; unmatched entries flag red (see qbRecon). */
 function qbManual(){ return OV._qbManual || []; }
-function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',category:cat,sub:firstSub(cat),amount:null}); saveOV(); renderActive(); }
+function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',source:'QB',category:cat,sub:firstSub(cat),amount:null}); saveOV(); renderActive(); }
 function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delQbManual(idx){ const a=qbManual(); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 // Reconcile manual entries against the imported ledger (statement lines + additions).
@@ -1190,7 +1190,7 @@ function qbRows(){
   qbManual().forEach((m,idx)=>{
     if(m.amount==null && !(m.label||'').trim()) return;
     rows.push({Type:'QB', Date:'', Name:'QB Accounting', Memo:(m.label||'(manual)'),
-               Category:m.category, Sub:m.sub, Amount:(+m.amount||0), idx, isManual:true, source:'QB Accounting', conf:null});
+               Category:m.category, Sub:m.sub, Amount:(+m.amount||0), idx, isManual:true, source:(m.source||'QB'), conf:null});
   });
   return rows;
 }
@@ -1266,7 +1266,7 @@ function renderQB(){
     const bad=redMan[idx];
     html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}>
       <td><input value="${esc(m.label||'')}" placeholder="Description" onchange="setQbManual(${idx},'label',this.value)"></td>
-      <td><span class="pill">QB Accounting</span></td>
+      <td><select onchange="setQbManual(${idx},'source',this.value)"><option value="QB"${(m.source||'QB')==='QB'?' selected':''}>QB</option><option value="manual"${m.source==='manual'?' selected':''}>manual</option></select></td>
       <td><select onchange="setQbManual(${idx},'category',this.value)">${catOptions(m.category)}</select></td>
       <td><select onchange="setQbManual(${idx},'sub',this.value)">${subOptions(m.category,m.sub)}</select></td>
       <td class="num"><input class="num" value="${m.amount==null?'':m.amount}" placeholder="0" onchange="setQbManual(${idx},'amount',this.value)"></td>
