@@ -13,12 +13,22 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs)/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  header.top{display:flex;align-items:center;gap:12px;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line)}
+  header.top{display:flex;align-items:center;gap:12px;row-gap:10px;flex-wrap:wrap;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line)}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
   .title{font-size:20px;font-weight:700}
   .sub{color:var(--muted);font-size:14px}
-  .saved{margin-left:auto;color:var(--green);font-size:13px}
-  .tabs{display:flex;gap:24px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .saved{color:var(--muted);font-size:13px}
+  .hdr-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1}
+  .hdr-addr{font:inherit;font-size:14px;padding:5px 9px;border:1px solid var(--line);border-radius:6px;color:var(--ink);min-width:230px}
+  .hdr-addr:focus{outline:none;border-color:var(--accent)}
+  .hdr-status{font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);cursor:pointer}
+  .hdr-status:focus{outline:none;border-color:var(--accent)}
+  .hdr-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .tabsbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:0 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .tabs{display:flex;gap:24px;flex-wrap:wrap}
+  .tabsbar .hdr-actions{margin-left:auto;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .tabsbar .btn{background:none;border:none;color:var(--muted);font-weight:600;font-size:14px;padding:14px 2px;border-radius:0;cursor:pointer}
+  .tabsbar .btn:hover{color:var(--accent)}
   .tab{padding:14px 2px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
   .tab .count{font-size:11px;background:#f3f4f6;border-radius:10px;padding:2px 7px;margin-left:6px;color:var(--muted)}
@@ -51,7 +61,6 @@
   .kpi .box .v{font-size:22px;font-weight:700;margin-top:4px}
   .v.good{color:var(--green)} .v.bad{color:var(--red)}
   .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;font-size:13px}
-  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
   .bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
   .warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
   .statusrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
@@ -70,63 +79,138 @@
   .adorn input:focus{outline:none}
   .field input.ro{background:#f3f4f6;color:#374151;font-weight:600;border-color:#e5e7eb}
   .autotag{color:var(--muted);font-weight:400;font-size:11px}
-  /* ===== Excel-form IA (legacy, unused) ===== */
-  .ia-doc{background:#fff;border:1px solid #b9b9b9;max-width:1180px;margin:0 auto;font-size:12.5px;color:#000}
-  .ia-title{background:#1f4e79;color:#fff;text-align:center;font-weight:800;font-size:24px;padding:10px;letter-spacing:.02em}
-  .ia-sub{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 14px;border-bottom:1px solid #d9d9d9;flex-wrap:wrap}
-  .ia-sub .addr{width:170px;font-weight:700;background:#e6e6e6}
-  .ia-sub .modesel{padding:3px 6px;border:1px solid #c9c9c9}
-  table.ia{width:100%;border-collapse:collapse;table-layout:fixed}
-  table.ia col.cp{width:8%}  table.ia col.ca{width:13%} table.ia col.cl{width:27%}
-  table.ia col.cmv{width:10%} table.ia col.cml{width:12%} table.ia col.crv{width:13%} table.ia col.crl{width:17%}
-  table.ia td{padding:2px 8px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
-  td.band{background:#808080;color:#fff;text-align:center;font-weight:700;letter-spacing:.05em;padding:4px;font-size:12px}
-  .ia td.p{text-align:right;color:#555;font-size:11.5px;font-variant-numeric:tabular-nums}
-  .ia td.a{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
-  .ia td.l{text-align:left}
-  .ia td.mv{text-align:center;font-variant-numeric:tabular-nums}
-  .ia td.ml{color:#222}
-  .ia td.rv{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
-  .ia td.rl{text-align:left;color:#1f4e79}
-  .ia td.rl.bk{color:#000;font-weight:700}
-  .ia .subh{text-align:center;font-weight:700;padding:3px}
-  .ia tr.tot td{border-top:2px solid #000;font-weight:700}
-  .ia td.tot2{border-top:1px solid #000;font-weight:700}
-  .ia td.red{color:#c00000;font-weight:700;text-align:right}
-  .ia td.rt{text-align:right;font-weight:700}
-  .ia td.box{border:2px solid #000;text-align:center;font-weight:700;font-size:10.5px;line-height:1.25;padding:3px}
-  .ia td.dh{text-align:center;font-weight:700}
-  .ia td.bld{font-weight:700}
-  .ia td.a.big{font-size:15px}
-  .iin{width:100%;background:#e6e6e6;border:1px solid #d6d6d6;text-align:right;padding:2px 5px;font:inherit;color:#000}
-  .iin:focus{background:#fff;border-color:var(--accent);outline:none}
-  .iin.pct{width:auto;max-width:58px;display:inline-block;text-align:right}
-  .pcap{color:#555;font-size:11px}
-  .ia a{color:#1f4e79;text-decoration:underline;font-size:10.5px;display:block}
+  /* ===== compact ledger IA (mirrors the reference spreadsheet) ===== */
+  .ia-sheet{background:#fff;border:1px solid #c9c9c9;border-radius:8px;max-width:1120px;margin:0 auto;overflow:hidden;font-variant-numeric:tabular-nums;color:#111}
+  .ia-header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #d8dee8;box-shadow:0 2px 6px rgba(0,0,0,.07)}
+  .hdr-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-left:auto}
+  .hdr-ctl{display:flex;align-items:center;gap:5px}
+  .hdr-ctl label{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.03em}
+  .hdr-ctl select{font:inherit;font-size:13px;font-weight:600;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);cursor:pointer}
+  .hdr-ctl select:focus{outline:none;border-color:var(--accent)}
+  .sumband{margin-bottom:14px}
+  .ia-sum{display:flex;flex-wrap:wrap;gap:8px;padding:9px 16px;background:#f7f9fc;border:1px solid #e6eaf0;border-radius:8px}
+  .ia-sum .su{flex:1;min-width:150px;text-align:center;padding:4px 10px;border-right:1px solid #e6eaf0}
+  .ia-sum .su:last-child{border-right:none}
+  .ia-sum .su b{display:block;font-size:15px;color:#111;font-variant-numeric:tabular-nums}
+  .ia-sum .su span{display:block;font-size:11px;color:#6b7280}
+  .ia-sum .su em{display:block;font-style:normal;font-size:10px;color:#9aa3b2;text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+  .ia-sum .su.tot{background:#eef2f7;border-radius:6px;border-right:none}
+  .ia-sum .su.tot b{font-size:17px;color:#111}
+  .ia-sum .su.tot em{color:#5b6472;font-weight:700}
+  .rm2{cursor:pointer;color:#c00000;font-size:10px;font-weight:600;margin-left:8px;text-transform:none;letter-spacing:0}
+  .rm2:hover{text-decoration:underline}
+  .band{background:#808080;color:#fff;text-align:center;font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px}
+  .subband{text-align:center;font-weight:700;font-size:11.5px;padding:4px 0 0}
+  .cols{display:flex;gap:28px;padding:5px 16px}
+  .cols .col{flex:1;min-width:0}
+  .cols .col.r{flex:1.1}
+  .lr{display:grid;grid-template-columns:52px 100px 1fr;align-items:center;gap:7px;padding:1.5px 0}
+  .lr .lp{text-align:right;color:#666;font-size:11px}
+  .lr .ll{font-size:12px}
+  .lr .av{text-align:right;font-weight:700;padding-right:4px}
+  .lr input.m{width:100%;border:1px solid #d6d6d6;background:#fbfbfb;text-align:right;padding:2px 5px;font:inherit;font-variant-numeric:tabular-nums}
+  .lr input.m:focus{background:#fff;border-color:var(--accent);outline:none}
+  .lr.tot{border-top:2px solid #000;font-weight:700;margin-top:3px;padding-top:3px}
+  .lr.tot .ll{font-weight:700}
+  .lr.big .av,.lr.big .lp{font-size:15px}
+  .pr{display:grid;grid-template-columns:100px 1fr;align-items:center;gap:9px;padding:1.5px 0}
+  .pr.dt{grid-template-columns:140px 1fr}
+  .pr input{width:100%;border:1px solid #d6d6d6;background:#ededed;text-align:center;padding:2px 5px;font:inherit}
+  .pr input:focus{background:#fff;border-color:var(--accent);outline:none}
+  .pr .pl{font-size:12px}
+  .pr.d .dv{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+  .pr .pl.u{color:#1f3864;text-decoration:underline}
+  .lbox{border:2px solid #000;text-align:center;padding:4px 8px;margin:2px 0 6px}
+  .lbox .t{font-weight:700;font-size:11px}
+  .lbox input{border:none;text-align:center;font-weight:700;font-size:14px;width:100%;background:transparent}
+  .lbox input:focus{outline:none}
+  .dates{width:fit-content;margin-left:auto}
+  .col.r.purchcol{display:flex;flex-direction:column}
+  .col.r.purchcol .summary{margin-top:auto;margin-bottom:auto}
+  .col.purchleft{display:flex;flex-direction:column}
+  .col.purchleft .lr.tot{margin-top:auto}
+  .summary{margin-top:8px;padding:0 16px 8px}
+  .summary .s{display:flex;justify-content:flex-end;gap:12px;font-weight:700;padding:1px 0;font-size:12px}
+  .summary .s .lab{color:#c00000}
+  .ai-wrap{padding:8px 16px}
+  .ia-notes{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;resize:vertical}
+  .ai-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
+  .btn2{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .btn2.ghost2{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn2:hover{filter:brightness(.96)}
+  .btn2:disabled{opacity:.6;cursor:default}
+  .ai-draft{display:none;margin-top:8px;border:1px solid #cfe0f6;background:#f5f9ff;border-radius:6px;padding:8px 10px}
+  .ai-draftlab{font-size:10.5px;font-weight:700;color:#3a5aa8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
+  .ai-text{font-size:12.5px;white-space:pre-wrap;line-height:1.5;color:#1f2937}
+  .ai-log{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+  .ai-empty{font-size:12px;color:var(--muted);font-style:italic}
+  .ai-entry{border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#fff}
+  .ai-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:3px}
+  .ai-meta .ai-del{margin-left:auto;color:#c00000;cursor:pointer;font-weight:700}
+  .ai-meta .ai-del:hover{text-decoration:underline}
+  .lr .lp{cursor:default}
+  .lr input.m+.ll[title],.lr .ll[title]{cursor:help}
+  .lr .lp[ondblclick]{cursor:pointer}
+  .lr .lp[ondblclick]:hover{color:var(--accent);text-decoration:underline}
+  input.pe{width:54px;border:1px solid var(--accent);text-align:right;padding:1px 3px;font:inherit;font-size:11px;outline:none}
+  .pcfac{cursor:pointer}
+  .pcfac:hover{color:var(--accent)}
+  .srclink{cursor:pointer;color:#1f3864;margin-left:4px;text-decoration:none;font-weight:700}
+  .srclink:hover{text-decoration:underline}
+  .addrow{padding:1px 0 4px}
+  .addcost{cursor:pointer;color:var(--accent);font-size:11px;font-weight:600}
+  .addcost:hover{text-decoration:underline}
+  .lr .clab{border:1px dashed #cfcfcf;background:#fff;padding:1px 4px;font:inherit;font-size:12px;width:62%}
+  .lr .clab:focus{border-color:var(--accent);border-style:solid;outline:none}
+  .delx{cursor:pointer;color:#c00000;margin-left:6px;font-size:11px;font-weight:700}
+  .lr.roi .av,.lr.roi .lp{font-weight:700;color:#1f3864}
+  tr.flash{background:#fff3bf;transition:background .4s}
+  /* ===== closing-statement layout (Buy/Sell tabs) ===== */
+  .stmt-hd{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .stmt-co{font-size:12px;color:var(--muted);font-weight:600}
+  .stmt-ttl{font-size:18px;font-weight:800;margin-top:2px}
+  .stmt-badge{font-size:11px;font-weight:700;border-radius:10px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+  .stmt-badge.fin{background:#dcfce7;color:#166534}
+  .stmt-badge.est{background:#fef9c3;color:#854d0e}
+  .stmt-meta{display:grid;grid-template-columns:repeat(2,auto);gap:4px 22px;font-size:12.5px;text-align:right}
+  .stmt-meta div span{color:var(--muted);margin-right:8px}
+  h2.stmt-sec{font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:#1f3864;border-bottom:2px solid #e5e7eb;padding-bottom:6px}
+  table.stmt{width:100%;border-collapse:collapse;font-size:13px}
+  table.stmt th{color:var(--muted);font-weight:600;font-size:11.5px;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.stmt th.num,table.stmt td.num{text-align:right;font-variant-numeric:tabular-nums;width:118px}
+  table.stmt th.cf,table.stmt td.cf{width:64px;text-align:center}
+  table.stmt td{padding:5px 8px;border-bottom:1px solid #f1f1f3;vertical-align:middle}
+  table.stmt td.desc{max-width:340px}
+  table.stmt td.num input{width:104px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font:inherit}
+  table.stmt td.num input:focus{border-color:var(--accent);outline:none}
+  table.stmt select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font:inherit;background:#fff}
+  table.stmt .dash{color:#cbd0d6}
+  table.stmt.stmt-total td{border-top:2px solid var(--ink);border-bottom:none;padding-top:10px;font-size:14px}
+  .bal-ok{color:var(--green);font-weight:700}
+  .bal-bad{color:var(--red);font-weight:700}
 </style>
 </head>
 <body>
 <header class="top">
   <span class="dot"></span>
-  <div>
-    <div class="title">Closing Cockpit <span class="sub" id="dealAddr"></span></div>
+  <div class="hdr-meta">
+    <span class="title">Investment Analysis</span>
+    <input class="hdr-addr" id="dealAddr" placeholder="Property address" onchange="setIA('address',this.value)">
+    <span class="hdr-controls" id="hdrControls"></span>
   </div>
-  <span class="saved" id="saved">✓ Saved locally</span>
 </header>
 
-<div class="tabs" id="tabs">
-  <div class="tab active" data-tab="ia">Investment Analysis</div>
-  <div class="tab" data-tab="buy">Buy-Side Closing</div>
-  <div class="tab" data-tab="sell">Sell-Side Closing</div>
-  <div class="tab" data-tab="qb">QB Accounting Export</div>
+<div id="sumband" class="sumband"></div>
+
+<div class="tabsbar">
+  <div class="tabs" id="tabs"></div>
+  <div class="hdr-actions">
+    <button class="btn" onclick="exportXlsx()">⬇ Download .xlsx (4 tabs)</button>
+    <button class="btn" onclick="resetOverrides()">↺ Reset overrides</button>
+  </div>
 </div>
 
 <div class="wrap">
-  <div class="bar">
-    <button class="btn" onclick="exportXlsx()">⬇ Download .xlsx (4 tabs)</button>
-    <button class="btn ghost" onclick="evaluateDeal()">🤖 AI Evaluate &amp; Comment</button>
-    <button class="btn ghost" onclick="resetOverrides()">↺ Reset overrides</button>
-  </div>
   <div id="panel"></div>
 </div>
 
@@ -148,8 +232,27 @@ function supplemental(purchase, priorAssessed, annualRatePct, monthsFactor){
 async function boot(){
   D = await (await fetch('./data/ramona.json')).json();
   try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
-  $('#dealAddr').textContent = '· '+D.deal.address;
-  bindTabs(); render('ia');
+  if(OV._status){ D.deal.status=OV._status; }
+  if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
+  renderHeaderMeta();
+  renderTabs(); bindTabs(); render('ia');
+}
+function renderHeaderMeta(){
+  $('#dealAddr').value = (D.ia.inputs.address==null?'':D.ia.inputs.address);
+}
+function setStatus(val){
+  D.deal.status=val; OV._status=val; saveOV();
+  const a=document.querySelector('.tab.active'); if(a) render(a.dataset.tab);
+}
+// Tab row is data-driven: add/remove/reorder tabs by editing this one array.
+const TABS=[
+  {key:'ia',   label:'Investment Analysis'},
+  {key:'buy',  label:'Buy-Side Closing'},
+  {key:'sell', label:'Sell-Side Closing'},
+  {key:'qb',   label:'QB Accounting Export'},
+];
+function renderTabs(){
+  $('#tabs').innerHTML = TABS.map((t,n)=>`<div class="tab${n===0?' active':''}" data-tab="${t.key}">${t.label}</div>`).join('');
 }
 function bindTabs(){
   document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
@@ -158,21 +261,25 @@ function bindTabs(){
   });
 }
 function saveOV(){ localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); }
-function flashSaved(){ const s=$('#saved'); s.textContent='✓ Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+function flashSaved(){ const s=$('#saved'); if(s) s.textContent='✓ Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
 
 /* ---------- helpers for line state (override-aware) ---------- */
 function lineState(side, idx){
   const k = side+':'+idx; const base = D[side].lines[idx];
   const o = OV[k]||{};
+  const debit  = o.debit!==undefined  ? o.debit  : (base.debit!==undefined  ? base.debit  : null);
+  const credit = o.credit!==undefined ? o.credit : (base.credit!==undefined ? base.credit : null);
+  // signed amount for QB/IA: debit positive, credit negative; falls back to legacy `amount`
+  const amount = debit!=null ? debit : (credit!=null ? -credit : (o.amount!==undefined ? o.amount : (base.amount!==undefined?base.amount:null)));
   return {
-    amount: o.amount!==undefined ? o.amount : base.amount,
+    debit, credit, amount,
     category: o.category || base.map.category,
     sub: o.sub || base.map.sub,
     confidence: base.confidence, why: base.why, label: base.label, section: base.section,
     overridden: !!Object.keys(o).length
   };
 }
-function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount') val=val===''?null:+val; OV[k][field]=val; saveOV(); }
+function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+val; OV[k][field]=val; saveOV(); }
 
 function badge(c){
   const cls = c>=100?'b100':c>=90?'b90':c>=80?'b80':'blo';
@@ -186,7 +293,30 @@ function subOptions(cat,sel){
 }
 
 /* ---------- RENDER ---------- */
+// Global summary band — shown above the panel on EVERY tab. Data-driven: add/remove/
+// reorder by editing this array. isTotal emphasizes the sum card.
+function renderSumBand(){
+  const el=$('#sumband'); if(!el) return;
+  const i=D.ia.inputs, r=computeIA(i);
+  const opt=(arr,sel)=>(arr||[]).map(o=>`<option ${o===sel?'selected':''}>${o}</option>`).join('');
+  const sumCards=[
+    {label:'Total Acquisition Cost',     amount:r.totAcq},
+    {label:'Financing Costs',            amount:r.hardMoney},
+    {label:'Rehab Costs',                amount:r.rehabCost},
+    {label:'Misc Costs Less Interest',   amount:r.miscLessInterest},
+    {label:'Total Development Cost',      amount:r.totalDevCost, isTotal:true},
+  ];
+  const sumCell=c=>`<div class="su${c.isTotal?' tot':''}"><b>${money(c.amount)}</b><span>${Ppct(c.amount)}</span><em>${c.label}</em></div>`;
+  const hc=$('#hdrControls');
+  if(hc) hc.innerHTML=`<span class="hdr-ctl"><label>Mode</label><select onchange="setIA('mode',this.value)">${opt(D.ia.modeOptions,i.mode)}</select></span>`+
+    `<span class="hdr-ctl"><label>Financing</label><select onchange="setIA('financingType',this.value)">${opt(D.ia.financingOptions,i.financingType)}</select></span>`;
+  el.innerHTML=`<div class="ia-header">
+  <div class="ia-sum">${sumCards.map(sumCell).join('')}</div>
+  </div>`;
+}
+
 function render(tab){
+  renderSumBand();
   if(tab==='ia') return renderIA();
   if(tab==='qb') return renderQB();
   return renderClosing(tab==='buy'?'buySide':'sellSide', tab);
@@ -195,27 +325,60 @@ function render(tab){
 /* ----- closing tabs ----- */
 function renderClosing(sideKey, tabKey){
   const side = D[sideKey];
-  // group by section
-  const groups={};
-  side.lines.forEach((l,i)=>{ (groups[l.section]=groups[l.section]||[]).push(i); });
-  let html = `<div class="warn">${side.title} — <b>${side.status}</b> · ${side.date} · you are the <b>${side.role}</b>.
-     Mapping dropdowns are pre-filled with my best guess; the % badge is my confidence — hover it for why. Change anything and it re-rolls into QB + the IA.</div>`;
-  for(const g in groups){
-    html += `<div class="section"><h2>${g} <span class="pill">${groups[g].length}</span></h2>
-      <table><thead><tr><th>Line</th><th class="num">Amount</th><th>Category</th><th>Sub-category</th><th>Conf.</th></tr></thead><tbody>`;
+  // group by section, preserving statement order
+  const groups={}, order=[];
+  side.lines.forEach((l,i)=>{ if(!groups[l.section]){groups[l.section]=[];order.push(l.section);} groups[l.section].push(i); });
+
+  // statement-style header card
+  let html = `<div class="stmt-hd">
+     <div class="stmt-hd-l">
+       <div class="stmt-co">${side.escrowCompany||''}</div>
+       <div class="stmt-ttl">${side.title} <span class="stmt-badge ${side.status==='FINAL'?'fin':'est'}">${side.status}</span></div>
+     </div>
+     <div class="stmt-meta">
+       <div><span>Property</span>${side.property||D.deal.address}</div>
+       <div><span>${side.role||'Party'}</span>${side.party||'—'}</div>
+       <div><span>Escrow No.</span>${side.escrowNo||'—'}</div>
+       <div><span>Statement Date</span>${side.date||'—'}</div>
+       <div><span>Closing / Record</span>${side.closingDate||side.date||'—'}</div>
+     </div>
+   </div>
+   <div class="note" style="margin:0 0 14px">Laid out to match the settlement statement — each line keeps its Debit/Credit. Map every line to a Category + Sub-category; the % badge is my confidence (hover for why). Edits re-roll into QB + the IA.</div>`;
+
+  let tDeb=0, tCred=0;
+  order.forEach(g=>{
+    html += `<div class="section"><h2 class="stmt-sec">${g}</h2>
+      <table class="stmt"><thead><tr><th>Description</th><th class="num">Debits</th><th class="num">Credits</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead><tbody>`;
     groups[g].forEach(i=>{
       const s=lineState(sideKey,i); const k=sideKey+':'+i;
-      html += `<tr>
-        <td>${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
-        <td class="num"><input class="num" value="${s.amount==null?'':s.amount}" placeholder="—"
-            onchange="setOV('${k}','amount',this.value);render('${tabKey}')"></td>
+      const isCredit = s.credit!=null || (s.debit==null && /deposit|proceeds|trust deed|sale price|credit/i.test(s.label));
+      tDeb += s.debit||0; tCred += s.credit||0;
+      const debCell = isCredit ? '<span class="dash">—</span>'
+        : `<input class="num" value="${s.debit==null?'':s.debit}" placeholder="—" onchange="setOV('${k}','debit',this.value);render('${tabKey}')">`;
+      const credCell = isCredit
+        ? `<input class="num" value="${s.credit==null?'':s.credit}" placeholder="—" onchange="setOV('${k}','credit',this.value);render('${tabKey}')">`
+        : '<span class="dash">—</span>';
+      html += `<tr id="src-${sideKey}-${i}">
+        <td class="desc">${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
+        <td class="num">${debCell}</td>
+        <td class="num">${credCell}</td>
         <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',D.taxonomy.categories[this.value][0]);render('${tabKey}')">${catOptions(s.category)}</select></td>
         <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select></td>
-        <td><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
+        <td class="cf"><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
       </tr>`;
     });
     html += `</tbody></table></div>`;
-  }
+  });
+
+  // TOTAL / balance check (matches the statement's footing)
+  const bal = Math.abs(tDeb-tCred) < 0.01;
+  html += `<div class="section"><table class="stmt stmt-total"><tbody><tr>
+     <td class="desc"><b>TOTAL</b></td>
+     <td class="num"><b>${money(tDeb)}</b></td>
+     <td class="num"><b>${money(tCred)}</b></td>
+     <td colspan="3" class="${bal?'bal-ok':'bal-bad'}">${bal?'✓ Balanced':'⚠ Out of balance by '+money(Math.abs(tDeb-tCred))}</td>
+   </tr></tbody></table></div>`;
+
   // resale tax block on sell side
   if(sideKey==='sellSide') html += resaleTaxBlock();
   $('#panel').innerHTML = html;
@@ -242,22 +405,35 @@ function resaleTaxBlock(){
 
 /* ----- IA tab : FULL MASTER IA v4.1 model ----- */
 function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+// Actual calendar days in the month of a YYYY-MM-DD date (parsed manually to avoid TZ drift).
+function daysInMonth(dateStr){ const p=(''+(dateStr||'')).split('-'); const y=+p[0], m=+p[1]; if(!y||!m) return 30; return new Date(y, m, 0).getDate(); }
 
 // Port of every MASTER IA formula. Returns all derived values. (Cells noted for traceability.)
 function computeIA(i){
   const r={};
   // override layer: any derived line item can be hand-edited (stored as ov_<key>); totals always recompute
   const ov=(k,c)=> (i['ov_'+k]!=null && i['ov_'+k]!=='') ? +i['ov_'+k] : c;
+  // user-added custom cost lines per section (sum into the relevant total)
+  const cSum=(sec)=> ((i.customLines&&i.customLines[sec])||[]).reduce((a,l)=>a+(+l.amount||0),0);
   r.days   = daysBetween(i.coeDate, i.eomDate);              // F6
   r.months = r.days/30;                                      // E2
   // TOTAL PURCHASE
-  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+i.proratedPropTaxPurchase; // B10
-  // loan sizing
-  r.pct90Cost = (i.purchasePrice+i.dueDiligence)*0.90;       // F16
-  r.pct75ARV  = i.arv*0.75;                                  // F15
-  r.loan1st   = (i.overrideLoanAmt!=null && i.overrideLoanAmt!=='') ? +i.overrideLoanAmt : r.pct90Cost+i.estimatedRepairs; // F14
+  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+(+i.propertyTransferTax||0)+i.proratedPropTaxPurchase+cSum('purchase'); // B10
+  // loan sizing — 1st loan is the LOWER of two caps: 75% of ARV, or 90% of the all-in cost
+  // (purchase all-in + repairs baked in). Both % factors are editable (arvLoanPct/costLoanPct).
+  r.arvLoanPct  = (i.arvLoanPct==null||i.arvLoanPct==='')   ? 0.75 : +i.arvLoanPct;
+  r.costLoanPct = (i.costLoanPct==null||i.costLoanPct==='') ? 0.90 : +i.costLoanPct;
+  const allInCost = r.totalPurchase + (+i.estimatedRepairs||0) + (+i.utilitiesRehab||0) + cSum('rehab');
+  r.pct75ARV  = i.arv * r.arvLoanPct;                        // F15 — ARV cap
+  r.pct90Cost = allInCost * r.costLoanPct;                   // F16 — all-in cost cap (repairs baked in)
+  r.loan1st   = (i.overrideLoanAmt!=null && i.overrideLoanAmt!=='') ? +i.overrideLoanAmt : Math.min(r.pct75ARV, r.pct90Cost); // F14 — lowest of the two caps
   r.moPayment = r.loan1st*i.interestRate1st/12;              // F17
-  r.proratedPayment = (r.moPayment/i.dayInMonth)*i.oddDays;  // F20
+  r.dayInMonth = daysInMonth(i.coeDate);                     // auto: calendar days in the buy-side COE month
+  // Odd Days = days remaining in the close month, derived from the buy-side close date (coeDate),
+  // whether that date is the Estimated or the Actual/Acquired buy-side closing. Not a manual entry.
+  const coeDay = +(''+(i.coeDate||'')).split('-')[2] || 0;
+  r.oddDays = coeDay ? (r.dayInMonth - coeDay) : 0;
+  r.proratedPayment = (r.moPayment/r.dayInMonth)*(r.oddDays||0);  // F20
   r.shortFunds = r.loan1st - i.estimatedRepairs - (r.loan1st*i.points1st) - i.estLoanFees1st; // F21
   r.cashInclPayments = r.moPayment*(r.months*1.25);          // F9
   r.cashToClose = r.totalPurchase - r.shortFunds;            // F10
@@ -266,14 +442,23 @@ function computeIA(i){
   r.intOnNewLoan1st = ov('intOnNewLoan1st', r.moPayment*r.months); // B14
   r.loanOrig1st = ov('loanOrig1st', r.loan1st*i.points1st);  // B15
   r.loanFeesAppr1st = ov('loanFeesAppr1st', i.estLoanFees1st);// B16
-  r.lender1st = r.prepaidInt1st+r.intOnNewLoan1st+r.loanOrig1st+r.loanFeesAppr1st+(+i.additional1stPayments||0)-(+i.unused1stCredit||0)+(+i.interestFrom1stPayoff||0);
+  r.lender1st = r.prepaidInt1st+r.intOnNewLoan1st+r.loanOrig1st+r.loanFeesAppr1st+(+i.additional1stPayments||0)-(+i.unused1stCredit||0)+(+i.interestFrom1stPayoff||0)+cSum('lender1');
   // 2nd loan
   r.intOnNewLoan2nd = ov('intOnNewLoan2nd', (+i.loan2ndAmount||0)*i.interestRate2nd/12*r.months); // B24
   r.loanOrig2nd = ov('loanOrig2nd', (+i.loan2ndAmount||0)*i.points2nd); // B25
-  r.lender2nd = (+i.prepaidInt2nd||0)+r.intOnNewLoan2nd+r.loanOrig2nd+(+i.loanFees2nd||0)+(+i.additional2ndPayments||0)-(+i.unused2ndCredit||0)+(+i.interestFrom2ndPayoff||0);
+  r.lender2nd = (+i.prepaidInt2nd||0)+r.intOnNewLoan2nd+r.loanOrig2nd+(+i.loanFees2nd||0)+(+i.additional2ndPayments||0)-(+i.unused2ndCredit||0)+(+i.interestFrom2ndPayoff||0)+cSum('lender2');
   r.totalLender = r.lender1st+r.lender2nd;                   // B30
+  // cash deals carry no lender cost — zero the financing side entirely
+  // and make the cash-to-close / cash-invested autos reflect a no-loan reality.
+  r.isCash = /cash/i.test(i.financingType||'');
+  if(r.isCash){
+    r.lender1st=0; r.lender2nd=0; r.totalLender=0;
+    r.loan1st=0; r.moPayment=0; r.proratedPayment=0; r.shortFunds=0;
+    r.cashInclPayments=0;
+    r.cashToClose=r.totalPurchase;
+  }
   // rehab
-  r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0);        // B34
+  r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0)+cSum('rehab');        // B34
   // supplemental tax (B38) -- only fires if taxFactor set (overridable)
   r.supplemental = ov('supplemental', (i.taxFactorW23==null||i.taxFactorW23==='') ? 0
       : (i.purchasePrice - (i.taxAssessedValue==null||i.taxAssessedValue===''? i.purchasePrice*0.60 : +i.taxAssessedValue)) * (+i.taxFactorW23));
@@ -282,7 +467,7 @@ function computeIA(i){
   // 2nd loan suggested amount (F25 = F9 + F10 + repairs*25%)
   r.loan2ndSuggested = r.cashInclPayments + r.cashToClose + i.estimatedRepairs*0.25;
   // resale / gross profit
-  const resaleMode = /Resale/.test(i.mode);                  // buyers/concessions only book in resale modes (Excel IF on H2)
+  const resaleMode = (i.mode||'')==='Sold';                  // buyers/concessions only book once the deal is Sold
   r.escrowTitleResale = ov('escrowTitleResale', i.arv*i.escrowTitleResalePct);        // B46
   r.proratedTaxResale = ov('proratedTaxResale', i.purchasePrice*i.proratedTaxResaleRate/12*r.months); // B47
   r.concessions = ov('concessions', resaleMode ? i.arv*i.concessionsPct : 0);   // B48
@@ -290,7 +475,7 @@ function computeIA(i){
   r.listingComm = ov('listingComm', i.arv*i.listingAgentPct);                   // B50
   r.perDiem     = (+i.perDiemAdjustment||0);                 // B51
   r.assetMgmt   = ov('assetMgmt', i.arv*i.assetMgmtPct);                        // B52
-  r.resaleCosts = r.escrowTitleResale+r.proratedTaxResale+r.concessions+r.buyersComm+r.listingComm+r.perDiem+r.assetMgmt;
+  r.resaleCosts = r.escrowTitleResale+r.proratedTaxResale+r.concessions+r.buyersComm+r.listingComm+r.perDiem+r.assetMgmt+cSum('gross');
   r.grossProfit = i.arv - r.resaleCosts;                     // B53
   // development cost
   r.totAcq=r.totalPurchase; r.hardMoney=r.totalLender; r.rehabCost=r.totalRehab; // E47,E48,E49
@@ -303,132 +488,271 @@ function computeIA(i){
 }
 
 const pct=(n)=> (n==null||isNaN(n))?'' : (n*100).toFixed(2)+'%';
-function setIA(key,val){ const v=(val===''||val===null)?null:(isNaN(+val)?val:+val); D.ia.inputs[key]=v; OV._ia=D.ia.inputs; saveOV(); render('ia'); }
-// ----- card-UI field renderers (label above input, like the MoM Connect form) -----
-function fMoney(lab,key,val,opt){opt=opt||{};return `<div class="field${opt.full?' full':''}"><label>${lab}${opt.req?' <span class="req">*</span>':''}</label><div class="adorn"><span class="pre">$</span><input value="${val==null||val===''?'':val}" placeholder="0" onchange="setIA('${key}',this.value)"></div></div>`;}
-function fPct(lab,key,val){return `<div class="field"><label>${lab}</label><div class="adorn"><input value="${val==null||val===''?'':(+(val*100).toFixed(6))}" placeholder="0" onchange="setIA('${key}',this.value===''?'':this.value/100)"><span class="suf">%</span></div></div>`;}
-function fNum(lab,key,val){return `<div class="field"><label>${lab}</label><input value="${val==null?'':val}" placeholder="0" onchange="setIA('${key}',this.value)"></div>`;}
-function fText(lab,key,val){return `<div class="field"><label>${lab}</label><input value="${val==null?'':val}" onchange="setIA('${key}',this.value)"></div>`;}
-function fSelect(lab,key,val,opts,req){return `<div class="field"><label>${lab}${req?' <span class="req">*</span>':''}</label><select onchange="setIA('${key}',this.value)"><option value="">Select…</option>${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`;}
-function fDate(lab,key,val){return `<div class="field"><label>${lab}</label><input type="date" value="${val||''}" onchange="setIA('${key}',this.value)"></div>`;}
-function fArea(lab,key,val){return `<div class="field full"><label>${lab}</label><textarea onchange="setIA('${key}',this.value)">${val==null?'':val}</textarea></div>`;}
-// read-only computed TOTAL — the only kind of field that is NOT editable
-function fAuto(lab,val,opt){opt=opt||{};const disp=opt.pct?pct(val):(opt.num?(Math.round(val*1e4)/1e4):money(val));return `<div class="field"><label>${lab} <span class="autotag">(auto)</span></label><input class="ro" readonly value="${disp}"></div>`;}
+// two-decimal display for editable $ inputs; leaves non-numeric strings (dates/text) untouched
+const fmt2=(v)=>{ if(v==null||v==='')return''; const n=+(''+v).replace(/[$,\s]/g,''); return isNaN(n)?v:n.toFixed(2); };
+function setIA(key,val){
+  let v;
+  if(val===''||val===null){ v=null; }
+  else if(typeof val==='string'){
+    const cleaned=val.replace(/[$,\s]/g,'');
+    v=(cleaned!=='' && !/[a-zA-Z]/.test(val) && !isNaN(+cleaned)) ? +cleaned : val;
+  } else { v=val; }
+  D.ia.inputs[key]=v; OV._ia=D.ia.inputs; saveOV(); renderActive();
+}
+function renderActive(){ const a=document.querySelector('.tab.active'); render(a?a.dataset.tab:'ia'); }
+function persistIA(){ OV._ia=D.ia.inputs; saveOV(); renderActive(); }
+const arvOf=()=> +D.ia.inputs.arv||0;
+
+/* ----- per-line tooltips + source links back to the Buy/Sell closing tabs ----- */
+const IA_META = {
+  purchasePrice:{tip:'Contract purchase price (acquisition basis).',src:['buySide',0]},
+  dueDiligence:{tip:'Due-diligence / inspection costs paid at or before closing.'},
+  insurance:{tip:'Hazard / builder-risk insurance for the hold period.'},
+  cashForKeys:{tip:'Cash-for-keys paid to vacate occupants.'},
+  escrowTitlePurchase:{tip:'Buy-side escrow + title fees at COE.',src:['buySide',20]},
+  propertyTransferTax:{tip:'Documentary / property transfer tax due at transfer of title.',src:['sellSide',2]},
+  proratedPropTaxPurchase:{tip:'Buyer share of county property-tax proration at COE (30/360).',src:['buySide',8]},
+  ov_prepaidInt1st:{tip:'Prepaid (prorated first-payment) interest collected at funding.'},
+  ov_intOnNewLoan1st:{tip:'Interest on the 1st loan across the hold period.',src:['buySide',7]},
+  ov_loanOrig1st:{tip:'1st loan origination = loan amount × points.',src:['buySide',4]},
+  ov_loanFeesAppr1st:{tip:'1st loan fees + appraisal.'},
+  additional1stPayments:{tip:'Extra 1st-loan payments made during the hold.'},
+  unused1stCredit:{tip:'Credit for unused 1st-loan interest reserve.'},
+  interestFrom1stPayoff:{tip:'Interest captured at 1st-loan payoff.'},
+  prepaidInt2nd:{tip:'Prepaid interest on the 2nd loan.'},
+  ov_intOnNewLoan2nd:{tip:'Interest on the 2nd loan across the hold period.'},
+  ov_loanOrig2nd:{tip:'2nd loan origination = loan amount × points.'},
+  loanFees2nd:{tip:'2nd loan fees.'},
+  additional2ndPayments:{tip:'Extra 2nd-loan payments made during the hold.'},
+  unused2ndCredit:{tip:'Credit for unused 2nd-loan interest reserve.'},
+  interestFrom2ndPayoff:{tip:'Interest captured at 2nd-loan payoff.'},
+  estimatedRepairs:{tip:'Estimated rehab / repair budget.'},
+  utilitiesRehab:{tip:'Utilities during the rehab / hold period.'},
+  arv:{tip:'After Repair Value — projected resale price.',src:['sellSide',0]},
+  ov_escrowTitleResale:{tip:'Sell-side escrow + title (ARV × escrow %).'},
+  ov_proratedTaxResale:{tip:'Seller share of property-tax proration at resale.',src:['sellSide',3]},
+  ov_concessions:{tip:'Buyer concessions / credits at resale.'},
+  ov_buyersComm:{tip:"Buyer's agent commission (ARV × %).",src:['sellSide',1]},
+  ov_listingComm:{tip:'Listing agent commission (ARV × %).',src:['sellSide',1]},
+  perDiemAdjustment:{tip:'Per-diem adjustment at resale.'},
+  ov_assetMgmt:{tip:'Asset-management fee (ARV × %).'}
+};
+const meta=(k)=> IA_META[k]||{};
+function srcLink(m,val){ if(!m.src)return ''; const base=D[m.src[0]]&&D[m.src[0]].lines[m.src[1]]; if(!base)return ''; if(val==null||val===''||+val===0)return ''; const sd=m.src[0]==='buySide'?'Buy-side':'Sell-side'; return ` <a class="srclink" title="Source: ${sd} closing — click to open" onclick="gotoSource('${m.src[0]}',${m.src[1]})">↗</a>`; }
+function gotoSource(side,idx){
+  const tabKey=side==='buySide'?'buy':'sell';
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
+  render(tabKey);
+  setTimeout(()=>{ const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); } },60);
+}
+
+/* ----- double-click the % column to drive the $ amount from % of ARV ----- */
+function pctEdit(el,key){ const cur=(el.textContent||'').replace('%','').trim(); el.innerHTML=`<input class="pe" value="${cur}" onclick="event.stopPropagation()" onblur="pctSet('${key}',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`; const inp=el.firstChild; inp.focus(); inp.select(); }
+function pctSet(key,v){ if(v===''||isNaN(parseFloat(v))){ render('ia'); return; } setIA(key, +((parseFloat(v)/100)*arvOf()).toFixed(2)); }
+function pctEditC(el,sec,idx){ const cur=(el.textContent||'').replace('%','').trim(); el.innerHTML=`<input class="pe" value="${cur}" onclick="event.stopPropagation()" onblur="pctSetC('${sec}',${idx},this.value)" onkeydown="if(event.key==='Enter')this.blur()">`; const inp=el.firstChild; inp.focus(); inp.select(); }
+function pctSetC(sec,idx,v){ if(v===''||isNaN(parseFloat(v))){ render('ia'); return; } setCustom(sec,idx, +((parseFloat(v)/100)*arvOf()).toFixed(2)); }
+
+/* ----- double-click an editable % factor (e.g. 75% of ARV, 90% of Cost) — stores the decimal ----- */
+function pctFacEdit(el,key){ const cur=(el.textContent||'').replace('%','').trim(); el.innerHTML=`<input class="pe" value="${cur}" onclick="event.stopPropagation()" onblur="pctFacSet('${key}',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`; const inp=el.firstChild; inp.focus(); inp.select(); }
+function pctFacSet(key,v){ if(v===''||isNaN(parseFloat(v))){ render('ia'); return; } setIA(key, +(parseFloat(v)/100).toFixed(6)); }
+
+/* ----- user-added custom cost lines ----- */
+function ensureCustom(){ if(!D.ia.inputs.customLines) D.ia.inputs.customLines={}; }
+function addCost(sec){ ensureCustom(); const label=prompt('New cost line name:'); if(!label)return; (D.ia.inputs.customLines[sec]=D.ia.inputs.customLines[sec]||[]).push({label:label.trim(),amount:0}); persistIA(); }
+function setCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(!arr||!arr[idx])return; const n=(''+val).replace(/[$,\s]/g,''); arr[idx].amount=(n===''||isNaN(+n))?0:+n; persistIA(); }
+function renCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(arr&&arr[idx]){ arr[idx].label=val; persistIA(); } }
+function delCustom(sec,idx){ const arr=D.ia.inputs.customLines&&D.ia.inputs.customLines[sec]; if(arr){ arr.splice(idx,1); persistIA(); } }
+function add2nd(){ D.ia.inputs.show2nd=true; persistIA(); }
+function hide2nd(){
+  // Fully clear every 2nd-loan input that feeds computeIA() so removal truly zeroes r.lender2nd.
+  const i=D.ia.inputs;
+  i.show2nd=false;
+  ['loan2ndAmount','prepaidInt2nd','loanFees2nd','additional2ndPayments','unused2ndCredit','interestFrom2ndPayoff','interestRate2nd','points2nd','estLoanFees2nd','ov_intOnNewLoan2nd','ov_loanOrig2nd'].forEach(k=>{ i[k]=0; });
+  if(i.customLines) i.customLines.lender2=[];
+  persistIA();
+}
+function customRows(sec){ const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[]; return arr.map((l,idx)=>Lc(sec,idx,l)).join(''); }
+function addLink(sec){ return `<div class="addrow"><a class="addcost" onclick="addCost('${sec}')">+ Add cost</a></div>`; }
+function Lc(sec,idx,line){
+  return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEditC(this,'${sec}',${idx})">${Ppct(line.amount)}</span>`+
+    `<input class="m" value="${fmt2(line.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)">`+
+    `<span class="ll"><input class="clab" value="${(line.label||'').replace(/"/g,'&quot;')}" onchange="renCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></span></div>`;
+}
+// ----- IA ledger renderers (compact spreadsheet layout, matches the reference) -----
+function Ppct(v){const a=arvOf();return a?((+v||0)/a*100).toFixed(2)+'%':'';}
+// editable $ line:  percent (dbl-click to drive from % of ARV) | input | label (+tooltip & source link)
+function L$(label,key,val,metaKey){const m=meta(metaKey||key);const tip=(m.tip||'').replace(/"/g,'&quot;');return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val)}</span></div>`;}
+// read-only computed line: percent | amount | label  (opt.tot=subtotal, opt.big=emphasis, opt.pct=override %, opt.blank=no $, opt.valtxt=raw amount text)
+function L_(label,val,opt){opt=opt||{};const cls='lr'+(opt.tot?' tot':'')+(opt.big?' big':'');const p=opt.pct!=null?opt.pct:Ppct(val);const av=opt.valtxt!=null?opt.valtxt:(opt.blank?'':money(val));let links='';if(opt.add2nd)links+=` <a class="addcost" onclick="add2nd()">+ 2nd Loan</a>`;if(opt.add)links+=` <a class="addcost" onclick="addCost('${opt.add}')">+ Add cost</a>`;return `<div class="${cls}"><span class="lp">${p}</span><span class="av">${av}</span><span class="ll">${label}${links}</span></div>`;}
+// param input box + label (kind: pct|money|num)
+function Pin(label,key,val,kind){let v=(val==null||val==='')?'':val,on=`setIA('${key}',this.value)`;if(kind==='pct'){v=(val==null||val==='')?'':(+(val*100)).toFixed(2);on=`setIA('${key}',this.value===''?'':this.value/100)`;}else if(kind==='money'){v=fmt2(val);}return `<div class="pr"><input value="${v}" placeholder="0" onchange="${on}"><span class="pl">${label}</span></div>`;}
+// read-only param / derived value + label (opt.u=underlined link-style label, opt.txt=raw text)
+function Pro(label,val,opt){opt=opt||{};const disp=opt.txt!=null?opt.txt:money(val);return `<div class="pr d"><span class="dv">${disp}</span><span class="pl${opt.u?' u':''}">${label}</span></div>`;}
+// editable loan-cap row: value | "<click anywhere>% of <suffix>" (key stores the decimal factor)
+function ProFac(key,factor,suffix,val){const pct=(+(factor*100).toFixed(4)).toString();return `<div class="pr d"><span class="dv">${money(val)}</span><span class="pl u pcfac" title="Click to edit %" onclick="pctFacEdit(this.querySelector('.facv'),'${key}')"><span class="facv">${pct}</span>% of ${suffix}</span></div>`;}
+// date input + label
+function Pdate(label,key,val){return `<div class="pr dt"><input type="date" value="${val||''}" onchange="setIA('${key}',this.value)"><span class="pl">${label}</span></div>`;}
+// bordered loan-amount box (editable)
+function Lbox(title,key,val){return `<div class="lbox"><div class="t">${title}</div><input value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"></div>`;}
 
 function renderIA(){
   const i=D.ia.inputs, r=computeIA(i);
-  // section card with an "X / Y" filled-count badge over the editable inputs
-  const sec=(title,keys,fields)=>{
-    const filled=keys.filter(k=>{const v=i[k];return v!=null && v!=='';}).length;
-    const badge=keys.length?` <span class="count">${filled} / ${keys.length}</span>`:'';
-    return `<div class="section"><h2>${title}${badge}</h2><div class="grid">${fields.join('')}</div></div>`;
-  };
+  // Buy-side close date becomes "Acquired" once the deal is Acquired or Sold; otherwise "Estimated".
+  const acquired = /Acquired|Sold/i.test(i.mode||'');
+  const coeLabel = (acquired?'Acquired':'Estimated')+' Buy-Side Close Date';
+  // Mode/Financing/Months bar + summary cards now live in the global band (renderSumBand).
 
-  const general = sec('General',['address','mode','financingType','coeDate','eomDate'],[
-    fText('Address','address',i.address),
-    fSelect('Mode','mode',i.mode,D.ia.modeOptions),
-    fSelect('Financing Type','financingType',i.financingType,D.ia.financingOptions),
-    fDate('COE Date','coeDate',i.coeDate),
-    fDate('EOM','eomDate',i.eomDate),
-    fAuto('Estimated Project (Mos.)', r.months, {num:1})]);
+  // TOTAL PURCHASE COST — cost lines on the left, dates + cash summary on the right
+  const purchase = `<div class="band">Total Purchase Cost</div>
+  <div class="cols">
+    <div class="col purchleft">
+      ${L$('Purchase Price','purchasePrice',i.purchasePrice)}
+      ${L$('Due Diligence Cost','dueDiligence',i.dueDiligence)}
+      ${L$('Insurance','insurance',i.insurance)}
+      ${L$('Cash for Keys','cashForKeys',i.cashForKeys)}
+      ${L$('Escrow and Title','escrowTitlePurchase',i.escrowTitlePurchase)}
+      ${L$('Property Transfer Tax','propertyTransferTax',i.propertyTransferTax)}
+      ${L$('Prorated Property Tax','proratedPropTaxPurchase',i.proratedPropTaxPurchase)}
+      ${customRows('purchase')}
+      ${L_('Total Purchase Costs', r.totalPurchase,{tot:1,add:'purchase'})}
+    </div>
+    <div class="col r purchcol">
+      <div class="dates">
+        ${Pdate(coeLabel,'coeDate',i.coeDate)}
+        ${Pdate('Estimated Sell-Side Close Date (EOM)','eomDate',i.eomDate)}
+        <div class="pr d"><span class="dv">${r.days}</span><span class="pl">days · ${(r.months||0).toFixed(1)} mos est.</span></div>
+      </div>
+      <div class="summary">
+        <div class="s"><span class="lab">Total Cash Investment Including Payments</span><span>${money(r.cashInclPayments)}</span></div>
+        <div class="s"><span>Cash Required to Close:</span><span>${money(r.cashToClose)}</span></div>
+      </div>
+    </div>
+  </div>`;
 
-  const purchase = sec('Total Purchase Cost',['purchasePrice','dueDiligence','insurance','cashForKeys','escrowTitlePurchase','proratedPropTaxPurchase'],[
-    fMoney('Purchase Price','purchasePrice',i.purchasePrice),
-    fMoney('Due Diligence Cost','dueDiligence',i.dueDiligence),
-    fMoney('Insurance','insurance',i.insurance),
-    fMoney('Cash for Keys','cashForKeys',i.cashForKeys),
-    fMoney('Escrow and Title','escrowTitlePurchase',i.escrowTitlePurchase),
-    fMoney('Prorated Property Tax','proratedPropTaxPurchase',i.proratedPropTaxPurchase),
-    fAuto('Total Purchase Costs', r.totalPurchase),
-    fAuto('Total Cash Investment Including Payments', r.cashInclPayments),
-    fAuto('Cash Required to Close', r.cashToClose)]);
+  // LENDER COST — ledger lines | loan params | derived amounts.  Hidden for cash deals.
+  let lender = '';
+  if(!r.isCash){
+    const loan1 = `<div class="subband">1st LOAN</div>
+    <div class="cols">
+      <div class="col">
+        ${L$('Prepaid Interest 1st','ov_prepaidInt1st', r.prepaidInt1st)}
+        ${L$('Interest on New Loan 1st','ov_intOnNewLoan1st', r.intOnNewLoan1st)}
+        ${L$('Loan Origination Fee 1st','ov_loanOrig1st', r.loanOrig1st)}
+        ${L$('Loan Fees & Appraisal Fee 1st','ov_loanFeesAppr1st', r.loanFeesAppr1st)}
+        ${L$('Additional 1st Payments Made','additional1stPayments',i.additional1stPayments)}
+        ${L$('Unused 1st Payments Credit','unused1stCredit',i.unused1stCredit)}
+        ${L$('Interest from 1st Payoff','interestFrom1stPayoff',i.interestFrom1stPayoff)}
+        ${customRows('lender1')}
+      </div>
+      <div class="col">
+        ${Pin('Interest Rate','interestRate1st',i.interestRate1st,'pct')}
+        ${Pro('Days', r.days,{txt:r.days})}
+        ${Pin('Points','points1st',i.points1st,'pct')}
+        ${Pin('Est. Loan Fees','estLoanFees1st',i.estLoanFees1st,'money')}
+        ${Pin('Appraisal Fee','appraisalFee',i.appraisalFee,'money')}
+      </div>
+      <div class="col">
+        ${Lbox('1st Loan Amount','overrideLoanAmt', r.loan1st)}
+        ${ProFac('arvLoanPct', r.arvLoanPct, 'ARV', r.pct75ARV)}
+        ${ProFac('costLoanPct', r.costLoanPct, 'Cost (All-In)', r.pct90Cost)}
+        ${Pro('Mo.Payment', r.moPayment)}
+        ${Pro('Odd Days', r.oddDays,{txt:r.oddDays})}
+        ${Pro('Days in Month', r.dayInMonth,{txt:r.dayInMonth})}
+        ${Pro('ProRated Payment', r.proratedPayment)}
+        ${Pro('ShortFunds to Escrow', r.shortFunds)}
+      </div>
+    </div>`;
 
-  const loan1 = sec('Lender Cost — 1st Loan',['interestRate1st','points1st','estLoanFees1st','appraisalFee','oddDays','dayInMonth','overrideLoanAmt','additional1stPayments','unused1stCredit','interestFrom1stPayoff'],[
-    fPct('Interest Rate','interestRate1st',i.interestRate1st),
-    fAuto('Days', r.days, {num:1}),
-    fPct('Points','points1st',i.points1st),
-    fMoney('Est. Loan Fees','estLoanFees1st',i.estLoanFees1st),
-    fMoney('Appraisal Fee','appraisalFee',i.appraisalFee),
-    fNum('Odd Days','oddDays',i.oddDays),
-    fNum('Day in Mo','dayInMonth',i.dayInMonth),
-    fMoney('Override Loan Amount','overrideLoanAmt',i.overrideLoanAmt),
-    fAuto('1st Loan Amount', r.loan1st),
-    fAuto('75% of ARV', r.pct75ARV),
-    fAuto('90% of Cost', r.pct90Cost),
-    fAuto('Mo. Payment', r.moPayment),
-    fAuto('ProRated Payment', r.proratedPayment),
-    fAuto('ShortFunds to Escrow', r.shortFunds),
-    fMoney('Prepaid Interest 1st','ov_prepaidInt1st', r.prepaidInt1st),
-    fMoney('Interest on New Loan 1st','ov_intOnNewLoan1st', r.intOnNewLoan1st),
-    fMoney('Loan Origination Fee 1st','ov_loanOrig1st', r.loanOrig1st),
-    fMoney('Loan Fees & Appraisal Fee 1st','ov_loanFeesAppr1st', r.loanFeesAppr1st),
-    fMoney('Additional 1st Payments Made','additional1stPayments',i.additional1stPayments),
-    fMoney('Unused 1st Payments Credit','unused1stCredit',i.unused1stCredit),
-    fMoney('Interest from 1st Payoff','interestFrom1stPayoff',i.interestFrom1stPayoff)]);
+    // 2nd loan is hidden by default — only shown once it has a value or the user adds it.
+    const forced2 = /2nd/i.test(i.financingType||'');
+    const show2 = forced2 || !!i.show2nd || (+i.loan2ndAmount||0)>0;
+    const rm2 = forced2 ? '' : ` <a class="rm2" onclick="hide2nd()" title="Remove 2nd loan">remove</a>`;
+    const loan2 = show2 ? `<div class="subband">2nd LOAN${rm2}</div>
+    <div class="cols">
+      <div class="col">
+        ${L$('Prepaid Interest 2nd','prepaidInt2nd',i.prepaidInt2nd)}
+        ${L$('Interest on New Loan 2nd','ov_intOnNewLoan2nd', r.intOnNewLoan2nd)}
+        ${L$('Loan Origination Fee 2nd','ov_loanOrig2nd', r.loanOrig2nd)}
+        ${L$('Loan Fees 2nd','loanFees2nd',i.loanFees2nd)}
+        ${L$('Additional 2nd Payments Made','additional2ndPayments',i.additional2ndPayments)}
+        ${L$('Unused 2nd Payments Credit','unused2ndCredit',i.unused2ndCredit)}
+        ${L$('Interest from 2nd Payoff','interestFrom2ndPayoff',i.interestFrom2ndPayoff)}
+        ${customRows('lender2')}
+        ${addLink('lender2')}
+      </div>
+      <div class="col">
+        ${Pin('Interest Rate','interestRate2nd',i.interestRate2nd,'pct')}
+        ${Pro('Days', r.days,{txt:r.days})}
+        ${Pin('Points','points2nd',i.points2nd,'pct')}
+        ${Pin('Est. Loan Fees','estLoanFees2nd',i.estLoanFees2nd,'money')}
+      </div>
+      <div class="col">
+        ${Lbox('2nd Loan Amount','loan2ndAmount', i.loan2ndAmount)}
+      </div>
+    </div>`
+    : '';
+    const lenderTotal = `<div class="cols"><div class="col">${L_('Total Lender Costs', r.totalLender,{tot:1,add:'lender1',add2nd:!show2})}</div><div class="col"></div><div class="col"></div></div>`;
+    lender = `<div class="band">Lender Cost</div>`+loan1+loan2+lenderTotal;
+  }
 
-  const loan2 = sec('Lender Cost — 2nd Loan',['interestRate2nd','points2nd','estLoanFees2nd','loan2ndAmount','prepaidInt2nd','loanFees2nd','additional2ndPayments','unused2ndCredit','interestFrom2ndPayoff'],[
-    fPct('Interest Rate','interestRate2nd',i.interestRate2nd),
-    fAuto('Days', r.days, {num:1}),
-    fPct('Points','points2nd',i.points2nd),
-    fMoney('Est. Loan Fees','estLoanFees2nd',i.estLoanFees2nd),
-    fMoney('2nd Loan Amount (Used)','loan2ndAmount',i.loan2ndAmount),
-    fAuto('2nd Loan Amount (Suggested)', r.loan2ndSuggested),
-    fMoney('Prepaid Interest 2nd','prepaidInt2nd',i.prepaidInt2nd),
-    fMoney('Interest on New Loan 2nd','ov_intOnNewLoan2nd', r.intOnNewLoan2nd),
-    fMoney('Loan Origination Fee 2nd','ov_loanOrig2nd', r.loanOrig2nd),
-    fMoney('Loan Fees 2nd','loanFees2nd',i.loanFees2nd),
-    fMoney('Additional 2nd Payments Made','additional2ndPayments',i.additional2ndPayments),
-    fMoney('Unused 2nd Payments Credit','unused2ndCredit',i.unused2ndCredit),
-    fMoney('Interest from 2nd Payoff','interestFrom2ndPayoff',i.interestFrom2ndPayoff),
-    fAuto('Total Lender Costs', r.totalLender)]);
+  // REHABILITATION COSTS
+  const rehab = `<div class="band">Rehabilitation Costs</div>
+  <div class="cols"><div class="col">
+    ${L$('Estimated Repairs','estimatedRepairs',i.estimatedRepairs)}
+    ${L$('Utilities','utilitiesRehab',i.utilitiesRehab)}
+    ${customRows('rehab')}
+    ${L_('Total Rehab Costs', r.totalRehab,{tot:1,add:'rehab'})}
+  </div><div class="col"></div></div>`;
 
-  const rehab = sec('Rehabilitation Costs',['estimatedRepairs','utilitiesRehab'],[
-    fMoney('Estimated Repairs','estimatedRepairs',i.estimatedRepairs),
-    fMoney('Utilities','utilitiesRehab',i.utilitiesRehab),
-    fAuto('Total Rehab Costs', r.totalRehab)]);
+  // GROSS PROFITS — resale lines on the left, Total Development Cost summary on the right
+  const gross = `<div class="band">Gross Profits</div>
+  <div class="cols">
+    <div class="col">
+      ${L$('After Repair Value','arv',i.arv)}
+      ${L$('Escrow and Title','ov_escrowTitleResale', r.escrowTitleResale)}
+      ${L$('Prorated Property Tax','ov_proratedTaxResale', r.proratedTaxResale)}
+      ${L$("Concessions (Buyer's Help)",'ov_concessions', r.concessions)}
+      ${L$('Buyers Agent Commissions','ov_buyersComm', r.buyersComm)}
+      ${L$('Listing Agents Commissions','ov_listingComm', r.listingComm)}
+      ${L$('Per Diem Adjustment','perDiemAdjustment',i.perDiemAdjustment)}
+      ${L$('Asset Management Services','ov_assetMgmt', r.assetMgmt)}
+      ${customRows('gross')}
+      ${L_('Gross Profit to Seller', r.grossProfit,{tot:1,add:'gross'})}
+    </div>
+    <div class="col r">
+      <div class="subband">Total Development Cost</div>
+      ${L_('Total Acquisition Cost', r.totAcq)}
+      ${L_('Financing Costs', r.hardMoney)}
+      ${L_('Rehab Costs', r.rehabCost)}
+      ${L_('Miscellaneous Costs Less Interest', r.miscLessInterest)}
+      ${L_('Total Development Cost', r.totalDevCost,{tot:1})}
+    </div>
+  </div>`;
 
-  const misc = sec('Misc Costs',['roiAdjustments','miscellaneousCosts','taxFactorW23','taxAssessedValue','hoaMonthly','additionalIntReserve1stMonths','additionalIntReserve2ndMonths'],[
-    fMoney('ROI Adjustments','roiAdjustments',i.roiAdjustments),
-    fMoney('Miscellaneous Costs','miscellaneousCosts',i.miscellaneousCosts),
-    fMoney('Supplemental Taxes','ov_supplemental', r.supplemental),
-    fNum('Tax Factor (W23)','taxFactorW23',i.taxFactorW23),
-    fMoney('Tax Assessed Value','taxAssessedValue',i.taxAssessedValue),
-    fMoney('HOA (Monthly)','hoaMonthly',i.hoaMonthly),
-    fNum('Add’l Interest Reserve 1st (months)','additionalIntReserve1stMonths',i.additionalIntReserve1stMonths),
-    fNum('Add’l Interest Reserve 2nd (months)','additionalIntReserve2ndMonths',i.additionalIntReserve2ndMonths),
-    fAuto('Total Misc Costs', r.miscLessInterest)]);
+  // NET PROFITS
+  const net = `<div class="band">Net Profits</div>
+  <div class="cols">
+    <div class="col">
+      ${L_('Net Profit', r.netProfit,{big:1})}
+      <div class="lr big roi"><span class="lp">${pct(r.roi)}</span><span class="av">${pct(r.roi)}</span><span class="ll">ROI</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.irr)}</span><span class="av">${pct(r.irr)}</span><span class="ll">IRR</span></div>
+    </div>
+    <div class="col r"></div>
+  </div>`;
 
-  const gross = sec('Gross Profits',['arv','estimatedSalesPrice','escrowPctA','concessionsPct','buyersAgentPct','listingAgentPct','perDiemAdjustment','assetMgmtPct'],[
-    fMoney('After Repair Value','arv',i.arv),
-    fMoney('Estimated Sales Price','estimatedSalesPrice',i.estimatedSalesPrice),
-    fPct('Escrow and Title %','escrowPctA',i.escrowPctA),
-    fMoney('Escrow and Title $','ov_escrowTitleResale', r.escrowTitleResale),
-    fMoney('Prorated Property Tax','ov_proratedTaxResale', r.proratedTaxResale),
-    fPct('Concessions %','concessionsPct',i.concessionsPct),
-    fMoney('Concessions (Buyer’s Help) $','ov_concessions', r.concessions),
-    fPct('Buyers Agent %','buyersAgentPct',i.buyersAgentPct),
-    fMoney('Buyers Agent Commissions $','ov_buyersComm', r.buyersComm),
-    fPct('Listing Agents %','listingAgentPct',i.listingAgentPct),
-    fMoney('Listing Agents Commissions $','ov_listingComm', r.listingComm),
-    fMoney('Per Diem Adjustment','perDiemAdjustment',i.perDiemAdjustment),
-    fPct('Asset Management %','assetMgmtPct',i.assetMgmtPct),
-    fMoney('Asset Management Services $','ov_assetMgmt', r.assetMgmt),
-    fAuto('Gross Profit to Seller', r.grossProfit)]);
+  // AI ASSISTANT & NOTES (full-width section, bottom of sheet)
+  const ainotes = `<div class="band">AI Assistant &amp; Notes</div>
+  <div class="ai-wrap">
+    <textarea class="ia-notes" id="aiInput" placeholder="Write a note, or ask the AI to calculate / answer something (e.g. &quot;split the profit 50/50&quot;). The AI never changes the form — you apply any changes yourself."></textarea>
+    <div class="ai-actions">
+      <button class="btn2" id="askBtn" onclick="askAI()">🤖 Ask AI</button>
+      <button class="btn2 ghost2" onclick="postNote()">＋ Post note</button>
+    </div>
+    <div class="ai-draft" id="aiDraft"></div>
+    <div class="ai-log" id="aiLog">${renderLog()}</div>
+  </div>`;
 
-  const dev = sec('Total Development Cost',[],[
-    fAuto('Total Acquisition Cost', r.totAcq),
-    fAuto('Hard Money Costs', r.hardMoney),
-    fAuto('Rehab Costs', r.rehabCost),
-    fAuto('Miscellaneous Costs Less Interest', r.miscLessInterest),
-    fAuto('Total Development Cost', r.totalDevCost)]);
-
-  const net = sec('Net Profits',['notes'],[
-    fAuto('Net Profit', r.netProfit),
-    fAuto('ROI', r.roi, {pct:1}),
-    fAuto('IRR', r.irr, {pct:1}),
-    fArea('Notes','notes',i.notes)]);
-
-  $('#panel').innerHTML = general+purchase+loan1+loan2+rehab+misc+gross+dev+net;
+  $('#panel').innerHTML = `<div class="ia-sheet">${purchase+lender+rehab+gross+net+ainotes}</div>`;
 }
 
 /* ----- QB export tab ----- */
@@ -486,21 +810,66 @@ function exportXlsx(){
   XLSX.writeFile(wb, '15620-ramona-closing.xlsx');
 }
 
-/* ---------- AI evaluate (optional server) ---------- */
-async function evaluateDeal(){
+/* ---------- AI assistant + timestamped notes log ----------
+   The AI answers questions and runs calculations; it never edits the form.
+   The user reviews an answer or writes a note, then posts it to the log below
+   where every entry is kept with a timestamp. Log lives in OV._log (localStorage). */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function stamp(ts){ return new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function renderLog(){
+  const log=OV._log||[];
+  if(!log.length) return '<div class="ai-empty">No posts yet — write a note or ask the AI, then post it here. Each post is timestamped.</div>';
+  return log.map(e=>`<div class="ai-entry"><div class="ai-meta">${e.kind==='ai'?'🤖 AI':'📝 Note'} <span>${stamp(e.ts)}</span><a class="ai-del" title="Delete this post" onclick="delLog(${Number(e.ts)||0})">✕</a></div><div class="ai-text">${esc(e.text)}</div></div>`).join('');
+}
+function refreshLog(){ const el=$('#aiLog'); if(el) el.innerHTML=renderLog(); }
+function postLog(text,kind){ const t=(text||'').trim(); if(!t) return; OV._log=OV._log||[]; OV._log.unshift({ts:Date.now(),text:t,kind:kind||'note'}); saveOV(); refreshLog(); }
+function delLog(ts){ OV._log=(OV._log||[]).filter(e=>e.ts!==ts); saveOV(); refreshLog(); }
+function postNote(){ const el=$('#aiInput'); if(!el||!el.value.trim()){ alert('Write a note first.'); return; } postLog(el.value,'note'); el.value=''; }
+
+// transient AI answer awaiting the user's decision to post
+let _draft=null;
+function showDraft(text,kind){
+  _draft={text,kind};
+  const d=$('#aiDraft'); if(!d) return;
+  d.innerHTML=`<div class="ai-draftlab">AI answer — review, then post or dismiss</div><div class="ai-text">${esc(text)}</div>`+
+    `<div class="ai-actions"><button class="btn2" onclick="postDraft()">＋ Post to log</button><button class="btn2 ghost2" onclick="clearDraft()">Dismiss</button></div>`;
+  d.style.display='block';
+}
+function postDraft(){ if(_draft){ postLog(_draft.text,_draft.kind||'ai'); _draft=null; clearDraft(); } }
+function clearDraft(){ _draft=null; const d=$('#aiDraft'); if(d){ d.style.display='none'; d.innerHTML=''; } }
+
+async function askAI(){
+  const el=$('#aiInput'); const q=(el?.value||'').trim();
+  if(!q){ alert('Type a question or note first.'); return; }
+  const btn=$('#askBtn'); const label=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='Thinking…'; }
+  try{
+    const res=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({deal:D.deal,ia:D.ia.inputs,qb:qbRows(),question:q})});
+    if(!res.ok) throw new Error('no server');
+    const j=await res.json(); showDraft(j.answer||JSON.stringify(j),'ai');
+  }catch(e){
+    alert('Ask AI needs the backend running (server/index.js) with ANTHROPIC_API_KEY set.');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=label; }
+  }
+}
+
+async function evaluateDeal(ev){
+  const btn=ev&&ev.target?ev.target:null; const label=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='Evaluating…'; }
   try{
     const res=await fetch('/api/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({deal:D.deal,ia:D.ia.inputs,qb:qbRows()})});
     if(!res.ok) throw new Error('no server');
-    const j=await res.json(); alert('AI Evaluation:\n\n'+(j.comment||JSON.stringify(j)));
+    const j=await res.json(); showDraft(j.comment||JSON.stringify(j),'ai');
   }catch(e){
     alert('AI Evaluate needs the backend running (server/index.js) with ANTHROPIC_API_KEY set.\nIn Replit: add the secret, run the server, then this button calls /api/evaluate.');
   }
 }
 function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); render('ia'); document.querySelector('.tab').click(); } }
 
-/* apply persisted status/ia overrides before first render */
-boot().then(()=>{ if(OV._status){D.deal.status=OV._status;} if(OV._ia){Object.assign(D.ia.inputs,OV._ia);} render('ia'); });
+boot();
 </script>
 </body>
 </html>

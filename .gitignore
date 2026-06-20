@@ -2,5 +2,10 @@ node_modules/
 .env
 *.log
 .DS_Store
-.replit
-replit.nix
+.replit.local
+.cache/
+.upm/
+.local/
+.agents/
+.config/
+attached_assets/
