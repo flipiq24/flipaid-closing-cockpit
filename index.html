@@ -682,7 +682,7 @@ function computeIA(i){
   r.days   = daysBetween(i.coeDate, i.eomDate);              // F6
   r.months = r.days/30;                                      // E2
   // TOTAL PURCHASE
-  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+(+i.propertyTransferTax||0)+i.proratedPropTaxPurchase+cSum('purchase'); // B10
+  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+i.proratedPropTaxPurchase+cSum('purchase'); // B10 (transfer tax lives in Gross Profits as a sell-side cost, not here)
   // loan sizing — 1st loan is the LOWER of two caps: 75% of ARV, or 90% of the all-in cost
   // (purchase all-in + repairs baked in). Both % factors are editable (arvLoanPct/costLoanPct).
   r.arvLoanPct  = (i.arvLoanPct==null||i.arvLoanPct==='')   ? 0.75 : +i.arvLoanPct;
@@ -1006,7 +1006,6 @@ function renderIA(){
       ${L$('Insurance','insurance',i.insurance)}
       ${L$('Cash for Keys','cashForKeys',i.cashForKeys)}
       ${L$('Escrow and Title','escrowTitlePurchase',i.escrowTitlePurchase)}
-      ${L$('Property Transfer Tax','propertyTransferTax',i.propertyTransferTax)}
       ${L$('Prorated Property Tax','proratedPropTaxPurchase',i.proratedPropTaxPurchase)}
       ${customRows('purchase')}
       ${L_('Total Purchase Costs', r.totalPurchase,{tot:1,add:'purchase'})}
