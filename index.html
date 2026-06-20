@@ -840,10 +840,10 @@ function showModePrompt(side, mode){
   el.id='modeModal'; el.className='modal-ov';
   el.innerHTML=`<div class="modal">
     <a class="modal-x" title="Close" onclick="dismissModePrompt('${side}')">✕</a>
-    <h3>Upload the actual ${lbl} closing statement</h3>
-    <p>This deal is now marked <b>${mode}</b>. Upload the actual ${lbl} settlement statement so the figures reflect the real close — or keep entering the values manually.</p>
+    <h3>Add the actual ${lbl} closing statement</h3>
+    <p>This deal is now marked <b>${mode}</b>. Open the ${lbl} closing tab to add the actual settlement statement so the figures reflect the real close — or keep entering the values manually.</p>
     <div class="modal-acts">
-      <label class="btn-pri">Upload ${lbl} statement<input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv" onchange="modeUpload('${side}',this)"></label>
+      <a class="btn-pri" onclick="goToClosing('${side}')">Go to ${lbl} closing</a>
       <a class="btn-ghost" onclick="dismissModePrompt('${side}')">I'll update manually</a>
     </div>
   </div>`;
@@ -851,7 +851,9 @@ function showModePrompt(side, mode){
 }
 function closeModePrompt(){ const e=document.getElementById('modeModal'); if(e) e.remove(); }
 function dismissModePrompt(side){ OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; saveOV(); closeModePrompt(); }
-function modeUpload(side,inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; applyAttach(side,'file',f.name,''); closeModePrompt(); const tabEl=document.querySelector('.tab[data-tab="'+(side==='buySide'?'buy':'sell')+'"]'); if(tabEl) tabEl.click(); }
+// Mode-change prompt navigates to the correct closing tab (where the upload dropzone lives)
+// instead of forcing a file picker. Mark acknowledged so we don't nag again.
+function goToClosing(side){ OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; saveOV(); closeModePrompt(); const tabEl=document.querySelector('.tab[data-tab="'+(side==='buySide'?'buy':'sell')+'"]'); if(tabEl) tabEl.click(); }
 const arvOf=()=> +((IA_ACTUAL&&IA_ACTUAL.arv!=null)?IA_ACTUAL.arv:D.ia.inputs.arv)||0;
 
 /* ----- per-line tooltips + source links back to the Buy/Sell closing tabs ----- */
