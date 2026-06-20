@@ -306,6 +306,16 @@ function supplemental(purchase, priorAssessed, annualRatePct, monthsFactor){
 async function boot(){
   D = await (await fetch('./data/ramona.json')).json();
   try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
+  // One-time wipe of Buy-Side, Sell-Side and QB Accounting data (user requested clearing these tabs).
+  // Guarded by a flag so future uploads/additions/manual entries are NOT wiped on every reload.
+  if(!OV._wipeClosingV1){
+    delete OV._data_buySide; delete OV._data_sellSide;
+    if(OV._src){ delete OV._src.buySide; delete OV._src.sellSide; }
+    if(OV._add){ delete OV._add.buySide; delete OV._add.sellSide; }
+    delete OV._qbManual;
+    OV._wipeClosingV1 = true;
+    localStorage.setItem(LS, JSON.stringify(OV));
+  }
   if(OV._status){ D.deal.status=OV._status; }
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
   // restore any parsed statement lines from a prior attach
