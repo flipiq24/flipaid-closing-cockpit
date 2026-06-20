@@ -527,17 +527,6 @@
         "why": "Payoff/demand fees."
       },
       {
-        "label": "Undrawn Holdback",
-        "credit": 27000,
-        "section": "HOLDBACK",
-        "map": {
-          "category": "Financing (profit-neutral)",
-          "sub": "Construction Holdback"
-        },
-        "confidence": 100,
-        "why": "Unused construction holdback returned — profit-neutral."
-      },
-      {
         "label": "Home Warranty — Old Republic",
         "debit": 635,
         "section": "ADDITIONAL DISBURSEMENTS",
