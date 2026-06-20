@@ -135,7 +135,10 @@
   .summary .s>*:nth-child(1){text-align:right}
   .summary .s>*:nth-child(2){text-align:right}
   .summary .s .lab{color:#c00000}
-  .summary .s.tot{border-top:1px solid var(--line);margin-top:3px;padding-top:4px}
+  .summary .s.tot{display:flex;align-items:baseline;gap:10px;border-top:1px solid var(--line);margin-top:3px;padding-top:4px;color:#c00000}
+  .summary .s.tot .lab{flex:1;text-align:right}
+  .summary .s.tot .tval{font-weight:700;white-space:nowrap}
+  .summary .s.tot .totadd{white-space:nowrap}
   .summary .s.addrow2{display:block;text-align:right;padding-top:2px}
   .summary .s input.clab2{text-align:left;border:1px dashed #cfcfcf;background:#fff;padding:1px 4px;font:inherit;font-size:12px;width:100%}
   .summary .s input.clab2:focus{border-color:var(--accent);border-style:solid;outline:none}
@@ -229,6 +232,22 @@
   .upl-have .ok{color:var(--green);font-weight:600}
   .upl-have .muted{color:var(--muted)}
   .upl-x{color:var(--red);cursor:pointer;margin-left:8px;text-decoration:underline}
+  .upl-drop{margin-top:10px;text-align:center;font-size:12.5px;font-weight:700;color:var(--accent);border:1.5px dashed var(--accent);border-radius:8px;padding:10px;background:#fff7f0}
+  .doc-chip{display:inline-flex;align-items:center;gap:7px;margin-top:7px;font-size:12.5px;background:var(--accent-soft);border:1px solid #f0d9c7;border-radius:8px;padding:5px 11px}
+  .doc-chip .ok{color:var(--green);font-weight:600}
+  .doc-chip .muted{color:var(--muted)}
+  .doc-x{cursor:pointer;color:var(--red);font-weight:700;margin-left:6px;font-size:13px}
+  .add-desc{width:100%;border:1px dashed #cfcfcf;background:#fff;padding:2px 6px;font:inherit;font-size:13px;border-radius:5px}
+  .add-desc:focus{border-color:var(--accent);border-style:solid;outline:none}
+  .modal-ov{position:fixed;inset:0;background:rgba(20,22,26,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal{position:relative;background:#fff;border-radius:14px;padding:22px 24px;max-width:420px;width:90%;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+  .modal h3{margin:0 0 8px;font-size:16px}
+  .modal p{margin:0 0 16px;font-size:13px;color:var(--muted);line-height:1.5}
+  .modal-x{position:absolute;top:12px;right:14px;cursor:pointer;color:var(--muted);font-weight:700;text-decoration:none}
+  .modal-acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn-pri{background:var(--accent);color:#fff;font-weight:700;font-size:13px;padding:9px 14px;border-radius:8px;cursor:pointer}
+  .btn-pri input{display:none}
+  .btn-ghost{color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -399,6 +418,12 @@ function fileStmt(side, inp){ const f=inp.files&&inp.files[0]; if(!f) return; wi
 function dropStmt(side, ev){ ev.preventDefault(); ev.currentTarget.classList.remove('drag'); const f=ev.dataTransfer.files&&ev.dataTransfer.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
 function linkStmt(side, url){ url=(url||'').trim(); if(!url) return; applyAttach(side,'link','',url); }
 function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; saveOV(); render(side==='buySide'?'buy':'sell'); } }
+/* ----- "Additions" : user items NOT on the closing statement. Stored in OV._add per
+   side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
+function additions(side){ return (OV._add && OV._add[side]) || []; }
+function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=Object.keys(taxCats())[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); render(side==='buySide'?'buy':'sell'); }
+function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); render(side==='buySide'?'buy':'sell'); }
+function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); render(side==='buySide'?'buy':'sell'); } }
 async function tryParse(side){
   try{
     const src=srcState(side); const f=window.__stmtFiles&&window.__stmtFiles[side];
@@ -418,6 +443,9 @@ function uploadCard(sideKey){
   const label = sideKey==='buySide' ? 'buy-side' : 'sell-side';
   const s = srcState(sideKey);
   const have = s.name || s.url;
+  // Once a doc is attached the dropzone collapses; the file shows as a chip in the
+  // statement header (docChip) with an ✕ that clears it and brings the dropzone back.
+  if(have) return '';
   return `<div class="upl" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropStmt('${sideKey}',event)">
      <div class="upl-row">
        <div class="upl-ico">⬆</div>
@@ -431,8 +459,16 @@ function uploadCard(sideKey){
          <input type="url" placeholder="https://docs.google.com/…" value="${s.url||''}" onchange="linkStmt('${sideKey}',this.value)">
        </div>
      </div>
-     ${have ? `<div class="upl-have">📎 <b>${s.name||s.url}</b> — Mode auto-set to <b>${D.ia.inputs.mode}</b>${s.parsed?' · <span class="ok">parsed ✓</span>':' · <span class="muted">attached (auto-parse runs on the backend with ANTHROPIC_API_KEY; lines stay editable meanwhile)</span>'} <a class="upl-x" onclick="clearStmt('${sideKey}')">remove</a></div>` : ''}
+     <div class="upl-drop">⬇ Drop your file here</div>
    </div>`;
+}
+function docChip(sideKey){
+  const s = srcState(sideKey);
+  const have = s.name || s.url;
+  if(!have) return '';
+  const status = s.parsed ? '<span class="ok">parsed ✓</span>'
+    : '<span class="muted">attached · auto-parses on the backend, lines stay editable</span>';
+  return `<div class="doc-chip">📎 <b>${s.name||s.url}</b> · Mode <b>${D.ia.inputs.mode}</b> · ${status}<a class="doc-x" title="Remove document — show the dropzone again" onclick="clearStmt('${sideKey}')">✕</a></div>`;
 }
 
 /* ----- closing tabs ----- */
@@ -447,6 +483,7 @@ function renderClosing(sideKey, tabKey){
      <div class="stmt-hd-l">
        <div class="stmt-co">${side.escrowCompany||''}</div>
        <div class="stmt-ttl">${side.title} <span class="stmt-badge ${side.status==='FINAL'?'fin':'est'}">${side.status}</span></div>
+       ${docChip(sideKey)}
      </div>
      <div class="stmt-meta">
        <div><span>Property</span>${side.property||D.deal.address}</div>
@@ -493,6 +530,24 @@ function renderClosing(sideKey, tabKey){
      <td class="num cred"><b>${money(tCred)}</b></td>
      <td colspan="3" class="${bal?'bal-ok':'bal-net'}">${bal?'✓ Balanced':netMsg+' <span class="bal-hint">(balancing line — add on the actual statement to foot to zero)</span>'}</td>
    </tr></tbody></table></div>`;
+
+  // ADDITIONS — user items not on the closing statement. Do NOT affect the balance above.
+  const adds = additions(sideKey);
+  const addRows = adds.map((a,idx)=>`<tr>
+     <td class="desc"><input class="add-desc" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="Description" onchange="setAddition('${sideKey}',${idx},'label',this.value)"></td>
+     <td class="num deb"><input class="num" value="${a.debit==null?'':a.debit}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'debit',this.value)"></td>
+     <td class="num cred"><input class="num" value="${a.credit==null?'':a.credit}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'credit',this.value)"></td>
+     <td><select onchange="setAddition('${sideKey}',${idx},'category',this.value)">${catOptions(a.category)}</select></td>
+     <td><select onchange="setAddition('${sideKey}',${idx},'sub',this.value)">${subOptions(a.category,a.sub)}</select></td>
+     <td class="cf"><a class="delx" title="Remove line" onclick="delAddition('${sideKey}',${idx})">✕</a></td>
+   </tr>`).join('');
+  html += `<div class="section"><h2 class="stmt-sec">Additions (not on the closing statement)</h2>
+     <div class="note" style="margin:0 0 8px">Extra items you want tracked that aren't on the settlement statement. They map to QB + the IA but do <b>not</b> affect the statement balance check above.</div>
+     <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup>
+     <thead><tr><th>Description</th><th class="num deb">Debits</th><th class="num cred">Credits</th><th>Category</th><th>Sub-category</th><th class="cf"></th></tr></thead>
+     <tbody>${addRows || `<tr><td class="desc muted" colspan="6">No additions yet.</td></tr>`}</tbody></table>
+     <div class="addrow"><a class="addcost" onclick="addAddition('${sideKey}')">+ Add line</a></div>
+   </div>`;
 
   // resale tax block on sell side
   if(sideKey==='sellSide') html += resaleTaxBlock();
@@ -618,9 +673,42 @@ function setIA(key,val){
     v=(cleaned!=='' && !/[a-zA-Z]/.test(val) && !isNaN(+cleaned)) ? +cleaned : val;
   } else { v=val; }
   D.ia.inputs[key]=v; OV._ia=D.ia.inputs; saveOV(); renderActive();
+  if(key==='mode' && (v==='Acquired'||v==='Sold')) maybeModePrompt(v);
 }
 function renderActive(){ const a=document.querySelector('.tab.active'); render(a?a.dataset.tab:'ia'); }
 function persistIA(){ OV._ia=D.ia.inputs; saveOV(); renderActive(); }
+/* ----- Mode -> Acquired / Sold : sync the close date to the actual statement date and
+   prompt to upload the real closing statement. The choice is remembered (OV._modeAck)
+   so we don't nag again, and we never prompt once that side already has a statement. ----- */
+function maybeModePrompt(mode){
+  const side = mode==='Acquired' ? 'buySide' : 'sellSide';
+  if(mode==='Acquired'){ const d=D.buySide.closingDate||D.buySide.date; if(d) D.ia.inputs.coeDate=d; }
+  else { const d=D.sellSide.closingDate||D.sellSide.date; if(d) D.ia.inputs.eomDate=d; }
+  OV._ia=D.ia.inputs; saveOV(); renderActive();
+  const acked = OV._modeAck && OV._modeAck[side];
+  const have = srcState(side).name || srcState(side).url;
+  if(acked || have) return;                          // already uploaded or dismissed -> no nag
+  showModePrompt(side, mode);
+}
+function showModePrompt(side, mode){
+  closeModePrompt();
+  const lbl = side==='buySide' ? 'buy-side' : 'sell-side';
+  const el=document.createElement('div');
+  el.id='modeModal'; el.className='modal-ov';
+  el.innerHTML=`<div class="modal">
+    <a class="modal-x" title="Close" onclick="dismissModePrompt('${side}')">✕</a>
+    <h3>Upload the actual ${lbl} closing statement</h3>
+    <p>This deal is now marked <b>${mode}</b>. Upload the actual ${lbl} settlement statement so the figures reflect the real close — or keep entering the values manually.</p>
+    <div class="modal-acts">
+      <label class="btn-pri">Upload ${lbl} statement<input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv" onchange="modeUpload('${side}',this)"></label>
+      <a class="btn-ghost" onclick="dismissModePrompt('${side}')">I'll update manually</a>
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+}
+function closeModePrompt(){ const e=document.getElementById('modeModal'); if(e) e.remove(); }
+function dismissModePrompt(side){ OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; saveOV(); closeModePrompt(); }
+function modeUpload(side,inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; applyAttach(side,'file',f.name,''); closeModePrompt(); const tabEl=document.querySelector('.tab[data-tab="'+(side==='buySide'?'buy':'sell')+'"]'); if(tabEl) tabEl.click(); }
 const arvOf=()=> +D.ia.inputs.arv||0;
 
 /* ----- per-line tooltips + source links back to the Buy/Sell closing tabs ----- */
@@ -753,8 +841,7 @@ function renderIA(){
         <div class="s"><span>Cash Required to Close:</span><span>${money(r.cashToClose)}</span></div>
         <div class="s"><span>Reserves</span><input class="sum-in" value="${fmt2(r.reserves)}" onchange="setIA('reserves',this.value)"></div>
         ${sumCustomRows('reserves')}
-        <div class="s addrow2"><a class="addcost" onclick="addCost('reserves')">+ Add cost</a></div>
-        <div class="s tot"><span class="lab">Total Cash Investment Including Payments and Reserves</span><span>${money(r.totalCashAndReserves)}</span></div>
+        <div class="s tot"><span class="lab">Total Cash Investment Including Payments and Reserves</span><span class="tval">${money(r.totalCashAndReserves)}</span><a class="addcost totadd" onclick="addCost('reserves')">+ add cost</a></div>
       </div>
     </div>
   </div>`;
