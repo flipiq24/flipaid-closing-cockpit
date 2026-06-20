@@ -700,7 +700,7 @@ function computeIA(i){
   const coeDay = +(''+(i.coeDate||'')).split('-')[2] || 0;
   r.oddDays = coeDay ? (r.dayInMonth - coeDay) : 0;
   r.proratedPayment = (r.moPayment/r.dayInMonth)*(r.oddDays||0);  // F20
-  r.shortFunds = r.loan1st - i.estimatedRepairs - (r.loan1st*i.points1st) - i.estLoanFees1st; // F21
+  r.shortFunds = r.loan1st - i.estimatedRepairs - (r.loan1st*i.points1st) - i.estLoanFees1st - (+i.additional1stPayments||0); // F21 (net loan proceeds, less add'l 1st payments B17)
   r.cashInclPayments = r.moPayment*(r.months*1.25);          // F9
   r.cashToClose = r.totalPurchase - r.shortFunds;            // F10
   // 1st loan line items
@@ -757,36 +757,18 @@ function computeIA(i){
   r.roi = (r.netProfit+r.totalLender)/(r.totAcq+r.rehabCost); // B56
   r.irr = r.days>0 ? Math.pow(1+r.roi, 365/r.days)-1 : 0;     // B57 — compounded annualized return
   r.irrLinear = r.days>0 ? r.roi/r.days*360 : 0;             // linear IRR (Excel B58 = ROI/days*360)
-  // (1) Cash-on-Cash = Net Profit ÷ equity in (Cash Required to Close); (2) its IRR (annualized)
-  r.cashOnCashROI = r.cashToClose>0 ? r.netProfit/r.cashToClose : 0;
-  r.cashOnCashIRR = r.days>0 ? r.cashOnCashROI/r.days*360 : 0;   // linear, Excel B58 method
-  // (3) ROI incl. finance cost = Net Profit ÷ Total Cash Investment (incl. payments+reserves); (4) its IRR
-  r.returnOnCash = r.totalCashAndReserves>0 ? r.netProfit/r.totalCashAndReserves : 0;
-  r.returnOnCashAnnual = r.days>0 ? r.returnOnCash/r.days*360 : 0;
+  // NET PROFITS metrics — MASTER IA B56–B59 (the authoritative workbook formulas)
+  // (1) Cash ROI (unlevered) = (Net Profit + Total Lender cost) ÷ (Acquisition + Rehab)   [B56]
+  r.cashOnCashROI = (r.totAcq+r.rehabCost)>0 ? (r.netProfit+r.totalLender)/(r.totAcq+r.rehabCost) : 0;
+  r.cashOnCashIRR = r.days>0 ? r.cashOnCashROI/r.days*360 : 0;   // (2) Cash IRR = Cash ROI ÷ days × 360 [B57]
+  // (3) Levered ROI = Net Profit ÷ equity invested F25 (= cash incl. payments + cash-to-close + 25% rehab) [B58]
+  r.f25equity = r.cashInclPayments + r.cashToClose + (+i.estimatedRepairs||0)*0.25;   // F25
+  r.returnOnCash = r.f25equity>0 ? r.netProfit/r.f25equity : 0;
+  r.returnOnCashAnnual = r.days>0 ? r.returnOnCash/r.days*360 : 0;   // (4) Levered IRR = Levered ROI ÷ days × 360 [B59]
   // Cash out of escrow (MASTER IA G56) = Gross Profit to Seller − 1st-loan payoff − add'l 1st pmts
   // − unused 1st credit − interest from 1st payoff − 2nd "Loan Amount" (F25 = total cash invested + any 2nd loan).
   r.cashOutEscrow = r.grossProfit - r.loan1st - (+i.additional1stPayments||0) - (+i.unused1stCredit||0)
       - (+i.interestFrom1stPayoff||0) - (r.totalCashAndReserves + (+i.loan2ndAmount||0));   // G56
-
-  // ── SOLD overwrite: a closed deal shows ACTUAL final accounting (QB + closing), not the estimate ──
-  // Estimated formulas above are untouched; this only swaps in the actuals when Mode = Sold.
-  if((i.mode||'')==='Sold' && i.soldActuals){
-    const a=i.soldActuals;
-    r.actual=true;
-    r.totAcq        = a.acquisition;                  // QB Acquisition
-    r.hardMoney     = a.interest;                     // QB Interest Charges (actual carrying cost, not the estimate)
-    r.rehabCost     = a.rehab;                        // QB Rehab (M+L+O)
-    r.miscLessInterest = a.holding + a.settlement;    // QB Holding + Settlement
-    r.totalDevCost  = a.totalCost;                    // QB total (530,403.30)
-    r.netProfit     = a.netProfit;                    // QB net profit (32,596.70)
-    const cashIn    = a.netProceeds - a.netProfit;    // equity in = proceeds returned − profit
-    r.cashInvestedActual = cashIn;
-    r.cashOnCashROI    = cashIn>0 ? a.netProfit/cashIn : 0;             // 32,597 / 85,588 = 38.09%
-    r.cashOnCashIRR    = r.days>0 ? r.cashOnCashROI/r.days*360 : 0;     // annualized (linear)
-    r.returnOnCash     = a.totalCost>0 ? a.netProfit/a.totalCost : 0;   // ROI on total capital deployed
-    r.returnOnCashAnnual = r.days>0 ? r.returnOnCash/r.days*360 : 0;    // annualized (linear)
-    r.roi = r.returnOnCash; r.irrLinear = r.returnOnCashAnnual;
-  }
   return r;
 }
 
@@ -1159,10 +1141,10 @@ function renderIA(){
   <div class="cols">
     <div class="col">
       ${L_('Net Profit', r.netProfit,{big:1})}
-      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashROI)}</span><span class="av"></span><span class="ll">Cash-on-Cash ROI</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashIRR)}</span><span class="av"></span><span class="ll">Cash-on-Cash IRR</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.returnOnCash)}</span><span class="av"></span><span class="ll">ROI (incl. finance cost)</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.returnOnCashAnnual)}</span><span class="av"></span><span class="ll">IRR (incl. finance cost)</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashROI)}</span><span class="av"></span><span class="ll">Cash ROI</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashIRR)}</span><span class="av"></span><span class="ll">Cash IRR</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.returnOnCash)}</span><span class="av"></span><span class="ll">Levered ROI</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.returnOnCashAnnual)}</span><span class="av"></span><span class="ll">Levered IRR</span></div>
     </div>
     <div class="col r"></div>
   </div>`;

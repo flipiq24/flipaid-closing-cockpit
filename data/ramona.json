@@ -631,8 +631,8 @@
       "arvLoanPct": 0.75,
       "costLoanPct": 0.9,
       "overrideLoanAmt": 440000,
-      "additional1stPayments": 0,
-      "unused1stCredit": 0,
+      "additional1stPayments": 2157.93,
+      "unused1stCredit": -240,
       "interestFrom1stPayoff": 0,
       "interestRate2nd": 0,
       "points2nd": 0,
@@ -654,29 +654,34 @@
       "arv": 563000,
       "estimatedSalesPrice": 515000,
       "escrowTitleResalePct": 0.0033,
-      "ov_transferTaxResale": 619.3,
+      "ov_transferTaxResale": 0,
       "escrowPctA": 0.005,
       "proratedTaxResaleRate": 0.01175,
       "concessionsPct": 0.023090586145648313,
-      "buyersAgentPct": 0,
+      "buyersAgentPct": 0.02,
       "listingAgentPct": 0.02,
-      "perDiemAdjustment": 1793,
+      "perDiemAdjustment": 200,
       "assetMgmtPct": 0,
       "taxFactorW23": null,
       "taxAssessedValue": null,
       "constructionHoldback": 0,
-      "ov_escrowTitleResale": 1585.21,
+      "ov_escrowTitleResale": 3047.51,
       "ov_proratedTaxResale": 1159.7,
-      "soldActuals": {
-        "acquisition": 445201.23,
-        "rehab": 36259.23,
-        "holding": 14316.26,
-        "interest": 2811.44,
-        "settlement": 31815.14,
-        "totalCost": 530403.3,
-        "salePrice": 563000,
-        "netProfit": 32596.7,
-        "netProceeds": 118184.86
+      "ov_prepaidInt1st": 1161.11,
+      "ov_intOnNewLoan1st": 10687.74,
+      "ov_loanOrig1st": 4400,
+      "ov_loanFeesAppr1st": 999,
+      "ov_intOnNewLoan2nd": 2811.22,
+      "ov_concessions": 13000,
+      "ov_listingComm": 750,
+      "ov_assetMgmt": 0,
+      "customLines": {
+        "gross": [
+          {
+            "label": "Insurance refund",
+            "amount": -281.6
+          }
+        ]
       }
     },
     "_fieldNotes": {
