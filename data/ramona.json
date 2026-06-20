@@ -584,9 +584,13 @@
       {
         "label": "Construction Holdback Release",
         "credit": 27000,
-        "category": "Financing (profit-neutral)",
-        "sub": "Construction Holdback",
-        "conf": 100
+        "section": "CONSIDERATION",
+        "map": {
+          "category": "Financing (profit-neutral)",
+          "sub": "Construction Holdback"
+        },
+        "confidence": 100,
+        "why": "Undrawn construction holdback released to seller at close (lender funds; profit-neutral)."
       }
     ]
   },
