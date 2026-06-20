@@ -71,24 +71,67 @@
   },
 
   "ia": {
-    "_comment": "Investment Analysis. Only the fields here are editable inputs. Everything else is derived. Status gates which inputs are live.",
+    "_comment": "FULL MASTER IA v4.1 model. Every field present. 'input' fields are editable (the old gray cells); everything else is computed live by computeIA() in index.html. Defaults below reproduce the 1834 Colorado SB example EXACTLY (Net Profit $54,042.80 / ROI 17.00% / IRR 51.43%), so you can see the rebuilt model ties out to your screenshot. Change inputs to run any deal.",
+    "address": "1834 Colorado SB",
+    "modeOptions": ["Estimated Prelim", "Acquisition Approved", "Final HUD-1 Purchase", "Estimated HUD-1 Resale", "Final HUD-1 Resale"],
+    "financingOptions": ["Hard Money - Anchor", "Hard Money - DP", "Hard Money", "Donation", "Cash Purchase"],
     "inputs": {
-      "arv": 460000,
-      "purchasePrice": 300000,
-      "assignmentFee": 8000,
-      "rehabBudget": 63000,
-      "loanAmount": 371000,
-      "loanRatePct": 10,
-      "holdMonths": 7,
-      "sellingCommissionPct": 2.0
+      "mode": "Estimated Prelim",
+      "financingType": "Hard Money - Anchor",
+      "coeDate": "2025-04-30",
+      "eomDate": "2025-08-27",
+
+      "purchasePrice": 325000,
+      "dueDiligence": 5000,
+      "insurance": 2500,
+      "cashForKeys": 0,
+      "escrowTitlePurchase": 3000,
+      "proratedPropTaxPurchase": 0,
+
+      "interestRate1st": 0.10,
+      "points1st": 0.01,
+      "estLoanFees1st": 999,
+      "oddDays": 0,
+      "dayInMonth": 31,
+      "overrideLoanAmt": null,
+      "additional1stPayments": 0,
+      "unused1stCredit": 0,
+      "interestFrom1stPayoff": 0,
+
+      "interestRate2nd": 0,
+      "points2nd": 0,
+      "loan2ndAmount": 0,
+      "additional2ndPayments": 0,
+      "unused2ndCredit": 0,
+
+      "estimatedRepairs": 85000,
+      "utilitiesRehab": 0,
+
+      "roiAdjustments": 0,
+      "miscellaneousCosts": 0,
+      "hoaMonthly": 0,
+      "additionalIntReserve1stMonths": 0,
+      "additionalIntReserve2ndMonths": 0,
+
+      "arv": 499900,
+      "estimatedSalesPrice": 515000,
+      "escrowTitleResalePct": 0.0033,
+      "proratedTaxResaleRate": 0.01175,
+      "concessionsPct": 0,
+      "buyersAgentPct": 0,
+      "listingAgentPct": 0.01,
+      "perDiemAdjustment": 0,
+      "assetMgmtPct": 0,
+
+      "taxFactorW23": null,
+      "taxAssessedValue": null,
+      "constructionHoldback": 0
     },
-    "_inputNotes": {
-      "rehabBudget": "At Estimated/Acquired this is the budget. At Final it is REPLACED by QB construction actuals.",
-      "arv": "After-repair value = projected sale price. Sell-side contract is $460,000."
-    },
-    "derivedFromWorkbook": {
-      "reportedProfit": 9367,
-      "warning": "Razor-thin. Workbook note: 'Need Supplemental Tax EST from Tony'. Supplemental tax is most of the remaining margin."
+    "_fieldNotes": {
+      "overrideLoanAmt": "Blank = use computed 1st loan = 90% of Cost + Repairs (= F16+B32). Enter a number to override.",
+      "buyersAgentPct": "Master showed 2% in the % column but $0 in the dollar column in estimate mode (commissions only book at Final). Default 0 to match the screenshot output; this was flagged issue #8 (decorative % vs live rate).",
+      "taxFactorW23": "Supplemental Tax factor. BLANK in master => supplemental = 0. Enter the county factor to activate Supplemental Tax (B38).",
+      "proratedTaxResaleRate": "B47 uses 1.175%/12*months on purchase price. This is the master's resale prop-tax proration; verify against the actual bill."
     }
   }
 }

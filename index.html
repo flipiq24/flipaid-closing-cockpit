@@ -58,6 +58,13 @@
   .statusrow select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-weight:600}
   .note{font-size:12px;color:var(--muted);margin-top:8px}
   .hidden{display:none}
+  .pcol{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .loanbox{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .loanbox>div{display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
+  .loanbox>div span{color:var(--muted);font-weight:500}
+  .loanbox input{width:110px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+  table.dev td{padding:7px 10px}
+  .help{cursor:help}
 </style>
 </head>
 <body>
@@ -195,59 +202,194 @@ function resaleTaxBlock(){
   </div>`;
 }
 
-/* ----- IA tab ----- */
+/* ----- IA tab : FULL MASTER IA v4.1 model ----- */
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+
+// Port of every MASTER IA formula. Returns all derived values. (Cells noted for traceability.)
+function computeIA(i){
+  const r={};
+  r.days   = daysBetween(i.coeDate, i.eomDate);              // F6
+  r.months = r.days/30;                                      // E2
+  // TOTAL PURCHASE
+  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+i.proratedPropTaxPurchase; // B10
+  // loan sizing
+  r.pct90Cost = (i.purchasePrice+i.dueDiligence)*0.90;       // F16
+  r.pct75ARV  = i.arv*0.75;                                  // F15
+  r.loan1st   = (i.overrideLoanAmt!=null && i.overrideLoanAmt!=='') ? +i.overrideLoanAmt : r.pct90Cost+i.estimatedRepairs; // F14
+  r.moPayment = r.loan1st*i.interestRate1st/12;              // F17
+  r.proratedPayment = (r.moPayment/i.dayInMonth)*i.oddDays;  // F20
+  r.shortFunds = r.loan1st - i.estimatedRepairs - (r.loan1st*i.points1st) - i.estLoanFees1st; // F21
+  r.cashInclPayments = r.moPayment*(r.months*1.25);          // F9
+  r.cashToClose = r.totalPurchase - r.shortFunds;            // F10
+  // 1st loan line items
+  r.prepaidInt1st = r.proratedPayment;                       // B13
+  r.intOnNewLoan1st = r.moPayment*r.months;                  // B14
+  r.loanOrig1st = r.loan1st*i.points1st;                     // B15
+  r.loanFeesAppr1st = i.estLoanFees1st;                      // B16
+  r.lender1st = r.prepaidInt1st+r.intOnNewLoan1st+r.loanOrig1st+r.loanFeesAppr1st+i.additional1stPayments-i.unused1stCredit+i.interestFrom1stPayoff;
+  // 2nd loan
+  r.moPayment2nd = i.loan2ndAmount*i.interestRate2nd/12;
+  r.intOnNewLoan2nd = i.loan2ndAmount*i.interestRate2nd/12*r.months; // B24
+  r.loanOrig2nd = i.loan2ndAmount*i.points2nd;               // B25
+  r.lender2nd = r.intOnNewLoan2nd+r.loanOrig2nd+i.additional2ndPayments-i.unused2ndCredit;
+  r.totalLender = r.lender1st+r.lender2nd;                   // B30
+  // rehab
+  r.totalRehab = i.estimatedRepairs+i.utilitiesRehab;        // B34
+  // supplemental tax (B38) -- only fires if taxFactor set
+  r.supplemental = (i.taxFactorW23==null||i.taxFactorW23==='') ? 0
+      : (i.purchasePrice - (i.taxAssessedValue==null? i.purchasePrice*0.60 : i.taxAssessedValue)) * (+i.taxFactorW23);
+  // misc costs (B36:B40) -> Misc Less Interest E50
+  r.miscLessInterest = i.roiAdjustments+i.miscellaneousCosts+r.supplemental+0+(i.hoaMonthly*r.months); // approx of SUM(B36:B40)
+  // resale / gross profit
+  r.escrowTitleResale = i.arv*i.escrowTitleResalePct;        // B46
+  r.proratedTaxResale = i.purchasePrice*i.proratedTaxResaleRate/12*r.months; // B47
+  r.concessions = i.arv*i.concessionsPct;                    // B48
+  r.buyersComm  = i.arv*i.buyersAgentPct;                    // B49
+  r.listingComm = i.arv*i.listingAgentPct;                   // B50
+  r.perDiem     = i.perDiemAdjustment;                       // B51
+  r.assetMgmt   = i.arv*i.assetMgmtPct;                      // B52
+  r.resaleCosts = r.escrowTitleResale+r.proratedTaxResale+r.concessions+r.buyersComm+r.listingComm+r.perDiem+r.assetMgmt;
+  r.grossProfit = i.arv - r.resaleCosts;                     // B53
+  // development cost
+  r.totAcq=r.totalPurchase; r.hardMoney=r.totalLender; r.rehabCost=r.totalRehab; // E47,E48,E49
+  r.totalDevCost = r.totAcq+r.hardMoney+r.rehabCost+r.miscLessInterest; // E51
+  // net
+  r.netProfit = r.grossProfit - r.totAcq - r.hardMoney - r.rehabCost - r.miscLessInterest; // B55
+  r.roi = (r.netProfit+r.totalLender)/(r.totAcq+r.rehabCost); // B56
+  r.irr = r.roi/r.days*360;                                  // B57
+  return r;
+}
+
+const pct=(n)=> (n==null||isNaN(n))?'' : (n*100).toFixed(2)+'%';
+// row: % of ARV | $ value | label.  editable=true => input bound to inputs[key]
+function iaRow(arv, label, val, opts={}){
+  const p = opts.noPct? '' : pct(val/arv);
+  const cell = opts.editable
+    ? `<input class="num" value="${val}" onchange="setIA('${opts.key}',this.value)">`
+    : `<b>${money(val)}</b>`;
+  const inputPct = opts.pctKey
+    ? `<input class="num" style="width:64px" value="${(D.ia.inputs[opts.pctKey]*100)}" onchange="setIA('${opts.pctKey}',this.value/100)">%`
+    : `<span class="pcol">${p}</span>`;
+  return `<tr class="${opts.total?'row-tot':''}">
+    <td style="width:120px">${inputPct}</td>
+    <td class="num" style="width:150px">${cell}</td>
+    <td>${label}${opts.editable?' <span class="ink-in"></span>':''}</td></tr>`;
+}
+function setIA(key,val){ const v=(val===''||val===null)?null:(isNaN(+val)?val:+val); D.ia.inputs[key]=v; OV._ia=D.ia.inputs; saveOV(); render('ia'); }
+
 function renderIA(){
-  const ia=D.ia.inputs, st=D.deal.status, opts=D.deal._statusOptions;
-  // status gating: which fields are live
-  const live = {
-    Estimated:   ['arv','purchasePrice','assignmentFee','rehabBudget','loanAmount','loanRatePct','holdMonths','sellingCommissionPct'],
-    Acquired:    ['arv','rehabBudget','loanRatePct','holdMonths','sellingCommissionPct'],
-    'Estimated Closing': ['arv','rehabBudget','sellingCommissionPct'],
-    Final:       ['arv','sellingCommissionPct']
-  }[st];
-  const flds=[
-    ['arv','ARV / Sale Price'],['purchasePrice','Purchase Price'],['assignmentFee','Assignment Fee'],
-    ['rehabBudget', st==='Final'?'Rehab (actuals from QB)':'Rehab Budget'],
-    ['loanAmount','Loan Amount'],['loanRatePct','Loan Rate %'],['holdMonths','Hold Months'],['sellingCommissionPct','Selling Commission %']
-  ];
-  // math
-  const acq = ia.purchasePrice + ia.assignmentFee;
-  const interest = ia.loanAmount*(ia.loanRatePct/100)/12*ia.holdMonths;
-  const commission = ia.arv*(ia.sellingCommissionPct/100);
-  const tt = transferTax(ia.arv, D.taxInputs.transferTaxRatePer1000);
-  const supp = supplemental(ia.purchasePrice, D.taxInputs.priorAssessedValue, D.taxInputs.annualTaxRatePct, 0.5);
-  const costs = acq + ia.rehabBudget + interest + commission + tt + supp;
-  const profit = ia.arv - costs;
+  const i=D.ia.inputs, r=computeIA(i);
+  const arv=i.arv;
+  const sec=(title,count,inner)=>`<div class="section"><h2>${title}${count?` <span class="pill">${count}</span>`:''}</h2><table><tbody>${inner}</tbody></table></div>`;
 
-  let g='';
-  flds.forEach(([key,lab])=>{
-    const on=live.includes(key);
-    g+=`<div class="field"><label>${lab}${on?'':' <span class="note">(locked at this status)</span>'}</label>
-      <input ${on?'':'readonly'} value="${ia[key]}" onchange="D.ia.inputs.${key}=+this.value;OV._ia=D.ia.inputs;saveOV();render('ia')"></div>`;
-  });
+  // ---- header / mode ----
+  const header=`<div class="section">
+    <div class="grid">
+      <div class="field"><label>Address</label><input value="${D.ia.address}" onchange="D.ia.address=this.value;saveOV()"></div>
+      <div class="field"><label>Mode (H2 — controls Estimate vs HUD logic)</label>
+        <select onchange="setIA('mode',this.value)">${D.ia.modeOptions.map(o=>`<option ${o===i.mode?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>COE Date</label><input type="date" value="${i.coeDate}" onchange="setIA('coeDate',this.value)"></div>
+      <div class="field"><label>EOM</label><input type="date" value="${i.eomDate}" onchange="setIA('eomDate',this.value)"></div>
+      <div class="field"><label>Financing Type (J2)</label>
+        <select onchange="setIA('financingType',this.value)">${D.ia.financingOptions.map(o=>`<option ${o===i.financingType?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>Estimated Project (mos.) — derived</label><input readonly value="${r.months.toFixed(4)}"></div>
+    </div></div>`;
 
-  $('#panel').innerHTML = `
-   <div class="section">
-     <div class="statusrow"><b>Status</b>
-       <select onchange="D.deal.status=this.value;OV._status=this.value;saveOV();render('ia')">
-         ${opts.map(o=>`<option ${o===st?'selected':''}>${o}</option>`).join('')}</select>
-       <span class="note">Estimated → Acquired → Estimated Closing → Final. Status controls which inputs stay live; the rest lock so the face shows only what you fill.</span>
-     </div>
-     <div class="warn">Workbook reported profit was <b>$9,367</b> — razor-thin. Note on file: "Need Supplemental Tax EST from Tony." Supplemental is split out below so you can see it bite.</div>
-     <h2>Inputs <span class="pill">${live.length} live</span></h2>
-     <div class="grid">${g}</div>
-   </div>
-   <div class="section">
-     <h2>Result</h2>
-     <div class="kpi">
-       <div class="box"><div class="k">Total Cost Basis</div><div class="v">${money(costs)}</div></div>
-       <div class="box"><div class="k">Est. Net Profit</div><div class="v ${profit>=0?'good':'bad'}">${money(profit)}</div></div>
-       <div class="box"><div class="k">Supplemental Tax</div><div class="v">${money(supp)}</div></div>
-       <div class="box"><div class="k">Transfer Tax</div><div class="v">${money(tt)}</div></div>
-     </div>
-     <div class="note">Cost = Acquisition (${money(acq)}) + Rehab (${money(ia.rehabBudget)}) + Interest (${money(interest)}) + Commission (${money(commission)}) + Transfer Tax + Supplemental.
-     Loan proceeds and the $63K holdback are financing — profit-neutral, not counted here (see DECISIONS.md).</div>
+  // ---- TOTAL PURCHASE COST ----
+  const purchase = sec('TOTAL PURCHASE COST', null,
+    iaRow(arv,'Purchase Price', i.purchasePrice, {editable:1,key:'purchasePrice'})+
+    iaRow(arv,'Due Diligence Cost', i.dueDiligence, {editable:1,key:'dueDiligence'})+
+    iaRow(arv,'Insurance', i.insurance, {editable:1,key:'insurance'})+
+    iaRow(arv,'Cash for Keys', i.cashForKeys, {editable:1,key:'cashForKeys'})+
+    iaRow(arv,'Escrow and Title', i.escrowTitlePurchase, {editable:1,key:'escrowTitlePurchase'})+
+    iaRow(arv,'Prorated Property Tax', i.proratedPropTaxPurchase, {editable:1,key:'proratedPropTaxPurchase'})+
+    iaRow(arv,'<b>Total Purchase Costs</b>', r.totalPurchase, {total:1})+
+    `<tr><td></td><td class="num" style="color:var(--red)"><b>${money(r.cashInclPayments)}</b></td><td style="color:var(--red)">Total Cash Investment Including Payments</td></tr>`+
+    `<tr><td></td><td class="num"><b>${money(r.cashToClose)}</b></td><td>Cash Required to Close</td></tr>`);
+
+  // ---- LENDER COST ----
+  const loanBoxes=`<div class="loanbox">
+     <div><span>1st Loan Amount</span><b>${money(r.loan1st)}</b></div>
+     <div><span>Override Loan Amt.</span><input class="num" value="${i.overrideLoanAmt??''}" placeholder="(auto)" onchange="setIA('overrideLoanAmt',this.value)"></div>
+     <div><span>75% of ARV</span>${money(r.pct75ARV)}</div>
+     <div><span>90% of Cost</span>${money(r.pct90Cost)}</div>
+     <div><span>Mo. Payment</span>${money(r.moPayment)}</div>
+     <div><span>ProRated Payment</span>${money(r.proratedPayment)}</div>
+     <div><span>ShortFunds to Escrow</span>${money(r.shortFunds)}</div>
    </div>`;
+  const loanInputs=`<div class="grid" style="margin-bottom:12px">
+     <div class="field"><label>Interest Rate 1st (D13)</label><input value="${i.interestRate1st*100}" onchange="setIA('interestRate1st',this.value/100)">%</div>
+     <div class="field"><label>Points 1st (D15)</label><input value="${i.points1st*100}" onchange="setIA('points1st',this.value/100)">%</div>
+     <div class="field"><label>Est. Loan Fees 1st (D16)</label><input value="${i.estLoanFees1st}" onchange="setIA('estLoanFees1st',this.value)"></div>
+     <div class="field"><label>odd days (F18)</label><input value="${i.oddDays}" onchange="setIA('oddDays',this.value)"></div>
+   </div>`;
+  const lender = `<div class="section"><h2>LENDER COST — 1st LOAN</h2>${loanInputs}${loanBoxes}<table><tbody>`+
+    iaRow(arv,'Prepaid Interest 1st', r.prepaidInt1st, {})+
+    iaRow(arv,'Interest on New Loan 1st', r.intOnNewLoan1st, {})+
+    iaRow(arv,'Loan Origination Fee 1st', r.loanOrig1st, {})+
+    iaRow(arv,'Loan Fees &amp; Appraisal Fee 1st', r.loanFeesAppr1st, {})+
+    iaRow(arv,'Additional 1st Payments Made', i.additional1stPayments, {editable:1,key:'additional1stPayments'})+
+    iaRow(arv,'Unused 1st Payments Credit', i.unused1stCredit, {editable:1,key:'unused1stCredit'})+
+    iaRow(arv,'Interest from 1st Payoff', i.interestFrom1stPayoff, {editable:1,key:'interestFrom1stPayoff'})+
+    `</tbody></table>
+     <h2 style="margin-top:18px">2nd LOAN</h2>
+     <div class="grid" style="margin-bottom:12px">
+       <div class="field"><label>Interest Rate 2nd (D23)</label><input value="${i.interestRate2nd*100}" onchange="setIA('interestRate2nd',this.value/100)">%</div>
+       <div class="field"><label>2nd Loan Amount (F24)</label><input value="${i.loan2ndAmount}" onchange="setIA('loan2ndAmount',this.value)"></div>
+     </div>
+     <table><tbody>`+
+    iaRow(arv,'Interest on New Loan 2nd', r.intOnNewLoan2nd, {})+
+    iaRow(arv,'Loan Origination Fee 2nd', r.loanOrig2nd, {})+
+    iaRow(arv,'<b>Total Lender Costs</b>', r.totalLender, {total:1})+
+    `</tbody></table></div>`;
+
+  // ---- REHAB ----
+  const rehab = sec('REHABILITATION COSTS', null,
+    iaRow(arv,'Estimated Repairs', i.estimatedRepairs, {editable:1,key:'estimatedRepairs'})+
+    iaRow(arv,'Utilities', i.utilitiesRehab, {editable:1,key:'utilitiesRehab'})+
+    iaRow(arv,'<b>Total Rehab Costs</b>', r.totalRehab, {total:1}));
+
+  // ---- MISC ----
+  const misc = sec('MISC COSTS', null,
+    iaRow(arv,'ROI Adjustments', i.roiAdjustments, {editable:1,key:'roiAdjustments'})+
+    iaRow(arv,'Miscellaneous Costs', i.miscellaneousCosts, {editable:1,key:'miscellaneousCosts'})+
+    iaRow(arv,'Supplemental Taxes <span class="help" title="Fires only when Tax Factor (W23) is set. base x factor. Master left it blank => 0. This is the line the Ramona note flagged.">ⓘ</span>', r.supplemental, {})+
+    `<tr><td><input class="num" style="width:64px" value="${i.taxFactorW23??''}" placeholder="factor" onchange="setIA('taxFactorW23',this.value)"></td><td class="num">${money(i.taxAssessedValue||0)}</td><td>Tax Factor (W23) · Assessed Value <input class="num" style="width:110px" value="${i.taxAssessedValue??''}" placeholder="assessed" onchange="setIA('taxAssessedValue',this.value)"></td></tr>`+
+    iaRow(arv,'HOA (monthly x months)', i.hoaMonthly, {editable:1,key:'hoaMonthly'}));
+
+  // ---- GROSS PROFITS ----
+  const dev=`<table class="dev"><tbody>
+     <tr><td>${pct(r.totAcq/arv)}</td><td class="num">${money(r.totAcq)}</td><td>Total Acquisition Cost</td></tr>
+     <tr><td>${pct(r.hardMoney/arv)}</td><td class="num">${money(r.hardMoney)}</td><td>Hard Money Costs</td></tr>
+     <tr><td>${pct(r.rehabCost/arv)}</td><td class="num">${money(r.rehabCost)}</td><td>Rehab Costs</td></tr>
+     <tr><td>${pct(r.miscLessInterest/arv)}</td><td class="num">${money(r.miscLessInterest)}</td><td>Miscellaneous Costs Less Interest</td></tr>
+     <tr class="row-tot"><td>${pct(r.totalDevCost/arv)}</td><td class="num">${money(r.totalDevCost)}</td><td>Total Development Cost</td></tr>
+   </tbody></table>`;
+  const gross = `<div class="section"><h2>GROSS PROFITS</h2>
+   <div class="grid"><div><table><tbody>`+
+    iaRow(arv,'After Repair Value', i.arv, {editable:1,key:'arv'})+
+    iaRow(arv,'Escrow and Title', r.escrowTitleResale, {pctKey:'escrowTitleResalePct'})+
+    iaRow(arv,'Prorated Property Tax', r.proratedTaxResale, {})+
+    iaRow(arv,'Concessions (Buyer\'s Help)', r.concessions, {pctKey:'concessionsPct'})+
+    iaRow(arv,'Buyers Agent Commissions', r.buyersComm, {pctKey:'buyersAgentPct'})+
+    iaRow(arv,'Listing Agents Commissions', r.listingComm, {pctKey:'listingAgentPct'})+
+    iaRow(arv,'Per Diem Adjustment', i.perDiemAdjustment, {editable:1,key:'perDiemAdjustment'})+
+    iaRow(arv,'Asset Management Services', r.assetMgmt, {pctKey:'assetMgmtPct'})+
+    iaRow(arv,'<b>Gross Profit to Seller</b>', r.grossProfit, {total:1})+
+    `</tbody></table></div><div><div class="note" style="margin-bottom:6px">Total Development Cost</div>${dev}</div></div></div>`;
+
+  // ---- NET PROFITS ----
+  const net = `<div class="section"><h2>NET PROFITS</h2>
+   <div class="kpi">
+     <div class="box"><div class="k">Net Profit</div><div class="v ${r.netProfit>=0?'good':'bad'}">${money(r.netProfit)}</div><div class="k">${pct(r.netProfit/arv)} of ARV</div></div>
+     <div class="box"><div class="k">ROI</div><div class="v">${pct(r.roi)}</div></div>
+     <div class="box"><div class="k">IRR (annualized simple)</div><div class="v">${pct(r.irr)}</div></div>
+     <div class="box"><div class="k">Total Development Cost</div><div class="v">${money(r.totalDevCost)}</div></div>
+   </div>
+   <div class="note">Reproduces the MASTER IA exactly with the loaded inputs. ROI = (Net + Lender Costs)/(Acquisition + Rehab). IRR here is ROI annualized on a 360-day basis (not a true cash-flow IRR — flagged in the original audit).</div>
+   </div>`;
+
+  $('#panel').innerHTML = header+purchase+lender+rehab+misc+gross+net;
 }
 
 /* ----- QB export tab ----- */
