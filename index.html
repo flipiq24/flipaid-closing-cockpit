@@ -963,12 +963,43 @@ function iaActuals(){
 // the manual estimate inputs unchanged. Refreshes IA_ACTUAL for L$()'s actual/locked styling.
 function effIA(){ IA_ACTUAL=iaActuals(); const ks=Object.keys(IA_ACTUAL); return ks.length?Object.assign({},D.ia.inputs,IA_ACTUAL):D.ia.inputs; }
 function isActualKey(key){ return IA_ACTUAL && Object.prototype.hasOwnProperty.call(IA_ACTUAL,key); }
-function srcLink(m,val){
-  if(!m.src)return '';
+// All closing-statement line indices whose mapped category|sub feeds this IA total.
+// Mirrors iaActuals(): cost keys take debits, arv takes credit/debit, loan principal is excluded.
+function srcLinesFor(key, mode){
+  const hits=[];
+  const sides = mode==='Sold' ? ['buySide','sellSide'] : (mode==='Acquired' ? ['buySide'] : []);
+  const isPrincipal=(s)=> /Lender Cost/.test(s.category||'') && /(payoff|principal|trust deed|loan proceeds)/i.test(s.label||'') && !/interest/i.test(s.label||'');
+  sides.forEach(side=>{
+    if(!hasActualStmt(side)) return;
+    (D[side].lines||[]).forEach((l,idx)=>{
+      const s=lineState(side,idx);
+      if(SUB2IA[(s.category||'')+'|'+(s.sub||'')]!==key) return;
+      const contributes = key==='arv' ? (s.credit!=null||s.debit!=null) : (isPrincipal(s)?false:(s.debit!=null));
+      if(contributes) hits.push({side, idx});
+    });
+  });
+  return hits;
+}
+function srcLink(m,val,key){
   // Stage-gate link-backs by mode: Estimated -> none; Acquired -> buy-side only
   // (Total Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Gross Profit).
   const mode=(effIA().mode||'');
   if(mode!=='Acquired' && mode!=='Sold') return '';
+  // Preferred: highlight EVERY closing-statement line feeding this IA total (handles fields
+  // like "Escrow and Title" that aggregate several statement lines), not just one row.
+  const hits = key ? srcLinesFor(key, mode) : [];
+  if(hits.length){
+    // One ↗ per side that contributes (a field can aggregate rows from both statements in Sold mode).
+    let out='';
+    ['buySide','sellSide'].forEach(side=>{
+      const idxs=hits.filter(h=>h.side===side).map(h=>h.idx); if(!idxs.length) return;
+      const sd=side==='buySide'?'Buy-side':'Sell-side', n=idxs.length;
+      out += ` <a class="srclink" title="Source: ${n} ${sd} closing item${n>1?'s':''} feeding this total — click to highlight ${n>1?'them all':'it'}" onclick='gotoSourceMulti("${side}",${JSON.stringify(idxs)})'>↗</a>`;
+    });
+    return out;
+  }
+  // Fallback: a single canonical source row (fields with no live statement match).
+  if(!m.src)return '';
   if(mode==='Acquired' && m.src[0]!=='buySide') return '';
   const base=D[m.src[0]]&&D[m.src[0]].lines[m.src[1]]; if(!base)return '';
   if(val==null||val===''||+val===0)return '';
@@ -980,6 +1011,18 @@ function gotoSource(side,idx){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
   render(tabKey);
   setTimeout(()=>{ document.querySelectorAll('.hilite').forEach(e=>e.classList.remove('hilite')); const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('hilite'); } },60);  // persistent highlight: stays until you jump to another source
+}
+// Like gotoSource but highlights EVERY contributing row (e.g. all "Escrow and Title" lines).
+function gotoSourceMulti(side, idxs){
+  const tabKey=side==='buySide'?'buy':'sell';
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
+  render(tabKey);
+  setTimeout(()=>{
+    document.querySelectorAll('.hilite').forEach(e=>e.classList.remove('hilite'));
+    let first=null;
+    (idxs||[]).forEach(idx=>{ const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.classList.add('hilite'); if(!first) first=el; } });
+    if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
+  },60);  // persistent highlight on all rows; stays until you jump to another source
 }
 
 /* ----- double-click the % column to drive the $ amount from % of ARV ----- */
@@ -1025,7 +1068,7 @@ function Ppct(v){const a=arvOf();return a?((+v||0)/a*100).toFixed(2)+'%':'';}
 // editable $ line:  percent (dbl-click to drive from % of ARV) | input | label (+tooltip & source link)
 function L$(label,key,val,metaKey){const m=meta(metaKey||key);const tip=(m.tip||'').replace(/"/g,'&quot;');
   // (no "actual" badge — fields render the same whether the value is manual or pulled from a statement)
-  return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val)}</span></div>`;}
+  return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val,key)}</span></div>`;}
 // read-only computed line: percent | amount | label  (opt.tot=subtotal, opt.big=emphasis, opt.pct=override %, opt.blank=no $, opt.valtxt=raw amount text)
 function L_(label,val,opt){opt=opt||{};const cls='lr'+(opt.tot?' tot':'')+(opt.big?' big':'');const p=opt.pct!=null?opt.pct:Ppct(val);const av=opt.valtxt!=null?opt.valtxt:(opt.blank?'':money(val));let links='';if(opt.add2nd)links+=` <a class="addcost" onclick="add2nd()">+ 2nd Loan</a>`;if(opt.add)links+=` <a class="addcost" onclick="addCost('${opt.add}')">+ Add cost</a>`;return `<div class="${cls}"><span class="lp">${p}</span><span class="av">${av}</span><span class="ll">${label}${links}</span></div>`;}
 // param input box + label (kind: pct|money|num)
