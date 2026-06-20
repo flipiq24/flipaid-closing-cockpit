@@ -306,6 +306,9 @@ function supplemental(purchase, priorAssessed, annualRatePct, monthsFactor){
 async function boot(){
   D = await (await fetch('./data/ramona.json')).json();
   try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
+  // Saved overrides are scoped to a deal. If they belong to a different deal (or are legacy/unstamped),
+  // discard them so one deal's edits can never bleed onto another via localStorage.
+  if(OV._dealId !== D.deal.id){ OV={}; localStorage.removeItem(LS); }
   if(OV._status){ D.deal.status=OV._status; }
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
   // restore any parsed statement lines from a prior attach
@@ -336,7 +339,7 @@ function bindTabs(){
     t.classList.add('active'); render(t.dataset.tab);
   });
 }
-function saveOV(){ localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); }
+function saveOV(){ if(D&&D.deal) OV._dealId=D.deal.id; localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); }
 function flashSaved(){ const s=$('#saved'); if(s) s.textContent='✓ Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
 
 /* ---------- helpers for line state (override-aware) ---------- */
