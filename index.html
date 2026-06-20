@@ -97,6 +97,7 @@
   .ia-sum .su.tot{background:#eef2f7;border-radius:6px;border-right:none}
   .ia-sum .su.tot b{font-size:17px;color:#111}
   .ia-sum .su.tot em{color:#5b6472;font-weight:700}
+  .add2nd{font-size:10px;margin-left:8px;text-transform:none;letter-spacing:0;vertical-align:middle}
   .rm2{cursor:pointer;color:#c00000;font-size:10px;font-weight:600;margin-left:8px;text-transform:none;letter-spacing:0}
   .rm2:hover{text-decoration:underline}
   .band{background:#808080;color:#fff;text-align:center;font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px}
@@ -421,9 +422,9 @@ function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; save
 /* ----- "Additions" : user items NOT on the closing statement. Stored in OV._add per
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
-function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=Object.keys(taxCats())[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); render(side==='buySide'?'buy':'sell'); }
-function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); render(side==='buySide'?'buy':'sell'); }
-function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); render(side==='buySide'?'buy':'sell'); } }
+function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=Object.keys(taxCats())[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); renderActive(); }
+function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 async function tryParse(side){
   try{
     const src=srcState(side); const f=window.__stmtFiles&&window.__stmtFiles[side];
@@ -849,7 +850,11 @@ function renderIA(){
   // LENDER COST — ledger lines | loan params | derived amounts.  Hidden for cash deals.
   let lender = '';
   if(!r.isCash){
-    const loan1 = `<div class="subband">1st LOAN</div>
+    // 2nd loan is hidden by default — only shown once it has a value or the user adds it.
+    const forced2 = /2nd/i.test(i.financingType||'');
+    const show2 = forced2 || !!i.show2nd || (+i.loan2ndAmount||0)>0;
+    const add2ndLink = show2 ? '' : ` <a class="addcost add2nd" onclick="add2nd()">+ 2nd Loan</a>`;
+    const loan1 = `<div class="subband">1st LOAN${add2ndLink}</div>
     <div class="cols">
       <div class="col">
         ${L$('Prepaid Interest 1st','ov_prepaidInt1st', r.prepaidInt1st)}
@@ -880,9 +885,6 @@ function renderIA(){
       </div>
     </div>`;
 
-    // 2nd loan is hidden by default — only shown once it has a value or the user adds it.
-    const forced2 = /2nd/i.test(i.financingType||'');
-    const show2 = forced2 || !!i.show2nd || (+i.loan2ndAmount||0)>0;
     const rm2 = forced2 ? '' : ` <a class="rm2" onclick="hide2nd()" title="Remove 2nd loan">remove</a>`;
     const loan2 = show2 ? `<div class="subband">2nd LOAN${rm2}</div>
     <div class="cols">
@@ -908,7 +910,7 @@ function renderIA(){
       </div>
     </div>`
     : '';
-    const lenderTotal = `<div class="cols"><div class="col">${L_('Total Lender Costs', r.totalLender,{tot:1,add:'lender1',add2nd:!show2})}</div><div class="col"></div><div class="col"></div></div>`;
+    const lenderTotal = `<div class="cols"><div class="col">${L_('Total Lender Costs', r.totalLender,{tot:1,add:'lender1'})}</div><div class="col"></div><div class="col"></div></div>`;
     lender = `<div class="band">Lender Cost</div>`+loan1+loan2+lenderTotal;
   }
 
@@ -981,6 +983,15 @@ function qbRows(){
       rows.push({Type:D[side].role, Date:D[side].date, Name:D[side].title, Memo:s.label,
                  Category:s.category, Sub:s.sub, Amount:s.amount, side, idx:i});
     });
+    // Additions: not on the closing statement, but they map into QB + the IA the same way.
+    additions(side).forEach((a,idx)=>{
+      const fld = a.debit!=null ? 'debit' : (a.credit!=null ? 'credit' : null);
+      if(fld==null) return;
+      // QB convention (same as statement lines via lineState): debit positive, credit negative.
+      const amt = fld==='debit' ? a.debit : -a.credit;
+      rows.push({Type:D[side].role, Date:D[side].date, Name:D[side].title, Memo:(a.label||'(addition)'),
+                 Category:a.category, Sub:a.sub, Amount:amt, side, idx, isAdd:true, amtField:fld});
+    });
   });
   return rows;
 }
@@ -991,10 +1002,16 @@ function renderQB(){
    <table><thead><tr><th>Date</th><th>Memo</th><th>Category</th><th>Sub</th><th class="num">Amount</th></tr></thead><tbody>`;
   rows.forEach(r=>{
     const k=r.side+':'+r.idx;
-    html+=`<tr><td>${r.Date}</td><td>${r.Memo}</td>
-      <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('qb')">${catOptions(r.Category)}</select></td>
-      <td><select onchange="setOV('${k}','sub',this.value);render('qb')">${subOptions(r.Category,r.Sub)}</select></td>
-      <td class="num"><input class="num" value="${r.Amount}" onchange="setOV('${k}','amount',this.value);render('qb')"></td></tr>`;
+    const catCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'category',this.value)`
+                          : `setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('qb')`;
+    const subCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'sub',this.value)`
+                          : `setOV('${k}','sub',this.value);render('qb')`;
+    const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+this.value||0))`
+                          : `setOV('${k}','amount',this.value);render('qb')`;
+    html+=`<tr><td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
+      <td><select onchange="${catCh}">${catOptions(r.Category)}</select></td>
+      <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
+      <td class="num"><input class="num" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
   });
   // category totals
   const tot={}; rows.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+r.Amount);
