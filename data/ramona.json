@@ -566,6 +566,7 @@
       "arv": 499900,
       "estimatedSalesPrice": 515000,
       "escrowTitleResalePct": 0.0033,
+      "ov_transferTaxResale": 500,
       "escrowPctA": 0.005,
       "proratedTaxResaleRate": 0.01175,
       "concessionsPct": 0,

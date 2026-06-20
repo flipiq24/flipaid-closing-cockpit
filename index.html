@@ -588,20 +588,21 @@ function renderClosing(sideKey, tabKey){
      <td colspan="3" class="${bal?'bal-ok':'bal-net'}">${bal?'✓ Balanced':netMsg+' <span class="bal-hint">(balancing line — add on the actual statement to foot to zero)</span>'}</td>
    </tr></tbody></table></div>`;
 
-  // CASH-OUT-OF-ESCROW reconciliation (sell side only): IA-computed model (G56) vs statement net proceeds.
-  if(sideKey==='sellSide'){
+  // ESCROW RECONCILIATION (sell side, Mode: Sold only): IA estimate (G56) vs statement net proceeds.
+  // Styled to match the IA design; read-only, no UI controls.
+  if(sideKey==='sellSide' && (effIA().mode||'')==='Sold'){
     const stmtNet = tCred - tDeb;                       // cash leaving escrow per the statement
     const model = computeIA(effIA()).cashOutEscrow;     // MASTER IA "Cash out of escrow" (G56), computed live from the IA
     const cd = stmtNet - model;                         // statement − model (not forced to zero)
     const match = Math.abs(cd) < 0.01;
-    const lbl = side.cashOutOfEscrowLabel || 'Cash out of escrow (computed from IA)';
-    html += `<div class="section"><h2 class="stmt-sec">Cash-out-of-escrow reconciliation</h2>
-       <div class="note" style="margin:0 0 8px">${lbl} — computed live from the IA (G56 = Gross Profit to Seller − 1st-loan payoff − 1st-payment adjustments − total cash invested, plus any 2nd loan). Compared against the statement's net proceeds; the difference is the estimate-vs-actual gap, not forced to match.</div>
-       <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup><tbody>
-       <tr><td class="desc">${lbl}</td><td class="num"></td><td class="num">${money(model)}</td><td colspan="3" class="muted">MASTER IA v4.1 · G56 (live)</td></tr>
-       <tr><td class="desc">Statement net proceeds to ${role}</td><td class="num"></td><td class="num">${money(stmtNet)}</td><td colspan="3" class="muted">Credits − Debits above</td></tr>
-       <tr class="${match?'bal-ok':'qb-bad'}"><td class="desc"><b>Difference (statement − model)</b></td><td class="num"></td><td class="num"><b>${money(cd)}</b></td><td colspan="3" class="${match?'bal-ok':'bal-net'}">${match?'✓ Match':'Difference — '+money(Math.abs(cd))+(cd>0?' more out of escrow than the model':' less out of escrow than the model')}</td></tr>
-       </tbody></table></div>`;
+    html += `<div class="section"><div class="band">Escrow Reconciliation</div>
+       <div class="summary">
+         <div class="s"><span>Cash out of escrow (IA estimate)</span><span>${money(model)}</span></div>
+         <div class="s"><span>Net proceeds to ${role} (Sell-Side Closing)</span><span>${money(stmtNet)}</span></div>
+         <div class="s tot"><span class="lab">${match?'✓ Match':'Diff — update one side'}</span><span class="tval">${money(cd)}</span></div>
+       </div>
+       <div class="note">Estimate now; the actual replaces it when the sell-side statement is ingested.</div>
+     </div>`;
   }
 
   // ADDITIONS — user items not on the closing statement. Do NOT affect the balance above.
@@ -737,13 +738,14 @@ function computeIA(i){
   // resale / gross profit
   const resaleMode = (i.mode||'')==='Sold';                  // buyers/concessions only book once the deal is Sold
   r.escrowTitleResale = ov('escrowTitleResale', i.arv*i.escrowTitleResalePct);        // B46
+  r.transferTaxResale = ov('transferTaxResale', transferTax(i.arv, D.taxInputs.transferTaxRatePer1000)); // sell-side documentary transfer tax
   r.proratedTaxResale = ov('proratedTaxResale', i.purchasePrice*i.proratedTaxResaleRate/12*r.months); // B47
   r.concessions = ov('concessions', i.arv*i.concessionsPct);   // B48 (books from % always; actual from sell-side overrides)
   r.buyersComm  = ov('buyersComm', i.arv*i.buyersAgentPct);    // B49 (default 2% estimate; actual from sell-side statement overrides)
   r.listingComm = ov('listingComm', i.arv*i.listingAgentPct);                   // B50
   r.perDiem     = (+i.perDiemAdjustment||0);                 // B51
   r.assetMgmt   = ov('assetMgmt', i.arv*i.assetMgmtPct);                        // B52
-  r.resaleCosts = r.escrowTitleResale+r.proratedTaxResale+r.concessions+r.buyersComm+r.listingComm+r.perDiem+r.assetMgmt+cSum('gross');
+  r.resaleCosts = r.escrowTitleResale+r.transferTaxResale+r.proratedTaxResale+r.concessions+r.buyersComm+r.listingComm+r.perDiem+r.assetMgmt+cSum('gross');
   r.grossProfit = i.arv - r.resaleCosts;                     // B53
   // development cost
   r.totAcq=r.totalPurchase; r.hardMoney=r.totalLender; r.rehabCost=r.totalRehab; // E47,E48,E49
@@ -838,6 +840,7 @@ const IA_META = {
   utilitiesRehab:{tip:'Utilities during the rehab / hold period.'},
   arv:{tip:'After Repair Value — projected resale price.',src:['sellSide',0]},
   ov_escrowTitleResale:{tip:'Sell-side escrow + title (ARV × escrow %).'},
+  ov_transferTaxResale:{tip:'Sell-side documentary transfer tax at resale.',src:['sellSide',2]},
   ov_proratedTaxResale:{tip:'Seller share of property-tax proration at resale.',src:['sellSide',3]},
   ov_concessions:{tip:'Buyer concessions / credits at resale.'},
   ov_buyersComm:{tip:"Buyer's agent commission (ARV × %).",src:['sellSide',1]},
@@ -874,6 +877,7 @@ const SUB2IA = {
   'Lender Cost – 2nd Loan|Interest from 2nd Payoff':'interestFrom2ndPayoff',
   'Gross Profits|After Repair Value':'arv',
   'Gross Profits|Escrow and Title':'ov_escrowTitleResale',
+  'Gross Profits|Prorated Transfer Tax':'ov_transferTaxResale',
   'Gross Profits|Prorated Tax':'ov_proratedTaxResale',
   'Gross Profits|Prorated Property Tax':'ov_proratedTaxResale',
   "Gross Profits|Concessions (Buyer's Help)":'ov_concessions',
@@ -1105,6 +1109,7 @@ function renderIA(){
     <div class="col grossleft">
       ${L$('After Repair Value','arv',i.arv)}
       ${L$('Escrow and Title','ov_escrowTitleResale', r.escrowTitleResale)}
+      ${L$('Transfer Tax','ov_transferTaxResale', r.transferTaxResale)}
       ${L$('Prorated Property Tax','ov_proratedTaxResale', r.proratedTaxResale)}
       ${L$("Concessions (Buyer's Help)",'ov_concessions', r.concessions)}
       ${L$('Buyers Agent Commissions','ov_buyersComm', r.buyersComm)}
