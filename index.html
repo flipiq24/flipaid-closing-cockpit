@@ -59,7 +59,18 @@
   .note{font-size:12px;color:var(--muted);margin-top:8px}
   .hidden{display:none}
   .help{cursor:help}
-  /* ===== Excel-form IA ===== */
+  /* ===== card-UI IA (MoM Connect look) ===== */
+  .count{font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 9px;margin-left:8px}
+  .field.full{grid-column:1 / -1}
+  .field textarea{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;min-height:62px;resize:vertical;background:#fff}
+  .adorn{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+  .adorn:focus-within{border-color:var(--accent)}
+  .adorn .pre,.adorn .suf{padding:0 9px;color:var(--muted);font-size:13px;white-space:nowrap}
+  .adorn input{border:none;border-radius:0;flex:1;min-width:0;padding:9px 8px;font:inherit}
+  .adorn input:focus{outline:none}
+  .field input.ro{background:#f3f4f6;color:#374151;font-weight:600;border-color:#e5e7eb}
+  .autotag{color:var(--muted);font-weight:400;font-size:11px}
+  /* ===== Excel-form IA (legacy, unused) ===== */
   .ia-doc{background:#fff;border:1px solid #b9b9b9;max-width:1180px;margin:0 auto;font-size:12.5px;color:#000}
   .ia-title{background:#1f4e79;color:#fff;text-align:center;font-weight:800;font-size:24px;padding:10px;letter-spacing:.02em}
   .ia-sub{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 14px;border-bottom:1px solid #d9d9d9;flex-wrap:wrap}
@@ -235,6 +246,8 @@ function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000)
 // Port of every MASTER IA formula. Returns all derived values. (Cells noted for traceability.)
 function computeIA(i){
   const r={};
+  // override layer: any derived line item can be hand-edited (stored as ov_<key>); totals always recompute
+  const ov=(k,c)=> (i['ov_'+k]!=null && i['ov_'+k]!=='') ? +i['ov_'+k] : c;
   r.days   = daysBetween(i.coeDate, i.eomDate);              // F6
   r.months = r.days/30;                                      // E2
   // TOTAL PURCHASE
@@ -249,35 +262,34 @@ function computeIA(i){
   r.cashInclPayments = r.moPayment*(r.months*1.25);          // F9
   r.cashToClose = r.totalPurchase - r.shortFunds;            // F10
   // 1st loan line items
-  r.prepaidInt1st = r.proratedPayment;                       // B13
-  r.intOnNewLoan1st = r.moPayment*r.months;                  // B14
-  r.loanOrig1st = r.loan1st*i.points1st;                     // B15
-  r.loanFeesAppr1st = i.estLoanFees1st;                      // B16
-  r.lender1st = r.prepaidInt1st+r.intOnNewLoan1st+r.loanOrig1st+r.loanFeesAppr1st+i.additional1stPayments-i.unused1stCredit+i.interestFrom1stPayoff;
+  r.prepaidInt1st = ov('prepaidInt1st', r.proratedPayment);  // B13
+  r.intOnNewLoan1st = ov('intOnNewLoan1st', r.moPayment*r.months); // B14
+  r.loanOrig1st = ov('loanOrig1st', r.loan1st*i.points1st);  // B15
+  r.loanFeesAppr1st = ov('loanFeesAppr1st', i.estLoanFees1st);// B16
+  r.lender1st = r.prepaidInt1st+r.intOnNewLoan1st+r.loanOrig1st+r.loanFeesAppr1st+(+i.additional1stPayments||0)-(+i.unused1stCredit||0)+(+i.interestFrom1stPayoff||0);
   // 2nd loan
-  r.moPayment2nd = i.loan2ndAmount*i.interestRate2nd/12;
-  r.intOnNewLoan2nd = i.loan2ndAmount*i.interestRate2nd/12*r.months; // B24
-  r.loanOrig2nd = i.loan2ndAmount*i.points2nd;               // B25
-  r.lender2nd = r.intOnNewLoan2nd+r.loanOrig2nd+i.additional2ndPayments-i.unused2ndCredit;
+  r.intOnNewLoan2nd = ov('intOnNewLoan2nd', (+i.loan2ndAmount||0)*i.interestRate2nd/12*r.months); // B24
+  r.loanOrig2nd = ov('loanOrig2nd', (+i.loan2ndAmount||0)*i.points2nd); // B25
+  r.lender2nd = (+i.prepaidInt2nd||0)+r.intOnNewLoan2nd+r.loanOrig2nd+(+i.loanFees2nd||0)+(+i.additional2ndPayments||0)-(+i.unused2ndCredit||0)+(+i.interestFrom2ndPayoff||0);
   r.totalLender = r.lender1st+r.lender2nd;                   // B30
   // rehab
-  r.totalRehab = i.estimatedRepairs+i.utilitiesRehab;        // B34
-  // supplemental tax (B38) -- only fires if taxFactor set
-  r.supplemental = (i.taxFactorW23==null||i.taxFactorW23==='') ? 0
-      : (i.purchasePrice - (i.taxAssessedValue==null? i.purchasePrice*0.60 : i.taxAssessedValue)) * (+i.taxFactorW23);
+  r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0);        // B34
+  // supplemental tax (B38) -- only fires if taxFactor set (overridable)
+  r.supplemental = ov('supplemental', (i.taxFactorW23==null||i.taxFactorW23==='') ? 0
+      : (i.purchasePrice - (i.taxAssessedValue==null||i.taxAssessedValue===''? i.purchasePrice*0.60 : +i.taxAssessedValue)) * (+i.taxFactorW23));
   // misc costs (B36:B40) -> Misc Less Interest E50
-  r.miscLessInterest = i.roiAdjustments+i.miscellaneousCosts+r.supplemental+0+(i.hoaMonthly*r.months); // approx of SUM(B36:B40)
+  r.miscLessInterest = (+i.roiAdjustments||0)+(+i.miscellaneousCosts||0)+r.supplemental+((+i.hoaMonthly||0)*r.months); // SUM(B36:B40)
   // 2nd loan suggested amount (F25 = F9 + F10 + repairs*25%)
   r.loan2ndSuggested = r.cashInclPayments + r.cashToClose + i.estimatedRepairs*0.25;
   // resale / gross profit
   const resaleMode = /Resale/.test(i.mode);                  // buyers/concessions only book in resale modes (Excel IF on H2)
-  r.escrowTitleResale = i.arv*i.escrowTitleResalePct;        // B46
-  r.proratedTaxResale = i.purchasePrice*i.proratedTaxResaleRate/12*r.months; // B47
-  r.concessions = resaleMode ? i.arv*i.concessionsPct : 0;   // B48
-  r.buyersComm  = resaleMode ? i.arv*i.buyersAgentPct : 0;   // B49
-  r.listingComm = i.arv*i.listingAgentPct;                   // B50
-  r.perDiem     = i.perDiemAdjustment;                       // B51
-  r.assetMgmt   = i.arv*i.assetMgmtPct;                      // B52
+  r.escrowTitleResale = ov('escrowTitleResale', i.arv*i.escrowTitleResalePct);        // B46
+  r.proratedTaxResale = ov('proratedTaxResale', i.purchasePrice*i.proratedTaxResaleRate/12*r.months); // B47
+  r.concessions = ov('concessions', resaleMode ? i.arv*i.concessionsPct : 0);   // B48
+  r.buyersComm  = ov('buyersComm', resaleMode ? i.arv*i.buyersAgentPct : 0);    // B49
+  r.listingComm = ov('listingComm', i.arv*i.listingAgentPct);                   // B50
+  r.perDiem     = (+i.perDiemAdjustment||0);                 // B51
+  r.assetMgmt   = ov('assetMgmt', i.arv*i.assetMgmtPct);                        // B52
   r.resaleCosts = r.escrowTitleResale+r.proratedTaxResale+r.concessions+r.buyersComm+r.listingComm+r.perDiem+r.assetMgmt;
   r.grossProfit = i.arv - r.resaleCosts;                     // B53
   // development cost
@@ -292,120 +304,131 @@ function computeIA(i){
 
 const pct=(n)=> (n==null||isNaN(n))?'' : (n*100).toFixed(2)+'%';
 function setIA(key,val){ const v=(val===''||val===null)?null:(isNaN(+val)?val:+val); D.ia.inputs[key]=v; OV._ia=D.ia.inputs; saveOV(); render('ia'); }
-// gray editable money cell (Excel "gray = data input")
-function emi(key,val){ return `<input class="iin" value="${val==null?'':val}" onchange="setIA('${key}',this.value)">`; }
-// gray editable percent cell (stored as decimal)
-function epi(key,val){ return `<input class="iin pct" value="${val==null?'':(+(val*100).toFixed(4))}" onchange="setIA('${key}',this.value/100)"><span class="pcap">%</span>`; }
+// ----- card-UI field renderers (label above input, like the MoM Connect form) -----
+function fMoney(lab,key,val,opt){opt=opt||{};return `<div class="field${opt.full?' full':''}"><label>${lab}${opt.req?' <span class="req">*</span>':''}</label><div class="adorn"><span class="pre">$</span><input value="${val==null||val===''?'':val}" placeholder="0" onchange="setIA('${key}',this.value)"></div></div>`;}
+function fPct(lab,key,val){return `<div class="field"><label>${lab}</label><div class="adorn"><input value="${val==null||val===''?'':(+(val*100).toFixed(6))}" placeholder="0" onchange="setIA('${key}',this.value===''?'':this.value/100)"><span class="suf">%</span></div></div>`;}
+function fNum(lab,key,val){return `<div class="field"><label>${lab}</label><input value="${val==null?'':val}" placeholder="0" onchange="setIA('${key}',this.value)"></div>`;}
+function fText(lab,key,val){return `<div class="field"><label>${lab}</label><input value="${val==null?'':val}" onchange="setIA('${key}',this.value)"></div>`;}
+function fSelect(lab,key,val,opts,req){return `<div class="field"><label>${lab}${req?' <span class="req">*</span>':''}</label><select onchange="setIA('${key}',this.value)"><option value="">Select…</option>${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`;}
+function fDate(lab,key,val){return `<div class="field"><label>${lab}</label><input type="date" value="${val||''}" onchange="setIA('${key}',this.value)"></div>`;}
+function fArea(lab,key,val){return `<div class="field full"><label>${lab}</label><textarea onchange="setIA('${key}',this.value)">${val==null?'':val}</textarea></div>`;}
+// read-only computed TOTAL — the only kind of field that is NOT editable
+function fAuto(lab,val,opt){opt=opt||{};const disp=opt.pct?pct(val):(opt.num?(Math.round(val*1e4)/1e4):money(val));return `<div class="field"><label>${lab} <span class="autotag">(auto)</span></label><input class="ro" readonly value="${disp}"></div>`;}
 
 function renderIA(){
-  const i=D.ia.inputs, r=computeIA(i), arv=i.arv, md=money, P=pct;
-  const band=t=>`<tr><td colspan="7" class="band">${t}</td></tr>`;
-  const subh=t=>`<tr><td colspan="3"></td><td colspan="2" class="subh">${t}</td><td colspan="2"></td></tr>`;
+  const i=D.ia.inputs, r=computeIA(i);
+  // section card with an "X / Y" filled-count badge over the editable inputs
+  const sec=(title,keys,fields)=>{
+    const filled=keys.filter(k=>{const v=i[k];return v!=null && v!=='';}).length;
+    const badge=keys.length?` <span class="count">${filled} / ${keys.length}</span>`:'';
+    return `<div class="section"><h2>${title}${badge}</h2><div class="grid">${fields.join('')}</div></div>`;
+  };
 
-  // ---- TOTAL PURCHASE COST ----
-  const purchase =
-   `<tr><td class="p">${P(i.purchasePrice/arv)}</td><td class="a">${emi('purchasePrice',i.purchasePrice)}</td><td class="l">Purchase Price</td><td colspan="2"></td><td class="rv"><input type="date" class="iin" value="${i.coeDate}" onchange="setIA('coeDate',this.value)"></td><td class="rl bk">COE Date</td></tr>`+
-   `<tr><td class="p">${P(i.dueDiligence/arv)}</td><td class="a">${emi('dueDiligence',i.dueDiligence)}</td><td class="l">Due Diligence Cost</td><td colspan="2"></td><td class="rv"><input type="date" class="iin" value="${i.eomDate}" onchange="setIA('eomDate',this.value)"></td><td class="rl bk">EOM</td></tr>`+
-   `<tr><td class="p">${P(i.insurance/arv)}</td><td class="a">${emi('insurance',i.insurance)}</td><td class="l">Insurance</td><td colspan="2"></td><td class="rv">${r.days}</td><td class="rl"></td></tr>`+
-   `<tr><td class="p">${P(i.cashForKeys/arv)}</td><td class="a">${emi('cashForKeys',i.cashForKeys)}</td><td class="l">Cash for Keys</td><td colspan="4"></td></tr>`+
-   `<tr><td class="p">${P(i.escrowTitlePurchase/arv)}</td><td class="a">${emi('escrowTitlePurchase',i.escrowTitlePurchase)}</td><td class="l">Escrow and Title</td><td colspan="4"></td></tr>`+
-   `<tr><td class="p">${P(i.proratedPropTaxPurchase/arv)}</td><td class="a">${emi('proratedPropTaxPurchase',i.proratedPropTaxPurchase)}</td><td class="l">Prorated Property Tax</td><td colspan="3" class="red">Total Cash Investment Including Payments&nbsp;&nbsp;$</td><td class="red">${md(r.cashInclPayments)}</td></tr>`+
-   `<tr class="tot"><td class="p">${P(r.totalPurchase/arv)}</td><td class="a">${md(r.totalPurchase)}</td><td class="l">Total Purchase Costs</td><td colspan="3" class="rt">Cash Required to Close:&nbsp;&nbsp;$</td><td class="a">${md(r.cashToClose)}</td></tr>`;
+  const general = sec('General',['address','mode','financingType','coeDate','eomDate'],[
+    fText('Address','address',i.address),
+    fSelect('Mode','mode',i.mode,D.ia.modeOptions),
+    fSelect('Financing Type','financingType',i.financingType,D.ia.financingOptions),
+    fDate('COE Date','coeDate',i.coeDate),
+    fDate('EOM','eomDate',i.eomDate),
+    fAuto('Estimated Project (Mos.)', r.months, {num:1})]);
 
-  // ---- LENDER COST : 1st LOAN (8 aligned rows: left | middle gray | right box/labels) ----
-  const L1=[
-    [P(r.prepaidInt1st/arv), md(r.prepaidInt1st), 'Prepaid Interest 1st'],
-    [P(r.intOnNewLoan1st/arv), md(r.intOnNewLoan1st), 'Interest on New Loan 1st'],
-    [P(r.loanOrig1st/arv), md(r.loanOrig1st), 'Loan Origination Fee 1st'],
-    [P(r.loanFeesAppr1st/arv), md(r.loanFeesAppr1st), 'Loan Fees &amp; Appraisal Fee 1st'],
-    [P(i.additional1stPayments/arv), emi('additional1stPayments',i.additional1stPayments), 'Additional 1st Payments Made'],
-    [P(i.unused1stCredit/arv), emi('unused1stCredit',i.unused1stCredit), 'Unused 1st Payments Credit'],
-    [P(i.interestFrom1stPayoff/arv), emi('interestFrom1stPayoff',i.interestFrom1stPayoff), 'Interest from1st Payoff'],
-    ['','','']];
-  const M1=[
-    [epi('interestRate1st',i.interestRate1st),'Interest Rate'],
-    [r.days,'Days'],
-    [epi('points1st',i.points1st),'Points'],
-    [emi('estLoanFees1st',i.estLoanFees1st),'Est. Loan Fees'],
-    ['','Appraisal Fee'],['',''],['',''],['','']];
-  const R1=[
-    `<td class="box">1st Loan Amount<br><b>${md(r.loan1st)}</b></td><td class="rl"><a>Override Loan Am.</a>${emi('overrideLoanAmt',i.overrideLoanAmt)}</td>`,
-    `<td class="rv">${md(r.pct75ARV)}</td><td class="rl">75% of ARV</td>`,
-    `<td class="rv">${md(r.pct90Cost)}</td><td class="rl">90% of Cost</td>`,
-    `<td class="rv">${md(r.moPayment)}</td><td class="rl">Mo. Payment</td>`,
-    `<td class="rv">${emi('oddDays',i.oddDays)}</td><td class="rl">odd days</td>`,
-    `<td class="rv">${emi('dayInMonth',i.dayInMonth)}</td><td class="rl">Day in Mo</td>`,
-    `<td class="rv">${md(r.proratedPayment)}</td><td class="rl">ProRated Payment</td>`,
-    `<td class="rv">${md(r.shortFunds)}</td><td class="rl">ShortFunds to Escrow</td>`];
-  let loan1='';
-  for(let k=0;k<8;k++){ const[p,a,l]=L1[k],[mv,ml]=M1[k];
-    loan1+=`<tr><td class="p">${p}</td><td class="a">${a}</td><td class="l">${l}</td><td class="mv">${mv}</td><td class="ml">${ml}</td>${R1[k]}</tr>`; }
+  const purchase = sec('Total Purchase Cost',['purchasePrice','dueDiligence','insurance','cashForKeys','escrowTitlePurchase','proratedPropTaxPurchase'],[
+    fMoney('Purchase Price','purchasePrice',i.purchasePrice),
+    fMoney('Due Diligence Cost','dueDiligence',i.dueDiligence),
+    fMoney('Insurance','insurance',i.insurance),
+    fMoney('Cash for Keys','cashForKeys',i.cashForKeys),
+    fMoney('Escrow and Title','escrowTitlePurchase',i.escrowTitlePurchase),
+    fMoney('Prorated Property Tax','proratedPropTaxPurchase',i.proratedPropTaxPurchase),
+    fAuto('Total Purchase Costs', r.totalPurchase),
+    fAuto('Total Cash Investment Including Payments', r.cashInclPayments),
+    fAuto('Cash Required to Close', r.cashToClose)]);
 
-  // ---- 2nd LOAN ----
-  const L2=[
-    ['0.00%', md(0), 'Prepaid Interest 2nd'],
-    [P(r.intOnNewLoan2nd/arv), md(r.intOnNewLoan2nd), 'Interest on New Loan 2nd'],
-    [P(r.loanOrig2nd/arv), md(r.loanOrig2nd), 'Loan Origination Fee 2nd'],
-    ['0.00%', md(0), 'Loan Fees 2nd'],
-    [P(i.additional2ndPayments/arv), emi('additional2ndPayments',i.additional2ndPayments), 'Additional 2nd Payments Made'],
-    [P(i.unused2ndCredit/arv), emi('unused2ndCredit',i.unused2ndCredit), 'Unused 2nd Payments Credit'],
-    ['0.00%', md(0), 'Interest from 2nd Payoff']];
-  const M2=[
-    [epi('interestRate2nd',i.interestRate2nd),'Interest Rate'],
-    [r.days,'Days'],
-    [epi('points2nd',i.points2nd),'Points'],
-    [md(0),'Est. Loan Fees'],['',''],['',''],['','']];
-  const R2=[
-    `<td class="box">2nd Loan Amount<br><b>${md(r.loan2ndSuggested)}</b></td><td class="rl"></td>`,
-    `<td></td><td></td>`,`<td></td><td></td>`,`<td></td><td></td>`,`<td></td><td></td>`,`<td></td><td></td>`,`<td></td><td></td>`];
-  let loan2='';
-  for(let k=0;k<7;k++){ const[p,a,l]=L2[k],[mv,ml]=M2[k];
-    loan2+=`<tr><td class="p">${p}</td><td class="a">${a}</td><td class="l">${l}</td><td class="mv">${mv}</td><td class="ml">${ml}</td>${R2[k]}</tr>`; }
-  loan2+=`<tr class="tot"><td class="p">${P(r.totalLender/arv)}</td><td class="a">${md(r.totalLender)}</td><td class="l">Total Lender Costs</td><td colspan="4"></td></tr>`;
+  const loan1 = sec('Lender Cost — 1st Loan',['interestRate1st','points1st','estLoanFees1st','appraisalFee','oddDays','dayInMonth','overrideLoanAmt','additional1stPayments','unused1stCredit','interestFrom1stPayoff'],[
+    fPct('Interest Rate','interestRate1st',i.interestRate1st),
+    fAuto('Days', r.days, {num:1}),
+    fPct('Points','points1st',i.points1st),
+    fMoney('Est. Loan Fees','estLoanFees1st',i.estLoanFees1st),
+    fMoney('Appraisal Fee','appraisalFee',i.appraisalFee),
+    fNum('Odd Days','oddDays',i.oddDays),
+    fNum('Day in Mo','dayInMonth',i.dayInMonth),
+    fMoney('Override Loan Amount','overrideLoanAmt',i.overrideLoanAmt),
+    fAuto('1st Loan Amount', r.loan1st),
+    fAuto('75% of ARV', r.pct75ARV),
+    fAuto('90% of Cost', r.pct90Cost),
+    fAuto('Mo. Payment', r.moPayment),
+    fAuto('ProRated Payment', r.proratedPayment),
+    fAuto('ShortFunds to Escrow', r.shortFunds),
+    fMoney('Prepaid Interest 1st','ov_prepaidInt1st', r.prepaidInt1st),
+    fMoney('Interest on New Loan 1st','ov_intOnNewLoan1st', r.intOnNewLoan1st),
+    fMoney('Loan Origination Fee 1st','ov_loanOrig1st', r.loanOrig1st),
+    fMoney('Loan Fees & Appraisal Fee 1st','ov_loanFeesAppr1st', r.loanFeesAppr1st),
+    fMoney('Additional 1st Payments Made','additional1stPayments',i.additional1stPayments),
+    fMoney('Unused 1st Payments Credit','unused1stCredit',i.unused1stCredit),
+    fMoney('Interest from 1st Payoff','interestFrom1stPayoff',i.interestFrom1stPayoff)]);
 
-  // ---- REHAB ----
-  const rehab =
-   `<tr><td class="p">${P(i.estimatedRepairs/arv)}</td><td class="a">${emi('estimatedRepairs',i.estimatedRepairs)}</td><td class="l">Estimated Repairs</td><td colspan="4"></td></tr>`+
-   `<tr><td class="p">${P(i.utilitiesRehab/arv)}</td><td class="a">${emi('utilitiesRehab',i.utilitiesRehab)}</td><td class="l">Utilities</td><td colspan="4"></td></tr>`+
-   `<tr class="tot"><td class="p">${P(r.totalRehab/arv)}</td><td class="a">${md(r.totalRehab)}</td><td class="l">Total Rehab Costs</td><td colspan="4"></td></tr>`;
+  const loan2 = sec('Lender Cost — 2nd Loan',['interestRate2nd','points2nd','estLoanFees2nd','loan2ndAmount','prepaidInt2nd','loanFees2nd','additional2ndPayments','unused2ndCredit','interestFrom2ndPayoff'],[
+    fPct('Interest Rate','interestRate2nd',i.interestRate2nd),
+    fAuto('Days', r.days, {num:1}),
+    fPct('Points','points2nd',i.points2nd),
+    fMoney('Est. Loan Fees','estLoanFees2nd',i.estLoanFees2nd),
+    fMoney('2nd Loan Amount (Used)','loan2ndAmount',i.loan2ndAmount),
+    fAuto('2nd Loan Amount (Suggested)', r.loan2ndSuggested),
+    fMoney('Prepaid Interest 2nd','prepaidInt2nd',i.prepaidInt2nd),
+    fMoney('Interest on New Loan 2nd','ov_intOnNewLoan2nd', r.intOnNewLoan2nd),
+    fMoney('Loan Origination Fee 2nd','ov_loanOrig2nd', r.loanOrig2nd),
+    fMoney('Loan Fees 2nd','loanFees2nd',i.loanFees2nd),
+    fMoney('Additional 2nd Payments Made','additional2ndPayments',i.additional2ndPayments),
+    fMoney('Unused 2nd Payments Credit','unused2ndCredit',i.unused2ndCredit),
+    fMoney('Interest from 2nd Payoff','interestFrom2ndPayoff',i.interestFrom2ndPayoff),
+    fAuto('Total Lender Costs', r.totalLender)]);
 
-  // ---- GROSS PROFITS (left list + right Total Development Cost block) ----
-  const dvh=`<td></td><td class="dh" colspan="3">Total Development Cost</td>`;
-  const dv=(p,a,l,tot)=>`<td></td><td class="p">${p}</td><td class="a">${a}</td><td class="l${tot?' bld':''}">${l}</td>`;
-  const gross =
-   `<tr><td class="p">${P(1)}</td><td class="a">${emi('arv',i.arv)}</td><td class="l">After Repair Value</td>${dvh}</tr>`+
-   `<tr><td class="p">${epi('escrowPctA',i.escrowPctA)}</td><td class="a">${md(r.escrowTitleResale)}</td><td class="l">Escrow and Title</td>${dv(P(r.totAcq/arv),md(r.totAcq),'Total Acquisition Cost')}</tr>`+
-   `<tr><td class="p">0.00%</td><td class="a">${md(r.proratedTaxResale)}</td><td class="l">Prorated Property Tax</td>${dv(P(r.hardMoney/arv),md(r.hardMoney),'Hard Money Costs')}</tr>`+
-   `<tr><td class="p">${epi('concessionsPct',i.concessionsPct)}</td><td class="a">${md(r.concessions)}</td><td class="l">Concessions (Buyer's Help)</td>${dv(P(r.rehabCost/arv),md(r.rehabCost),'Rehab Costs')}</tr>`+
-   `<tr><td class="p">${epi('buyersAgentPct',i.buyersAgentPct)}</td><td class="a">${md(r.buyersComm)}</td><td class="l">Buyers Agent Commissions</td>${dv(P(r.miscLessInterest/arv),md(r.miscLessInterest),'Miscellaneous Costs Less Interest')}</tr>`+
-   `<tr><td class="p">${epi('listingAgentPct',i.listingAgentPct)}</td><td class="a">${md(r.listingComm)}</td><td class="l">Listing  Agents Commissions</td><td></td><td class="p tot2">${P(r.totalDevCost/arv)}</td><td class="a tot2">${md(r.totalDevCost)}</td><td class="l bld tot2">Total Development Cost</td></tr>`+
-   `<tr><td class="p">0.00%</td><td class="a">${emi('perDiemAdjustment',i.perDiemAdjustment)}</td><td class="l">Per Diem Adjustment</td><td colspan="4"></td></tr>`+
-   `<tr><td class="p">${epi('assetMgmtPct',i.assetMgmtPct)}</td><td class="a">${md(r.assetMgmt)}</td><td class="l">Asset Management Services</td><td colspan="4"></td></tr>`+
-   `<tr class="tot"><td class="p">${P(r.grossProfit/arv)}</td><td class="a">${md(r.grossProfit)}</td><td class="l">Gross Profit to Seller</td><td colspan="4"></td></tr>`;
+  const rehab = sec('Rehabilitation Costs',['estimatedRepairs','utilitiesRehab'],[
+    fMoney('Estimated Repairs','estimatedRepairs',i.estimatedRepairs),
+    fMoney('Utilities','utilitiesRehab',i.utilitiesRehab),
+    fAuto('Total Rehab Costs', r.totalRehab)]);
 
-  // ---- NET PROFITS ----
-  const net =
-   `<tr><td class="p">${P(r.netProfit/arv)}</td><td class="a big">${md(r.netProfit)}</td><td class="l bld">Net Profit</td><td colspan="4" class="l">Notes:</td></tr>`+
-   `<tr><td></td><td class="a">${P(r.roi)}</td><td class="l">ROI</td><td colspan="4"></td></tr>`+
-   `<tr><td></td><td class="a">${P(r.irr)}</td><td class="l">IRR</td><td colspan="4"></td></tr>`;
+  const misc = sec('Misc Costs',['roiAdjustments','miscellaneousCosts','taxFactorW23','taxAssessedValue','hoaMonthly','additionalIntReserve1stMonths','additionalIntReserve2ndMonths'],[
+    fMoney('ROI Adjustments','roiAdjustments',i.roiAdjustments),
+    fMoney('Miscellaneous Costs','miscellaneousCosts',i.miscellaneousCosts),
+    fMoney('Supplemental Taxes','ov_supplemental', r.supplemental),
+    fNum('Tax Factor (W23)','taxFactorW23',i.taxFactorW23),
+    fMoney('Tax Assessed Value','taxAssessedValue',i.taxAssessedValue),
+    fMoney('HOA (Monthly)','hoaMonthly',i.hoaMonthly),
+    fNum('Add’l Interest Reserve 1st (months)','additionalIntReserve1stMonths',i.additionalIntReserve1stMonths),
+    fNum('Add’l Interest Reserve 2nd (months)','additionalIntReserve2ndMonths',i.additionalIntReserve2ndMonths),
+    fAuto('Total Misc Costs', r.miscLessInterest)]);
 
-  $('#panel').innerHTML = `<div class="ia-doc">
-    <div class="ia-title">Investment Analysis</div>
-    <div class="ia-sub">
-      <span>Address:&nbsp; <input class="iin addr" value="${D.ia.address}" onchange="D.ia.address=this.value;saveOV()"></span>
-      <span>Estimated Project in Mos.&nbsp; ${r.months.toFixed(9)}</span>
-      <span>Mode: <select class="modesel" onchange="setIA('mode',this.value)">${D.ia.modeOptions.map(o=>`<option ${o===i.mode?'selected':''}>${o}</option>`).join('')}</select></span>
-    </div>
-    <table class="ia"><colgroup>
-      <col class="cp"><col class="ca"><col class="cl"><col class="cmv"><col class="cml"><col class="crv"><col class="crl">
-    </colgroup><tbody>
-      ${band('TOTAL PURCHASE COST')}${purchase}
-      ${band('LENDER COST')}${subh('1st LOAN')}${loan1}${subh('2nd LOAN')}${loan2}
-      ${band('REHABILITATION COSTS')}${rehab}
-      ${band('GROSS PROFITS')}${gross}
-      ${band('NET PROFITS')}${net}
-    </tbody></table>
-  </div>`;
+  const gross = sec('Gross Profits',['arv','estimatedSalesPrice','escrowPctA','concessionsPct','buyersAgentPct','listingAgentPct','perDiemAdjustment','assetMgmtPct'],[
+    fMoney('After Repair Value','arv',i.arv),
+    fMoney('Estimated Sales Price','estimatedSalesPrice',i.estimatedSalesPrice),
+    fPct('Escrow and Title %','escrowPctA',i.escrowPctA),
+    fMoney('Escrow and Title $','ov_escrowTitleResale', r.escrowTitleResale),
+    fMoney('Prorated Property Tax','ov_proratedTaxResale', r.proratedTaxResale),
+    fPct('Concessions %','concessionsPct',i.concessionsPct),
+    fMoney('Concessions (Buyer’s Help) $','ov_concessions', r.concessions),
+    fPct('Buyers Agent %','buyersAgentPct',i.buyersAgentPct),
+    fMoney('Buyers Agent Commissions $','ov_buyersComm', r.buyersComm),
+    fPct('Listing Agents %','listingAgentPct',i.listingAgentPct),
+    fMoney('Listing Agents Commissions $','ov_listingComm', r.listingComm),
+    fMoney('Per Diem Adjustment','perDiemAdjustment',i.perDiemAdjustment),
+    fPct('Asset Management %','assetMgmtPct',i.assetMgmtPct),
+    fMoney('Asset Management Services $','ov_assetMgmt', r.assetMgmt),
+    fAuto('Gross Profit to Seller', r.grossProfit)]);
+
+  const dev = sec('Total Development Cost',[],[
+    fAuto('Total Acquisition Cost', r.totAcq),
+    fAuto('Hard Money Costs', r.hardMoney),
+    fAuto('Rehab Costs', r.rehabCost),
+    fAuto('Miscellaneous Costs Less Interest', r.miscLessInterest),
+    fAuto('Total Development Cost', r.totalDevCost)]);
+
+  const net = sec('Net Profits',['notes'],[
+    fAuto('Net Profit', r.netProfit),
+    fAuto('ROI', r.roi, {pct:1}),
+    fAuto('IRR', r.irr, {pct:1}),
+    fArea('Notes','notes',i.notes)]);
+
+  $('#panel').innerHTML = general+purchase+loan1+loan2+rehab+misc+gross+dev+net;
 }
 
 /* ----- QB export tab ----- */

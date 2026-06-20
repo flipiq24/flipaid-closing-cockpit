@@ -76,6 +76,7 @@
     "modeOptions": ["Estimated Prelim", "Acquisition Approved", "Final HUD-1 Purchase", "Estimated HUD-1 Resale", "Final HUD-1 Resale"],
     "financingOptions": ["Hard Money - Anchor", "Hard Money - DP", "Hard Money", "Donation", "Cash Purchase"],
     "inputs": {
+      "address": "1834 Colorado SB",
       "mode": "Estimated Prelim",
       "financingType": "Hard Money - Anchor",
       "coeDate": "2025-04-30",
@@ -91,6 +92,7 @@
       "interestRate1st": 0.10,
       "points1st": 0.01,
       "estLoanFees1st": 999,
+      "appraisalFee": 0,
       "oddDays": 0,
       "dayInMonth": 31,
       "overrideLoanAmt": null,
@@ -100,9 +102,13 @@
 
       "interestRate2nd": 0,
       "points2nd": 0,
+      "estLoanFees2nd": 0,
       "loan2ndAmount": 0,
+      "prepaidInt2nd": 0,
+      "loanFees2nd": 0,
       "additional2ndPayments": 0,
       "unused2ndCredit": 0,
+      "interestFrom2ndPayoff": 0,
 
       "estimatedRepairs": 85000,
       "utilitiesRehab": 0,
