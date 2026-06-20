@@ -188,6 +188,8 @@
   table.stmt.stmt-total td{border-top:2px solid var(--ink);border-bottom:none;padding-top:10px;font-size:14px}
   .bal-ok{color:var(--green);font-weight:700}
   .bal-bad{color:var(--red);font-weight:700}
+  .bal-net{color:#1f3864;font-weight:700}
+  .bal-hint{color:var(--muted);font-weight:400;font-size:11px}
 </style>
 </head>
 <body>
@@ -370,13 +372,15 @@ function renderClosing(sideKey, tabKey){
     html += `</tbody></table></div>`;
   });
 
-  // TOTAL / balance check (matches the statement's footing)
-  const bal = Math.abs(tDeb-tCred) < 0.01;
+  // TOTAL / balance footing (universal: a statement balances via a net-proceeds / funds-to-close line)
+  const diff = tDeb-tCred, bal = Math.abs(diff) < 0.01;
+  const role = (side.role||'party');
+  const netMsg = diff<0 ? `Net proceeds to ${role}: ${money(-diff)}` : `Funds to close from ${role}: ${money(diff)}`;
   html += `<div class="section"><table class="stmt stmt-total"><tbody><tr>
      <td class="desc"><b>TOTAL</b></td>
      <td class="num"><b>${money(tDeb)}</b></td>
      <td class="num"><b>${money(tCred)}</b></td>
-     <td colspan="3" class="${bal?'bal-ok':'bal-bad'}">${bal?'✓ Balanced':'⚠ Out of balance by '+money(Math.abs(tDeb-tCred))}</td>
+     <td colspan="3" class="${bal?'bal-ok':'bal-net'}">${bal?'✓ Balanced':netMsg+' <span class="bal-hint">(balancing line — add on the actual statement to foot to zero)</span>'}</td>
    </tr></tbody></table></div>`;
 
   // resale tax block on sell side
