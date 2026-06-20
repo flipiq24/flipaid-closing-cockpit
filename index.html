@@ -362,8 +362,16 @@ function taxCats(){
   return cats;
 }
 function firstSub(cat){ const a=taxCats()[cat]; return (a&&a[0])||''; }
-function catOptions(sel){
-  return Object.keys(taxCats()).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+// catList(side): the Category names allowed in a given closing tab. buy = Purchase + Loans;
+// sell = Loans + Gross Profits. No side (QB) = every Category. The current value is always
+// kept in the list so an existing mapping never silently disappears.
+function catList(side,sel){
+  let list = (side && D.taxonomy.sides && D.taxonomy.sides[side]) ? D.taxonomy.sides[side].slice() : Object.keys(taxCats());
+  if(sel && !list.includes(sel)) list=[sel].concat(list);
+  return list;
+}
+function catOptions(sel,side){
+  return catList(side,sel).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
 }
 function subOptions(cat,sel){
   return (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
@@ -380,7 +388,7 @@ function renderSumBand(){
     {label:'Total Acquisition Cost',     amount:r.totAcq},
     {label:'Financing Costs',            amount:r.hardMoney},
     {label:'Rehab Costs',                amount:r.rehabCost},
-    {label:'Misc Costs Less Interest',   amount:r.miscLessInterest},
+    {label:'Miscellaneous Costs',        amount:r.miscLessInterest},
     {label:'Total Development Cost',      amount:r.totalDevCost, isTotal:true},
   ];
   const sumCell=c=>`<div class="su${c.isTotal?' tot':''}"><b>${money(c.amount)}</b><span>${Ppct(c.amount)}</span><em>${c.label}</em></div>`;
@@ -422,7 +430,7 @@ function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; save
 /* ----- "Additions" : user items NOT on the closing statement. Stored in OV._add per
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
-function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=Object.keys(taxCats())[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); renderActive(); }
+function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=catList(side)[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); renderActive(); }
 function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 async function tryParse(side){
@@ -513,7 +521,7 @@ function renderClosing(sideKey, tabKey){
         <td class="desc">${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
         <td class="num deb">${debCell}</td>
         <td class="num cred">${credCell}</td>
-        <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('${tabKey}')">${catOptions(s.category)}</select></td>
+        <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('${tabKey}')">${catOptions(s.category,sideKey)}</select></td>
         <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select></td>
         <td class="cf"><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
       </tr>`;
@@ -538,7 +546,7 @@ function renderClosing(sideKey, tabKey){
      <td class="desc"><input class="add-desc" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="Description" onchange="setAddition('${sideKey}',${idx},'label',this.value)"></td>
      <td class="num deb"><input class="num" value="${a.debit==null?'':a.debit}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'debit',this.value)"></td>
      <td class="num cred"><input class="num" value="${a.credit==null?'':a.credit}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'credit',this.value)"></td>
-     <td><select onchange="setAddition('${sideKey}',${idx},'category',this.value)">${catOptions(a.category)}</select></td>
+     <td><select onchange="setAddition('${sideKey}',${idx},'category',this.value)">${catOptions(a.category,sideKey)}</select></td>
      <td><select onchange="setAddition('${sideKey}',${idx},'sub',this.value)">${subOptions(a.category,a.sub)}</select></td>
      <td class="cf"><a class="delx" title="Remove line" onclick="delAddition('${sideKey}',${idx})">✕</a></td>
    </tr>`).join('');
@@ -634,12 +642,12 @@ function computeIA(i){
   r.reserves = (i.reserves==null||i.reserves==='') ? 5000 : +i.reserves;
   r.totalCashAndReserves = r.cashInclPayments + r.cashToClose + r.reserves + cSum('reserves');
   // rehab
-  r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0)+cSum('rehab');        // B34
+  r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0);        // B34 (custom "+ add cost" lines roll into Misc, not Rehab)
   // supplemental tax (B38) -- only fires if taxFactor set (overridable)
   r.supplemental = ov('supplemental', (i.taxFactorW23==null||i.taxFactorW23==='') ? 0
       : (i.purchasePrice - (i.taxAssessedValue==null||i.taxAssessedValue===''? i.purchasePrice*0.60 : +i.taxAssessedValue)) * (+i.taxFactorW23));
   // misc costs (B36:B40) -> Misc Less Interest E50
-  r.miscLessInterest = (+i.roiAdjustments||0)+(+i.miscellaneousCosts||0)+r.supplemental+((+i.hoaMonthly||0)*r.months); // SUM(B36:B40)
+  r.miscLessInterest = (+i.roiAdjustments||0)+(+i.miscellaneousCosts||0)+r.supplemental+((+i.hoaMonthly||0)*r.months)+cSum('rehab'); // SUM(B36:B40) + custom rehab add-costs
   // 2nd loan suggested amount (F25 = F9 + F10 + repairs*25%)
   r.loan2ndSuggested = r.cashInclPayments + r.cashToClose + i.estimatedRepairs*0.25;
   // resale / gross profit
@@ -946,7 +954,7 @@ function renderIA(){
       ${L_('Total Acquisition Cost', r.totAcq)}
       ${L_('Financing Costs', r.hardMoney)}
       ${L_('Rehab Costs', r.rehabCost)}
-      ${L_('Miscellaneous Costs Less Interest', r.miscLessInterest)}
+      ${L_('Miscellaneous Costs', r.miscLessInterest)}
       ${L_('Total Development Cost', r.totalDevCost,{tot:1})}
     </div>
   </div>`;
@@ -1012,7 +1020,7 @@ function renderQB(){
     const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+this.value||0))`
                           : `setOV('${k}','amount',this.value);render('qb')`;
     html+=`<tr><td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
-      <td><select onchange="${catCh}">${catOptions(r.Category)}</select></td>
+      <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
       <td class="num"><input class="num" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
   });
