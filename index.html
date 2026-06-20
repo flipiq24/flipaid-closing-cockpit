@@ -755,8 +755,12 @@ function computeIA(i){
   r.roi = (r.netProfit+r.totalLender)/(r.totAcq+r.rehabCost); // B56
   r.irr = r.days>0 ? Math.pow(1+r.roi, 365/r.days)-1 : 0;     // B57 — compounded annualized return
   r.irrLinear = r.days>0 ? r.roi/r.days*360 : 0;             // linear IRR (Excel B58 = ROI/days*360)
-  r.returnOnCash = r.totalCashAndReserves>0 ? r.netProfit/r.totalCashAndReserves : 0;          // cash-on-cash
-  r.returnOnCashAnnual = (r.days>0 && r.returnOnCash>-1) ? Math.pow(1+r.returnOnCash, 365/r.days)-1 : 0;
+  // (1) Cash-on-Cash = Net Profit ÷ equity in (Cash Required to Close); (2) its IRR (annualized)
+  r.cashOnCashROI = r.cashToClose>0 ? r.netProfit/r.cashToClose : 0;
+  r.cashOnCashIRR = r.days>0 ? r.cashOnCashROI/r.days*360 : 0;   // linear, Excel B58 method
+  // (3) ROI incl. finance cost = Net Profit ÷ Total Cash Investment (incl. payments+reserves); (4) its IRR
+  r.returnOnCash = r.totalCashAndReserves>0 ? r.netProfit/r.totalCashAndReserves : 0;
+  r.returnOnCashAnnual = r.days>0 ? r.returnOnCash/r.days*360 : 0;
   // Cash out of escrow (MASTER IA G56) = Gross Profit to Seller − 1st-loan payoff − add'l 1st pmts
   // − unused 1st credit − interest from 1st payoff − 2nd "Loan Amount" (F25 = total cash invested + any 2nd loan).
   r.cashOutEscrow = r.grossProfit - r.loan1st - (+i.additional1stPayments||0) - (+i.unused1stCredit||0)
@@ -1133,11 +1137,10 @@ function renderIA(){
   <div class="cols">
     <div class="col">
       ${L_('Net Profit', r.netProfit,{big:1})}
-      <div class="lr big roi"><span class="lp">${pct(r.roi)}</span><span class="av">${pct(r.roi)}</span><span class="ll">ROI</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.irr)}</span><span class="av">${pct(r.irr)}</span><span class="ll">Annualized Return</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.irrLinear)}</span><span class="av">${pct(r.irrLinear)}</span><span class="ll">IRR (linear)</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.returnOnCash)}</span><span class="av">${pct(r.returnOnCash)}</span><span class="ll">Return on Cash</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.returnOnCashAnnual)}</span><span class="av">${pct(r.returnOnCashAnnual)}</span><span class="ll">Return on Cash – Annualized</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashROI)}</span><span class="av"></span><span class="ll">Cash-on-Cash ROI</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashIRR)}</span><span class="av"></span><span class="ll">Cash-on-Cash IRR</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.returnOnCash)}</span><span class="av"></span><span class="ll">ROI (incl. finance cost)</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.returnOnCashAnnual)}</span><span class="av"></span><span class="ll">IRR (incl. finance cost)</span></div>
     </div>
     <div class="col r"></div>
   </div>`;
