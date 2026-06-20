@@ -815,6 +815,9 @@ function renderIA(){
   // Buy-side close date becomes "Acquired" once the deal is Acquired or Sold; otherwise "Estimated".
   const acquired = /Acquired|Sold/i.test(i.mode||'');
   const coeLabel = (acquired?'Acquired':'Estimated')+' Buy-Side Close Date';
+  // Sell-side close date becomes "Sold" once the deal is Sold; otherwise it's the estimated EOM.
+  const sold = /Sold/i.test(i.mode||'');
+  const eomLabel = (sold?'Sold':'Estimated')+' Sell-Side Close Date (EOM)';
   // Mode/Financing/Months bar + summary cards now live in the global band (renderSumBand).
 
   // TOTAL PURCHASE COST — cost lines on the left, dates + cash summary on the right
@@ -834,7 +837,7 @@ function renderIA(){
     <div class="col r purchcol">
       <div class="dates">
         ${Pdate(coeLabel,'coeDate',i.coeDate)}
-        ${Pdate('Estimated Sell-Side Close Date (EOM)','eomDate',i.eomDate)}
+        ${Pdate(eomLabel,'eomDate',i.eomDate)}
         <div class="pr d"><span class="dv">${r.days}</span><span class="pl">days · ${(r.months||0).toFixed(1)} mos est.</span></div>
       </div>
       <div class="summary">
