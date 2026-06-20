@@ -312,7 +312,7 @@ const TABS=[
   {key:'ia',   label:'Investment Analysis'},
   {key:'buy',  label:'Buy-Side Closing'},
   {key:'sell', label:'Sell-Side Closing'},
-  {key:'qb',   label:'QB Accounting Export'},
+  {key:'qb',   label:'QB Accounting'},
 ];
 function renderTabs(){
   $('#tabs').innerHTML = TABS.map((t,n)=>`<div class="tab${n===0?' active':''}" data-tab="${t.key}">${t.label}</div>`).join('');
@@ -1038,7 +1038,7 @@ function qbRows(){
 }
 function renderQB(){
   const rows=qbRows();
-  let html=`<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Download writes all four tabs to one .xlsx.</div>
+  let html=uploadCard('sellSide') + docChip('sellSide') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Download writes all four tabs to one .xlsx.</div>
    <div class="section"><h2>Ledger <span class="pill">${rows.length} lines</span></h2>
    <table><thead><tr><th>Date</th><th>Memo</th><th>Category</th><th>Sub</th><th class="num">Amount</th></tr></thead><tbody>`;
   rows.forEach(r=>{
