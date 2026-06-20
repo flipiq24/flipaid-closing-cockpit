@@ -134,8 +134,7 @@
   .col.purchleft .lr.tot{margin-top:auto}
   .col.grossleft{display:flex;flex-direction:column}
   .col.grossleft .lr.tot{margin-top:auto}
-  .col.r.grosscol{display:flex;flex-direction:column}
-  .col.r.grosscol .lr.tot{margin-top:auto}
+  .col.r.grosscol{display:flex;flex-direction:column;justify-content:flex-end}  /* whole breakdown sits at the bottom, total aligns with Gross Profit to Seller */
   .summary{margin-top:8px;padding:0 16px 8px}
   .summary .s{display:grid;grid-template-columns:1fr 96px;align-items:center;gap:8px;font-weight:700;padding:1px 0;font-size:12px;position:relative}
   .summary .s .delx{position:absolute;right:-13px;top:50%;transform:translateY(-50%)}
@@ -184,6 +183,7 @@
   .delx{cursor:pointer;color:#c00000;margin-left:6px;font-size:11px;font-weight:700}
   .lr.roi .av,.lr.roi .lp{font-weight:700;color:#1f3864}
   tr.flash{background:#fff3bf;transition:background .4s}
+  tr.hilite, tr.hilite td{background:#fff3bf}   /* persistent source highlight (stays until you jump elsewhere) */
   tr.qb-bad>td{background:#fef2f2;color:#991b1b}
   tr.qb-bad>td:first-child{box-shadow:inset 3px 0 0 var(--red)}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
@@ -935,7 +935,7 @@ function gotoSource(side,idx){
   const tabKey=side==='buySide'?'buy':'sell';
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
   render(tabKey);
-  setTimeout(()=>{ const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); } },60);
+  setTimeout(()=>{ document.querySelectorAll('.hilite').forEach(e=>e.classList.remove('hilite')); const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('hilite'); } },60);  // persistent highlight: stays until you jump to another source
 }
 
 /* ----- double-click the % column to drive the $ amount from % of ARV ----- */
@@ -1141,10 +1141,10 @@ function renderIA(){
   <div class="cols">
     <div class="col">
       ${L_('Net Profit', r.netProfit,{big:1})}
-      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashROI)}</span><span class="av"></span><span class="ll">Cash ROI</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.cashOnCashIRR)}</span><span class="av"></span><span class="ll">Cash IRR</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.returnOnCash)}</span><span class="av"></span><span class="ll">Levered ROI</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.returnOnCashAnnual)}</span><span class="av"></span><span class="ll">Levered IRR</span></div>
+      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.cashOnCashROI)}</span><span class="ll">Cash ROI</span></div>
+      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.cashOnCashIRR)}</span><span class="ll">Cash IRR</span></div>
+      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCash)}</span><span class="ll">Levered ROI</span></div>
+      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCashAnnual)}</span><span class="ll">Levered IRR</span></div>
     </div>
     <div class="col r"></div>
   </div>`;
