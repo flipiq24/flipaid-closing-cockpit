@@ -694,9 +694,8 @@ function computeIA(i){
   // (purchase all-in + repairs baked in). Both % factors are editable (arvLoanPct/costLoanPct).
   r.arvLoanPct  = (i.arvLoanPct==null||i.arvLoanPct==='')   ? 0.75 : +i.arvLoanPct;
   r.costLoanPct = (i.costLoanPct==null||i.costLoanPct==='') ? 0.90 : +i.costLoanPct;
-  const allInCost = r.totalPurchase + (+i.estimatedRepairs||0) + (+i.utilitiesRehab||0) + cSum('rehab');
   r.pct75ARV  = i.arv * r.arvLoanPct;                        // F15 — ARV cap
-  r.pct90Cost = allInCost * r.costLoanPct;                   // F16 — all-in cost cap (repairs baked in)
+  r.pct90Cost = (i.purchasePrice + (+i.dueDiligence||0)) * r.costLoanPct;  // F16 — Excel: (Purchase + Due Diligence) × 90% (NOT all-in incl. repairs)
   r.loan1st   = (i.overrideLoanAmt!=null && i.overrideLoanAmt!=='') ? +i.overrideLoanAmt : Math.min(r.pct75ARV, r.pct90Cost); // F14 — lowest of the two caps
   r.moPayment = r.loan1st*i.interestRate1st/12;              // F17
   r.dayInMonth = daysInMonth(i.coeDate);                     // auto: calendar days in the buy-side COE month
@@ -935,7 +934,18 @@ function iaActuals(){
 // the manual estimate inputs unchanged. Refreshes IA_ACTUAL for L$()'s actual/locked styling.
 function effIA(){ IA_ACTUAL=iaActuals(); const ks=Object.keys(IA_ACTUAL); return ks.length?Object.assign({},D.ia.inputs,IA_ACTUAL):D.ia.inputs; }
 function isActualKey(key){ return IA_ACTUAL && Object.prototype.hasOwnProperty.call(IA_ACTUAL,key); }
-function srcLink(m,val){ if(!m.src)return ''; const base=D[m.src[0]]&&D[m.src[0]].lines[m.src[1]]; if(!base)return ''; if(val==null||val===''||+val===0)return ''; const sd=m.src[0]==='buySide'?'Buy-side':'Sell-side'; return ` <a class="srclink" title="Source: ${sd} closing — click to open" onclick="gotoSource('${m.src[0]}',${m.src[1]})">↗</a>`; }
+function srcLink(m,val){
+  if(!m.src)return '';
+  // Stage-gate link-backs by mode: Estimated -> none; Acquired -> buy-side only
+  // (Total Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Gross Profit).
+  const mode=(effIA().mode||'');
+  if(mode!=='Acquired' && mode!=='Sold') return '';
+  if(mode==='Acquired' && m.src[0]!=='buySide') return '';
+  const base=D[m.src[0]]&&D[m.src[0]].lines[m.src[1]]; if(!base)return '';
+  if(val==null||val===''||+val===0)return '';
+  const sd=m.src[0]==='buySide'?'Buy-side':'Sell-side';
+  return ` <a class="srclink" title="Source: ${sd} closing — click to open" onclick="gotoSource('${m.src[0]}',${m.src[1]})">↗</a>`;
+}
 function gotoSource(side,idx){
   const tabKey=side==='buySide'?'buy':'sell';
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
@@ -985,7 +995,7 @@ function Lc(sec,idx,line){
 function Ppct(v){const a=arvOf();return a?((+v||0)/a*100).toFixed(2)+'%':'';}
 // editable $ line:  percent (dbl-click to drive from % of ARV) | input | label (+tooltip & source link)
 function L$(label,key,val,metaKey){const m=meta(metaKey||key);const tip=(m.tip||'').replace(/"/g,'&quot;');
-  if(isActualKey(key)){ return `<div class="lr act"><span class="lp">${Ppct(val)}</span><span class="av">${money(val)}</span><span class="ll"${tip?` title="${tip}"`:''}>${label} <span style="background:#15803d;color:#fff;font-size:9px;font-weight:600;padding:1px 5px;border-radius:8px;margin-left:5px;letter-spacing:.3px" title="Pulled from the actual closing statement — edit it on that tab">actual</span>${srcLink(m,val)}</span></div>`; }
+  // (no "actual" badge — fields render the same whether the value is manual or pulled from a statement)
   return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val)}</span></div>`;}
 // read-only computed line: percent | amount | label  (opt.tot=subtotal, opt.big=emphasis, opt.pct=override %, opt.blank=no $, opt.valtxt=raw amount text)
 function L_(label,val,opt){opt=opt||{};const cls='lr'+(opt.tot?' tot':'')+(opt.big?' big':'');const p=opt.pct!=null?opt.pct:Ppct(val);const av=opt.valtxt!=null?opt.valtxt:(opt.blank?'':money(val));let links='';if(opt.add2nd)links+=` <a class="addcost" onclick="add2nd()">+ 2nd Loan</a>`;if(opt.add)links+=` <a class="addcost" onclick="addCost('${opt.add}')">+ Add cost</a>`;return `<div class="${cls}"><span class="lp">${p}</span><span class="av">${av}</span><span class="ll">${label}${links}</span></div>`;}
@@ -1068,7 +1078,7 @@ function renderIA(){
       <div class="col">
         ${Lbox('1st Loan Amount','overrideLoanAmt', r.loan1st)}
         ${ProFac('arvLoanPct', r.arvLoanPct, 'ARV', r.pct75ARV)}
-        ${ProFac('costLoanPct', r.costLoanPct, 'Cost (All-In)', r.pct90Cost)}
+        ${ProFac('costLoanPct', r.costLoanPct, 'Cost', r.pct90Cost)}
         ${Pro('Mo.Payment', r.moPayment)}
         ${Pro('Odd Days', r.oddDays,{txt:r.oddDays})}
         ${Pro('Days in Month', r.dayInMonth,{txt:r.dayInMonth})}
