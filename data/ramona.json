@@ -23,7 +23,8 @@
         "Cash for Keys",
         "Escrow and Title",
         "Prorated Property Tax",
-        "Reserves"
+        "Reserves",
+        "Escrow Refunds"
       ],
       "Lender Cost – 1st Loan": [
         "Prepaid Interest 1st",
@@ -65,7 +66,8 @@
         "Buyers Agent Commissions",
         "Listing Agents Commissions",
         "Per Diem Adjustment",
-        "Asset Management Services"
+        "Asset Management Services",
+        "Escrow Refunds"
       ]
     },
     "sides": {
