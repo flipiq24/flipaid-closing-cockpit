@@ -1,8 +1,8 @@
 {
   "deal": {
-    "id": "15620-ramona",
-    "address": "15620 Ramona Ave, Apple Valley, CA 92307",
-    "apn": "0440-071-20",
+    "id": "4595-bronson",
+    "address": "4595 Bronson St, San Bernardino, CA 92407",
+    "apn": "",
     "county": "San Bernardino",
     "status": "Estimated Closing",
     "_statusOptions": [
@@ -11,7 +11,7 @@
       "Estimated Closing",
       "Final"
     ],
-    "notes": "Both closing statements are the SAME property. Buy side = FINAL (closed 11/7/2025). Sell side = ESTIMATED (closing 6/19/2026)."
+    "notes": "Actual closed deal. Buy side FINAL (First American, 11/24/2025). Sell side FINAL (Diamond Quality, 3/16/2026). QB actuals through 06/15/26."
   },
   "taxonomy": {
     "_comment": "IA-aligned taxonomy (MASTER IA v4.1). Closing-tab Category/Sub dropdowns map each statement line to one IA bucket. 'sides' filters which Categories show per closing tab (buy = Purchase + Loans; sell = Loans + Gross Profits). Auto/total IA rows are intentionally not mapping targets.",
@@ -98,411 +98,498 @@
     "annualTaxRateSource": "PLACEHOLDER 1.10% base. 92307 effective rate ~1.14% incl. bonds per assessor area. Confirm TRA rate off the actual secured bill. Tooltip shows APN 0440-071-20, San Bernardino County.",
     "dayCount": "30/360",
     "dayCountSource": "Escrows used 30/360. Verified: $1,562.40 semi-annual / 180 x 54 days (11/7->1/1) = $468.72 exact; /180 x 12 days (6/18->6/30) = $104.16 exact.",
-    "semiAnnualBill": 1562.4,
+    "semiAnnualBill": 2783.27,
     "priorAssessedValue": null,
     "priorAssessedValueNote": "NEEDED for supplemental calc. If null, supplemental estimated as (purchasePrice - priorAssessedValue) x rate. Default estimate uses priorAssessedValue = 60% of purchase price if left null.",
     "supplementalNote": "Supplemental = (purchase price - prior assessed value) x annual rate x month-of-closing proration factor. A SECOND supplemental bill applies when the reassessment spans two fiscal years (closing in months Jan-May per the old factor table). On Ramona this is most of the profit -- workbook Summary note: 'Need Supplemental Tax EST from Tony'."
   },
   "buySide": {
     "title": "Buyer's Final Settlement Statement",
-    "escrowCompany": "Autumn Skye Escrow Services, Inc.",
+    "escrowCompany": "First American Title Company",
     "status": "FINAL",
-    "date": "2025-11-12",
-    "closingDate": "2025-11-07",
-    "property": "15620 Ramona Ave, Apple Valley, CA 92307",
-    "party": "zBuyerz LLC",
+    "date": "2025-11-24",
+    "closingDate": "2025-11-24",
+    "property": "4595 Bronson Street, San Bernardino, CA 92407-6815",
+    "party": "zBuyerz Fund 1 LLC",
     "role": "Buyer",
-    "escrowNo": "01-004683-CE",
-    "_comment": "Transcribed verbatim from the Buyer's Final Settlement Statement. Flat array kept (index-stable); each line carries the statement's debit or credit. Totals tie to 386,230.45 / 386,230.45.",
+    "escrowNo": "11744-7333939",
+    "_comment": "Transcribed from the First American ALTA Buyer settlement statement (4595 Bronson). Balances to 483,545.45 with Due-to-Buyer; net-proceeds/balancing line omitted (the footing computes it).",
     "lines": [
       {
-        "label": "Total Consideration",
-        "debit": 300000,
-        "section": "CONSIDERATION",
+        "label": "Sale Price",
+        "debit": 430000,
+        "section": "FINANCIAL",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Purchase Price"
         },
         "confidence": 100,
-        "why": "Contract purchase price. QB acquisition basis $308,000 = $300,000 + $8,000 assignment fee (see Other Debits/Credits)."
+        "why": "Contract purchase price."
       },
       {
-        "label": "Deposit from ZBUYERZ LLC FBO SPG Home Buyers LLC",
-        "credit": 10000,
-        "section": "CONSIDERATION",
+        "label": "Deposit — Receipt 1174425377 (11/21/2025)",
+        "credit": 38545.45,
+        "section": "FINANCIAL",
         "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Purchase Price"
+          "category": "Financing (profit-neutral)",
+          "sub": "Loan Proceeds"
         },
         "confidence": 70,
-        "why": "Earnest-money deposit credit held FBO SPG (the assignor). Buyer funds applied toward purchase — a credit, not an added cost. Confirm GL treatment."
+        "why": "Buyer earnest/cash deposit — funds in, profit-neutral."
       },
       {
-        "label": "Deposit from ZBUYERZ LLC",
-        "credit": 5230.45,
-        "section": "CONSIDERATION",
+        "label": "Deposit — Receipt 1174425282 (10/28/2025)",
+        "credit": 5000,
+        "section": "FINANCIAL",
         "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Purchase Price"
+          "category": "Financing (profit-neutral)",
+          "sub": "Loan Proceeds"
         },
         "confidence": 70,
-        "why": "Buyer cash deposit credit that balances the statement. Not an added cost; verify GL treatment."
+        "why": "Buyer deposit — funds in, profit-neutral."
       },
       {
-        "label": "New 1st Trust Deed - Kiavi Funding Inc.",
-        "credit": 371000,
-        "section": "CONSIDERATION",
+        "label": "Loan Amount — Kiavi Funding, Inc.",
+        "credit": 440000,
+        "section": "FINANCIAL",
         "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Interest on New Loan 1st"
+          "category": "Financing (profit-neutral)",
+          "sub": "Loan Proceeds"
         },
         "confidence": 100,
-        "why": "Kiavi loan proceeds. Includes the $63,000 construction holdback (debited separately below). Financing in — not income, not a cost."
+        "why": "Kiavi loan proceeds (incl. $40,000 construction holdback). Financing, not a cost."
       },
       {
-        "label": "Origination Charge to Kiavi Funding Inc.",
-        "debit": 3710,
-        "section": "LOAN INFORMATION - Kiavi Funding Inc.  ·  [Charges $69,854.73]",
-        "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Loan Origination Fee 1st"
-        },
-        "confidence": 100,
-        "why": "Loan origination charge — cost of money. Interest / Origination."
-      },
-      {
-        "label": "Service Fee to Kiavi Funding Inc.",
-        "debit": 999,
-        "section": "LOAN INFORMATION - Kiavi Funding Inc.  ·  [Charges $69,854.73]",
-        "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Loan Fees & Appraisal Fee 1st"
-        },
-        "confidence": 95,
-        "why": "Lender service fee -> Interest / Lender Fees."
-      },
-      {
-        "label": "Construction Holdback to Kiavi Funding Inc.",
-        "debit": 63000,
-        "section": "LOAN INFORMATION - Kiavi Funding Inc.  ·  [Charges $69,854.73]",
-        "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Loan Fees & Appraisal Fee 1st"
-        },
-        "confidence": 100,
-        "why": "Loan funds held by lender, released as rehab draws. Profit-neutral; funds rehab (already a cost line). Do NOT double-count."
-      },
-      {
-        "label": "Interest on Principal Balance at $89.41/day from 11/07/2025 to 12/01/2025 to Kiavi Funding Inc.",
-        "debit": 2145.73,
-        "section": "LOAN INFORMATION - Kiavi Funding Inc.  ·  [Charges $69,854.73]",
-        "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Interest on New Loan 1st"
-        },
-        "confidence": 100,
-        "why": "First-period per-diem interest ($89.41/day x 24 days). Holding / Interest cost."
-      },
-      {
-        "label": "County Taxes at $1,562.40/semi-annually from 11/07/2025 to 01/01/2026",
-        "debit": 468.72,
+        "label": "County Taxes 11/24/25–01/01/26 @ $2,783.27/semi",
+        "debit": 572.12,
         "section": "PRORATIONS/ADJUSTMENTS",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Prorated Property Tax"
         },
         "confidence": 100,
-        "why": "30/360: $1,562.40 / 180 x 54 days = $468.72 exact. County ad-valorem proration (not supplemental)."
+        "why": "County ad-valorem proration at COE."
       },
       {
-        "label": "EHomes Inc",
-        "debit": 5000,
-        "section": "COMMISSION CHARGES",
+        "label": "Prepaid Interest 11/21–12/01 @ $116.11/day",
+        "debit": 1161.11,
+        "section": "LOAN CHARGES — Kiavi Funding",
+        "map": {
+          "category": "Lender Cost – 1st Loan",
+          "sub": "Prepaid Interest 1st"
+        },
+        "confidence": 100,
+        "why": "First-period per-diem interest."
+      },
+      {
+        "label": "Origination Fee",
+        "debit": 4400,
+        "section": "LOAN CHARGES — Kiavi Funding",
+        "map": {
+          "category": "Lender Cost – 1st Loan",
+          "sub": "Loan Origination Fee 1st"
+        },
+        "confidence": 100,
+        "why": "Loan origination."
+      },
+      {
+        "label": "Service Fee",
+        "debit": 999,
+        "section": "LOAN CHARGES — Kiavi Funding",
+        "map": {
+          "category": "Lender Cost – 1st Loan",
+          "sub": "Loan Fees & Appraisal Fee 1st"
+        },
+        "confidence": 95,
+        "why": "Lender service fee."
+      },
+      {
+        "label": "Construction Holdback",
+        "debit": 40000,
+        "section": "LOAN CHARGES — Kiavi Funding",
+        "map": {
+          "category": "Financing (profit-neutral)",
+          "sub": "Construction Holdback"
+        },
+        "confidence": 100,
+        "why": "Loan funds held for rehab draws — profit-neutral."
+      },
+      {
+        "label": "ALTA Loan Policy - Extended",
+        "debit": 929,
+        "section": "TITLE / ESCROW / SETTLEMENT — First American",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
         "confidence": 95,
-        "why": "Commission / fee to EHomes Inc on the buy side -> Settlement / Commission."
+        "why": "Lender title policy."
       },
       {
-        "label": "Christian Perez Notary Services",
-        "debit": 300,
-        "section": "OTHER DEBITS/CREDITS",
+        "label": "[ALTA 8.1] Environmental Protection Lien",
+        "debit": 0,
+        "section": "TITLE / ESCROW / SETTLEMENT — First American",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
         "confidence": 90,
-        "why": "Notary fee -> Settlement / Other."
+        "why": "Title endorsement."
       },
       {
-        "label": "SPG Home Buyers LLC for Assignment Fee",
-        "debit": 8000,
-        "section": "OTHER DEBITS/CREDITS",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Due Diligence Cost"
-        },
-        "confidence": 100,
-        "why": "Assignment fee to SPG. QB acquisition basis $308K = $300K + this $8K."
-      },
-      {
-        "label": "Title - Lender's Title Insurance",
-        "debit": 227,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
+        "label": "[ALTA 9] Restrictions/Encroachments/Minerals",
+        "debit": 0,
+        "section": "TITLE / ESCROW / SETTLEMENT — First American",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
-        "confidence": 100,
-        "why": "Lender's title policy -> Settlement / Title."
+        "confidence": 90,
+        "why": "Title endorsement."
       },
       {
-        "label": "Title - Binder Policy",
-        "debit": 121,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
+        "label": "Escrow Fee - One Half",
+        "debit": 1300,
+        "section": "TITLE / ESCROW / SETTLEMENT — First American",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
         "confidence": 95,
-        "why": "Title binder -> Settlement / Title."
+        "why": "Escrow fee."
       },
       {
-        "label": "Title - Sub Escrow Fee",
-        "debit": 62.5,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
+        "label": "New Loan Services Fee",
+        "debit": 350,
+        "section": "TITLE / ESCROW / SETTLEMENT — First American",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
-        "confidence": 85,
-        "why": "Sub-escrow fee charged by title company; could also be Escrow. Defaulted to Title."
+        "confidence": 90,
+        "why": "Loan services fee."
       },
       {
-        "label": "Title - Endorsement Fee",
+        "label": "Notary/Signing Fee",
+        "debit": 185,
+        "section": "TITLE / ESCROW / SETTLEMENT — First American",
+        "map": {
+          "category": "Total Purchase Cost",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 90,
+        "why": "Notary/signing."
+      },
+      {
+        "label": "Record Deed",
+        "debit": 26,
+        "section": "GOVERNMENT RECORDING & TRANSFER",
+        "map": {
+          "category": "Total Purchase Cost",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 90,
+        "why": "Recording."
+      },
+      {
+        "label": "Record Deed of Trust - 1",
+        "debit": 204,
+        "section": "GOVERNMENT RECORDING & TRANSFER",
+        "map": {
+          "category": "Total Purchase Cost",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 90,
+        "why": "Recording."
+      },
+      {
+        "label": "Electronic Service Fee",
         "debit": 25,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 95,
-        "why": "Title policy endorsement -> Settlement / Title."
-      },
-      {
-        "label": "Title - Messenger Fee",
-        "debit": 25.5,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
+        "section": "MISCELLANEOUS",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
         "confidence": 85,
-        "why": "Title messenger fee -> Settlement / Title."
+        "why": "E-service fee."
       },
       {
-        "label": "Title - Recording Service Fee",
-        "debit": 11.5,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
+        "label": "Transaction Coordinator Fee — Eagle Management",
+        "debit": 500,
+        "section": "MISCELLANEOUS",
         "map": {
           "category": "Total Purchase Cost",
           "sub": "Escrow and Title"
         },
         "confidence": 85,
-        "why": "Recording service fee -> Settlement / Recording."
-      },
-      {
-        "label": "Recording Grant Deed",
-        "debit": 20,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 100,
-        "why": "Grant deed recording -> Settlement / Recording."
-      },
-      {
-        "label": "Recording Trust Deed",
-        "debit": 207,
-        "section": "TITLE/TAXES/RECORDING CHARGES - Ticor Title Company of California",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 100,
-        "why": "Trust deed recording -> Settlement / Recording."
-      },
-      {
-        "label": "Title - Escrow Fee",
-        "debit": 1185,
-        "section": "ESCROW CHARGES - Autumn Skye Escrow Services, Inc.",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 100,
-        "why": "Base escrow fee -> Settlement / Escrow."
-      },
-      {
-        "label": "Title - Loan Tie-In Fee",
-        "debit": 250,
-        "section": "ESCROW CHARGES - Autumn Skye Escrow Services, Inc.",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 90,
-        "why": "Loan tie-in handled by escrow -> Settlement / Escrow."
-      },
-      {
-        "label": "Title - Overnight Fee",
-        "debit": 100,
-        "section": "ESCROW CHARGES - Autumn Skye Escrow Services, Inc.",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 85,
-        "why": "Escrow overnight / courier -> Settlement / Escrow."
-      },
-      {
-        "label": "Title - Wire Fee",
-        "debit": 30,
-        "section": "ESCROW CHARGES - Autumn Skye Escrow Services, Inc.",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 85,
-        "why": "Escrow wire fee -> Settlement / Escrow."
-      },
-      {
-        "label": "Title - Document Preparation",
-        "debit": 200,
-        "section": "ESCROW CHARGES - Autumn Skye Escrow Services, Inc.",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 85,
-        "why": "Escrow document preparation -> Settlement / Escrow."
-      },
-      {
-        "label": "Title - Electronic Storage Fee",
-        "debit": 45,
-        "section": "ESCROW CHARGES - Autumn Skye Escrow Services, Inc.",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 85,
-        "why": "Escrow electronic-storage fee -> Settlement / Escrow."
-      },
-      {
-        "label": "Total Refund",
-        "debit": 97.5,
-        "section": "REFUND",
-        "map": {
-          "category": "Total Purchase Cost",
-          "sub": "Escrow and Title"
-        },
-        "confidence": 60,
-        "why": "Balancing refund line shown in the Debits column. Confirm whether this is a refund TO the buyer; GL treatment may net out."
+        "why": "TC fee."
       }
     ]
   },
   "sellSide": {
-    "title": "Seller's Estimated Settlement Statement",
-    "escrowCompany": "Diamond Quality Escrow",
-    "status": "ESTIMATED",
-    "date": "2026-06-19",
-    "closingDate": "2026-06-19",
-    "property": "15620 Ramona Ave, Apple Valley, CA 92307",
-    "party": "(Seller of record)",
+    "title": "Seller's Final Settlement Statement",
+    "escrowCompany": "Diamond Quality Escrow Inc.",
+    "status": "FINAL",
+    "date": "2026-03-18",
+    "closingDate": "2026-03-16",
+    "property": "4595 Bronson Street, San Bernardino, CA 92407",
+    "party": "zBuyerz Fund 1 LLC",
     "role": "Seller",
-    "escrowNo": "(est.)",
-    "cashOutOfEscrowLabel": "Cash out of escrow (computed from IA)",
-    "_comment": "ESTIMATED resale. Line order preserved (0=Sale,1=Commission,2=Transfer Tax,3=Tax Proration) so IA source-links stay valid. Replace with the actual seller statement when issued. Cash out of escrow = MASTER IA v4.1 'Cash out of escrow' (G56), now computed LIVE in computeIA (r.cashOutEscrow) = Gross Profit to Seller − 1st-loan payoff − 1st-pmt adjustments − total cash invested; reconciled against the statement net proceeds (not forced to match).",
+    "escrowNo": "15570-ZT",
+    "_comment": "Transcribed from the Diamond Quality sell-side statement (4595 Bronson). Balances to 590,000; Net-Proceeds-to-Seller line omitted (footing computes it).",
     "lines": [
       {
-        "label": "Sale Price",
-        "credit": 460000,
+        "label": "Total Consideration (Sale Price)",
+        "credit": 563000,
         "section": "CONSIDERATION",
         "map": {
           "category": "Gross Profits",
           "sub": "After Repair Value"
         },
         "confidence": 100,
-        "why": "Contract resale price (credit to seller)."
+        "why": "Resale price."
       },
       {
-        "label": "Real Brokerage Commission",
-        "debit": 9200,
-        "section": "COMMISSION CHARGES",
+        "label": "County Taxes @ $2,783.27 1/1/26–3/16/26",
+        "debit": 1159.7,
+        "section": "PRORATIONS",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Prorated Property Tax"
+        },
+        "confidence": 90,
+        "why": "Seller share of property tax proration."
+      },
+      {
+        "label": "Seller closing cost credit",
+        "debit": 13000,
+        "section": "ADJUSTMENTS TO CHARGES",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Concessions (Buyer's Help)"
+        },
+        "confidence": 90,
+        "why": "Credit to buyer."
+      },
+      {
+        "label": "Commission — One Group - West",
+        "debit": 11260,
+        "section": "COMMISSIONS",
         "map": {
           "category": "Gross Profits",
           "sub": "Listing Agents Commissions"
         },
         "confidence": 100,
-        "why": "2% of $460,000 = $9,200 selling commission -> Settlement / Commission."
+        "why": "Selling commission."
       },
       {
-        "label": "Documentary Transfer Tax",
-        "debit": 506,
-        "section": "GOVERNMENT / TRANSFER TAX",
+        "label": "Title - Owner's Policy for $563,000",
+        "debit": 426,
+        "section": "TITLE CHARGES — First American",
         "map": {
           "category": "Gross Profits",
-          "sub": "Prorated Transfer Tax"
+          "sub": "Escrow and Title"
         },
-        "confidence": 100,
-        "why": "$460,000 x $1.10/$1,000 = $506.00 county documentary transfer tax. Auto-computed in the Resale Tax block."
+        "confidence": 95,
+        "why": "Owner title policy."
       },
       {
-        "label": "Property Tax Proration (2nd half)",
-        "debit": 1728.63,
-        "section": "PRORATIONS/ADJUSTMENTS",
-        "map": {
-          "category": "Gross Profits",
-          "sub": "Prorated Tax"
-        },
-        "confidence": 90,
-        "why": "Seller's share of unpaid 2nd-half taxes prorated to COE. Verify against bill."
-      },
-      {
-        "label": "Kiavi Loan Payoff",
-        "debit": 371000,
-        "section": "PAYOFF",
-        "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Interest from 1st Payoff"
-        },
-        "confidence": 100,
-        "why": "Payoff of the same $371K Kiavi loan from the buy side. Profit-neutral."
-      },
-      {
-        "label": "Loan Interest (payoff)",
-        "debit": 1938.48,
-        "section": "PAYOFF",
-        "map": {
-          "category": "Lender Cost – 1st Loan",
-          "sub": "Interest from 1st Payoff"
-        },
-        "confidence": 100,
-        "why": "Accrued interest to payoff date -> Interest."
-      },
-      {
-        "label": "Pad / TC / Property-ID Fees",
-        "debit": null,
-        "section": "OTHER DEBITS/CREDITS",
+        "label": "Messenger",
+        "debit": 34.71,
+        "section": "TITLE CHARGES — First American",
         "map": {
           "category": "Gross Profits",
           "sub": "Escrow and Title"
         },
         "confidence": 85,
-        "why": "Misc closing fees (TC, property ID, pad). Confirm exact lines + amounts from the issued statement."
+        "why": "Title messenger."
+      },
+      {
+        "label": "Sub-escrow Fee",
+        "debit": 65,
+        "section": "TITLE CHARGES — First American",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 85,
+        "why": "Sub-escrow."
+      },
+      {
+        "label": "Wire Transfer Fee",
+        "debit": 45,
+        "section": "TITLE CHARGES — First American",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 85,
+        "why": "Wire."
+      },
+      {
+        "label": "County Transfer Tax",
+        "debit": 619.3,
+        "section": "TITLE CHARGES — First American",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Prorated Transfer Tax"
+        },
+        "confidence": 100,
+        "why": "$563,000 × $1.10/$1,000 = $619.30."
+      },
+      {
+        "label": "Recording Service Fee",
+        "debit": 12.5,
+        "section": "RECORDING CHARGES",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 85,
+        "why": "Recording."
+      },
+      {
+        "label": "Deed",
+        "debit": 17,
+        "section": "RECORDING CHARGES",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 85,
+        "why": "Deed recording."
+      },
+      {
+        "label": "Wire fees",
+        "debit": 35,
+        "section": "ESCROW CHARGES — Diamond Quality",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 85,
+        "why": "Escrow wire."
+      },
+      {
+        "label": "Seller Escrow fee",
+        "debit": 850,
+        "section": "ESCROW CHARGES — Diamond Quality",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 95,
+        "why": "Escrow fee."
+      },
+      {
+        "label": "Document Fee",
+        "debit": 100,
+        "section": "ESCROW CHARGES — Diamond Quality",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Escrow and Title"
+        },
+        "confidence": 85,
+        "why": "Doc fee."
+      },
+      {
+        "label": "Loan Payoff to Kiavi",
+        "debit": 440000,
+        "section": "LOAN PAYOFF — Kiavi",
+        "map": {
+          "category": "Financing (profit-neutral)",
+          "sub": "Payoff"
+        },
+        "confidence": 100,
+        "why": "Payoff of the Kiavi loan — financing, profit-neutral."
+      },
+      {
+        "label": "Payoff Interest 3/1–3/18/2026",
+        "debit": 2157.93,
+        "section": "LOAN PAYOFF — Kiavi",
+        "map": {
+          "category": "Lender Cost – 1st Loan",
+          "sub": "Interest from 1st Payoff"
+        },
+        "confidence": 100,
+        "why": "Accrued interest at payoff."
+      },
+      {
+        "label": "Payoff Fees",
+        "debit": 240,
+        "section": "LOAN PAYOFF — Kiavi",
+        "map": {
+          "category": "Lender Cost – 1st Loan",
+          "sub": "Loan Fees & Appraisal Fee 1st"
+        },
+        "confidence": 85,
+        "why": "Payoff/demand fees."
+      },
+      {
+        "label": "Undrawn Holdback",
+        "credit": 27000,
+        "section": "HOLDBACK",
+        "map": {
+          "category": "Financing (profit-neutral)",
+          "sub": "Construction Holdback"
+        },
+        "confidence": 100,
+        "why": "Unused construction holdback returned — profit-neutral."
+      },
+      {
+        "label": "Home Warranty — Old Republic",
+        "debit": 635,
+        "section": "ADDITIONAL DISBURSEMENTS",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Per Diem Adjustment"
+        },
+        "confidence": 80,
+        "why": "Seller-paid home warranty."
+      },
+      {
+        "label": "Property I.D — NHD",
+        "debit": 69,
+        "section": "ADDITIONAL DISBURSEMENTS",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Per Diem Adjustment"
+        },
+        "confidence": 80,
+        "why": "Natural hazard disclosure."
+      },
+      {
+        "label": "Property I.D — Wildfire",
+        "debit": 139,
+        "section": "ADDITIONAL DISBURSEMENTS",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Per Diem Adjustment"
+        },
+        "confidence": 80,
+        "why": "Wildfire report."
+      },
+      {
+        "label": "Eagle Management",
+        "debit": 750,
+        "section": "ADDITIONAL DISBURSEMENTS",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Per Diem Adjustment"
+        },
+        "confidence": 80,
+        "why": "TC/management fee."
+      },
+      {
+        "label": "Termite — Impressive Exterminating",
+        "debit": 200,
+        "section": "ADDITIONAL DISBURSEMENTS",
+        "map": {
+          "category": "Gross Profits",
+          "sub": "Per Diem Adjustment"
+        },
+        "confidence": 80,
+        "why": "Termite work."
       }
     ]
   },
@@ -522,19 +609,19 @@
       "Private Investor + 2nd"
     ],
     "inputs": {
-      "address": "1834 Colorado SB",
+      "address": "4595 Bronson St, San Bernardino, CA 92407",
       "mode": "Estimated",
       "financingType": "Loan",
-      "coeDate": "2025-04-30",
-      "eomDate": "2025-08-27",
-      "purchasePrice": 325000,
-      "dueDiligence": 5000,
-      "insurance": 2500,
-      "cashForKeys": 0,
-      "escrowTitlePurchase": 3000,
-      "propertyTransferTax": 0,
-      "proratedPropTaxPurchase": 0,
-      "interestRate1st": 0.1,
+      "coeDate": "2025-11-24",
+      "eomDate": "2026-03-16",
+      "purchasePrice": 430000,
+      "dueDiligence": 4300,
+      "insurance": 2390,
+      "cashForKeys": 500,
+      "escrowTitlePurchase": 3019,
+      "propertyTransferTax": null,
+      "proratedPropTaxPurchase": 572.12,
+      "interestRate1st": 0.1045,
       "points1st": 0.01,
       "estLoanFees1st": 999,
       "appraisalFee": 0,
@@ -542,7 +629,7 @@
       "dayInMonth": 31,
       "arvLoanPct": 0.75,
       "costLoanPct": 0.9,
-      "overrideLoanAmt": null,
+      "overrideLoanAmt": 440000,
       "additional1stPayments": 0,
       "unused1stCredit": 0,
       "interestFrom1stPayoff": 0,
@@ -555,28 +642,30 @@
       "additional2ndPayments": 0,
       "unused2ndCredit": 0,
       "interestFrom2ndPayoff": 0,
-      "reserves": 5000,
-      "estimatedRepairs": 85000,
+      "reserves": 0,
+      "estimatedRepairs": 36259.23,
       "utilitiesRehab": 0,
       "roiAdjustments": 0,
       "miscellaneousCosts": 0,
       "hoaMonthly": 0,
       "additionalIntReserve1stMonths": 0,
       "additionalIntReserve2ndMonths": 0,
-      "arv": 499900,
+      "arv": 563000,
       "estimatedSalesPrice": 515000,
       "escrowTitleResalePct": 0.0033,
-      "ov_transferTaxResale": 500,
+      "ov_transferTaxResale": 619.3,
       "escrowPctA": 0.005,
       "proratedTaxResaleRate": 0.01175,
-      "concessionsPct": 0,
-      "buyersAgentPct": 0.02,
-      "listingAgentPct": 0.01,
-      "perDiemAdjustment": 0,
+      "concessionsPct": 0.023090586145648313,
+      "buyersAgentPct": 0,
+      "listingAgentPct": 0.02,
+      "perDiemAdjustment": 1793,
       "assetMgmtPct": 0,
       "taxFactorW23": null,
       "taxAssessedValue": null,
-      "constructionHoldback": 0
+      "constructionHoldback": 0,
+      "ov_escrowTitleResale": 1585.21,
+      "ov_proratedTaxResale": 1159.7
     },
     "_fieldNotes": {
       "overrideLoanAmt": "Blank = use computed 1st loan = the LOWER of (arvLoanPct x ARV) and (costLoanPct x all-in cost, repairs baked in). Enter a number to override.",
