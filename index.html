@@ -130,6 +130,10 @@
   .col.r.purchcol .summary{margin-top:auto;margin-bottom:auto}
   .col.purchleft{display:flex;flex-direction:column}
   .col.purchleft .lr.tot{margin-top:auto}
+  .col.grossleft{display:flex;flex-direction:column}
+  .col.grossleft .lr.tot{margin-top:auto}
+  .col.r.grosscol{display:flex;flex-direction:column}
+  .col.r.grosscol .lr.tot{margin-top:auto}
   .summary{margin-top:8px;padding:0 16px 8px}
   .summary .s{display:grid;grid-template-columns:1fr 96px;align-items:center;gap:8px;font-weight:700;padding:1px 0;font-size:12px;position:relative}
   .summary .s .delx{position:absolute;right:-13px;top:50%;transform:translateY(-50%)}
@@ -1088,7 +1092,7 @@ function renderIA(){
   // GROSS PROFITS — resale lines on the left, Total Development Cost summary on the right
   const gross = `<div class="band">Gross Profits</div>
   <div class="cols">
-    <div class="col">
+    <div class="col grossleft">
       ${L$('After Repair Value','arv',i.arv)}
       ${L$('Escrow and Title','ov_escrowTitleResale', r.escrowTitleResale)}
       ${L$('Prorated Property Tax','ov_proratedTaxResale', r.proratedTaxResale)}
@@ -1100,7 +1104,7 @@ function renderIA(){
       ${customRows('gross')}
       ${L_('Gross Profit to Seller', r.grossProfit,{tot:1,add:'gross'})}
     </div>
-    <div class="col r">
+    <div class="col r grosscol">
       <div class="subband">Total Development Cost</div>
       ${L_('Total Acquisition Cost', r.totAcq)}
       ${L_('Financing Costs', r.hardMoney)}
