@@ -178,6 +178,8 @@
   .delx{cursor:pointer;color:#c00000;margin-left:6px;font-size:11px;font-weight:700}
   .lr.roi .av,.lr.roi .lp{font-weight:700;color:#1f3864}
   tr.flash{background:#fff3bf;transition:background .4s}
+  tr.qb-bad>td{background:#fef2f2;color:#991b1b}
+  tr.qb-bad>td:first-child{box-shadow:inset 3px 0 0 var(--red)}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
   .stmt-hd{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .stmt-co{font-size:12px;color:var(--muted);font-weight:600}
@@ -443,6 +445,36 @@ function additions(side){ return (OV._add && OV._add[side]) || []; }
 function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=catList(side)[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); renderActive(); }
 function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
+/* ----- QB-only manual ledger entries -----
+   Live in OV._qbManual (localStorage), separate from the imported/auto lines, so a
+   fresh statement upload overwrites the auto lines but never touches manual entries.
+   Source label is always "QB Accounting". Reconciled against the imported ledger by
+   Category + Sub + Amount; unmatched entries flag red (see qbRecon). */
+function qbManual(){ return OV._qbManual || []; }
+function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',category:cat,sub:firstSub(cat),amount:null}); saveOV(); renderActive(); }
+function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function delQbManual(idx){ const a=qbManual(); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
+// Reconcile manual entries against the imported ledger (statement lines + additions).
+// A manual entry matches when an imported line shares Category + Sub AND Amount (±0.01).
+// Returns red-flag maps: redMan[manualIdx] and redImp[importedRowKey] with a reason.
+function qbRecon(){
+  const imported = qbRows().filter(r=>!r.isManual);
+  const used=new Set();                       // each imported row may satisfy at most one manual row
+  const redMan={}, redImp={}; let matched=0, unmatched=0;
+  qbManual().forEach((m,idx)=>{
+    if(m.amount==null && !(m.label||'').trim()) return;   // ignore blank rows
+    const key=(m.category||'')+'|'+(m.sub||'');
+    const cands=imported.filter(r=>!used.has(qbRowKey(r)) && ((r.Category||'')+'|'+(r.Sub||''))===key);
+    const hit=cands.find(r=>Math.abs((+r.Amount||0)-(+m.amount||0))<0.01);
+    if(hit){ used.add(qbRowKey(hit)); matched++; return; }   // reconciled 1:1
+    unmatched++;
+    if(!cands.length){ redMan[idx]='No imported line for '+(m.category||'?')+' / '+(m.sub||'?'); }
+    else { redMan[idx]='Amount '+money(m.amount)+' differs from imported';
+           cands.forEach(r=>{ redImp[qbRowKey(r)]='Manual entry expects '+money(m.amount); }); }
+  });
+  return {redMan,redImp,matched,unmatched};
+}
+function qbRowKey(r){ return r.isIA?('ia:'+r.idx):(r.isAdd?('add:'+r.side+':'+r.idx):(r.side+':'+r.idx)); }
 async function tryParse(side){
   try{
     const src=srcState(side); const f=window.__stmtFiles&&window.__stmtFiles[side];
@@ -1019,10 +1051,11 @@ function renderIA(){
 function qbRows(){
   const rows=[];
   ['buySide','sellSide'].forEach(side=>{
+    const source = side==='buySide' ? 'Buy-Side Closing' : 'Sell-Side Closing';
     D[side].lines.forEach((l,i)=>{
       const s=lineState(side,i); if(s.amount==null) return;
       rows.push({Type:D[side].role, Date:D[side].date, Name:D[side].title, Memo:s.label,
-                 Category:s.category, Sub:s.sub, Amount:s.amount, side, idx:i});
+                 Category:s.category, Sub:s.sub, Amount:s.amount, side, idx:i, source, conf:s.confidence});
     });
     // Additions: not on the closing statement, but they map into QB + the IA the same way.
     additions(side).forEach((a,idx)=>{
@@ -1031,17 +1064,54 @@ function qbRows(){
       // QB convention (same as statement lines via lineState): debit positive, credit negative.
       const amt = fld==='debit' ? a.debit : -a.credit;
       rows.push({Type:D[side].role, Date:D[side].date, Name:D[side].title, Memo:(a.label||'(addition)'),
-                 Category:a.category, Sub:a.sub, Amount:amt, side, idx, isAdd:true, amtField:fld});
+                 Category:a.category, Sub:a.sub, Amount:amt, side, idx, isAdd:true, amtField:fld, source, conf:null});
     });
+  });
+  // Investment-Analysis-only costs that aren't on either closing statement (rehab + misc).
+  // Acquisition & financing are intentionally excluded — they're already the buy-side
+  // purchase line and the lender-cost lines, so re-adding them would double-count the deal.
+  // Broken into their IA sub-components so each maps to a real sub and the rows sum exactly
+  // to the IA tab's Rehab + Misc totals. Read-only here; edit them on the IA tab.
+  const _i=D.ia.inputs, _ia=computeIA(_i);
+  const _cSum=(sec)=> ((_i.customLines&&_i.customLines[sec])||[]).reduce((a,l)=>a+(+l.amount||0),0);
+  [
+    {cat:'Rehabilitation Costs', sub:'Estimated Repairs', label:'Estimated Repairs', amt:+_i.estimatedRepairs||0},
+    {cat:'Rehabilitation Costs', sub:'Utilities',         label:'Utilities (rehab)',  amt:+_i.utilitiesRehab||0},
+    {cat:'Misc Costs', sub:'ROI Adjustments',     label:'ROI Adjustments',     amt:+_i.roiAdjustments||0},
+    {cat:'Misc Costs', sub:'Miscellaneous Costs', label:'Miscellaneous Costs', amt:(+_i.miscellaneousCosts||0)+_cSum('rehab')},
+    {cat:'Misc Costs', sub:'Supplemental Taxes',  label:'Supplemental Taxes',  amt:+_ia.supplemental||0},
+    {cat:'Misc Costs', sub:'HOA',                 label:'HOA',                 amt:(+_i.hoaMonthly||0)*_ia.months},
+  ].forEach((x,idx)=>{
+    if(!x.amt) return;
+    rows.push({Type:'IA', Date:'', Name:'Investment Analysis', Memo:x.label,
+               Category:x.cat, Sub:x.sub, Amount:x.amt, idx, isIA:true, source:'Investment Analysis', conf:null});
+  });
+  // Manual QB-only entries: keyed in the QB tab, never imported. Source = "QB Accounting".
+  qbManual().forEach((m,idx)=>{
+    if(m.amount==null && !(m.label||'').trim()) return;
+    rows.push({Type:'QB', Date:'', Name:'QB Accounting', Memo:(m.label||'(manual)'),
+               Category:m.category, Sub:m.sub, Amount:(+m.amount||0), idx, isManual:true, source:'QB Accounting', conf:null});
   });
   return rows;
 }
 function renderQB(){
-  const rows=qbRows();
-  let html=uploadCard('sellSide') + docChip('sellSide') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Download writes all four tabs to one .xlsx.</div>
+  const all=qbRows();
+  const rows=all.filter(r=>!r.isManual);           // imported statement lines + additions
+  const man=qbManual();
+  const {redMan,redImp,matched,unmatched}=qbRecon();
+  let html=uploadCard('sellSide') + docChip('sellSide') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>
    <div class="section"><h2>Ledger <span class="pill">${rows.length} lines</span></h2>
-   <table><thead><tr><th>Date</th><th>Memo</th><th>Category</th><th>Sub</th><th class="num">Amount</th></tr></thead><tbody>`;
+   <table><thead><tr><th>Date</th><th>Memo</th><th>Source</th><th>Conf</th><th>Category</th><th>Sub</th><th class="num">Amount</th></tr></thead><tbody>`;
   rows.forEach(r=>{
+    const bad=redImp[qbRowKey(r)];
+    if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
+      html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}><td></td><td>${r.Memo}</td>
+        <td><span class="pill">${r.source}</span></td>
+        <td><span class="muted">computed</span></td>
+        <td>${r.Category}</td><td>${r.Sub}</td>
+        <td class="num">${money(r.Amount)}</td></tr>`;
+      return;
+    }
     const k=r.side+':'+r.idx;
     const catCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'category',this.value)`
                           : `setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('qb')`;
@@ -1049,14 +1119,35 @@ function renderQB(){
                           : `setOV('${k}','sub',this.value);render('qb')`;
     const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+this.value||0))`
                           : `setOV('${k}','amount',this.value);render('qb')`;
-    html+=`<tr><td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
+    const conf = r.isAdd ? '<span class="muted">manual</span>' : badge(r.conf);
+    html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}><td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
+      <td><span class="pill">${r.source}</span></td>
+      <td>${conf}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
       <td class="num"><input class="num" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
   });
-  // category totals
-  const tot={}; rows.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+r.Amount);
-  html+=`</tbody></table></div><div class="section"><h2>Totals by category</h2><table><tbody>`;
+  html+=`</tbody></table></div>`;
+  // manual QB-only entries: add new lines, reconcile against the imported ledger
+  const reconPill = man.length ? ` <span class="pill">${matched} matched · ${unmatched} unmatched</span>` : '';
+  html+=`<div class="section"><h2>Add to QB <span class="pill">manual entries</span>${reconPill}</h2>
+    <div class="help">Lines you key here are saved to QB only and survive re-imports. Anything that doesn't match an imported line (same Category, Sub &amp; Amount) turns <b style="color:var(--red)">red</b> here and in the ledger above — update one side to reconcile.</div>
+    <table><thead><tr><th>Memo</th><th>Source</th><th>Category</th><th>Sub</th><th class="num">Amount</th><th></th></tr></thead><tbody>`;
+  if(!man.length) html+=`<tr><td class="muted" colspan="6">No manual entries yet.</td></tr>`;
+  man.forEach((m,idx)=>{
+    const bad=redMan[idx];
+    html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}>
+      <td><input value="${esc(m.label||'')}" placeholder="Description" onchange="setQbManual(${idx},'label',this.value)"></td>
+      <td><span class="pill">QB Accounting</span></td>
+      <td><select onchange="setQbManual(${idx},'category',this.value)">${catOptions(m.category)}</select></td>
+      <td><select onchange="setQbManual(${idx},'sub',this.value)">${subOptions(m.category,m.sub)}</select></td>
+      <td class="num"><input class="num" value="${m.amount==null?'':m.amount}" placeholder="0" onchange="setQbManual(${idx},'amount',this.value)"></td>
+      <td><a class="delx" title="Remove entry" onclick="delQbManual(${idx})">✕</a></td></tr>`;
+  });
+  html+=`</tbody></table><button class="btn2" onclick="addQbManual()">＋ Add line</button></div>`;
+  // category totals (imported + additions + manual)
+  const tot={}; all.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+(+r.Amount||0));
+  html+=`<div class="section"><h2>Totals by category</h2><table><tbody>`;
   Object.keys(tot).forEach(c=>html+=`<tr><td>${c}</td><td class="num">${money(tot[c])}</td></tr>`);
   html+=`</tbody></table></div>`;
   $('#panel').innerHTML=html;
@@ -1080,7 +1171,8 @@ function exportXlsx(){
   // QB
   const rows=qbRows();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
-    rows.map(r=>({Type:r.Type,Date:r.Date,Name:r.Name,Memo:r.Memo,Category:r.Category,Sub:r.Sub,Amount:r.Amount}))
+    rows.map(r=>({Type:r.Type,Date:r.Date,Name:r.Name,Memo:r.Memo,Source:r.source,
+                  Confidence:(r.conf==null?'manual':r.conf+'%'),Category:r.Category,Sub:r.Sub,Amount:r.Amount}))
   ), 'QB Export');
   XLSX.writeFile(wb, '15620-ramona-closing.xlsx');
 }
