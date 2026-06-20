@@ -444,7 +444,7 @@ function applyAttach(side, kind, name, url){
 function fileStmt(side, inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
 function dropStmt(side, ev){ ev.preventDefault(); ev.currentTarget.classList.remove('drag'); const f=ev.dataTransfer.files&&ev.dataTransfer.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
 function linkStmt(side, url){ url=(url||'').trim(); if(!url) return; applyAttach(side,'link','',url); }
-function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; saveOV(); render(side==='buySide'?'buy':'sell'); } }
+function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; saveOV(); renderActive(); } }
 /* ----- "Additions" : user items NOT on the closing statement. Stored in OV._add per
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
