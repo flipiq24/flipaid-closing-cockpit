@@ -541,6 +541,11 @@ function docChip(sideKey){
 /* ----- closing tabs ----- */
 function renderClosing(sideKey, tabKey){
   const side = D[sideKey];
+  // Empty state: no statement lines yet -> show ONLY the upload dropzone (no header/tables/totals).
+  if(!side || !Array.isArray(side.lines) || side.lines.length===0){
+    $('#panel').innerHTML = uploadCard(sideKey) + docChip(sideKey);
+    return;
+  }
   // group by section, preserving statement order
   const groups={}, order=[];
   side.lines.forEach((l,i)=>{ if(!groups[l.section]){groups[l.section]=[];order.push(l.section);} groups[l.section].push(i); });
@@ -1271,6 +1276,11 @@ function renderQB(){
   const all=qbRows();
   const rows=all.filter(r=>!r.isManual);           // imported statement lines + additions
   const man=qbManual();
+  // Empty state: no statement-derived or manual ledger data (only IA roll-ups, if any) -> show ONLY the dropzone.
+  if(rows.filter(r=>!r.isIA).length===0 && man.length===0){
+    $('#panel').innerHTML = uploadCard('qb') + docChip('qb');
+    return;
+  }
   const {redMan,redImp,matched,unmatched}=qbRecon();
   // category totals (imported + additions + manual) — shown at the top
   const tot={}; all.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+(+r.Amount||0));
