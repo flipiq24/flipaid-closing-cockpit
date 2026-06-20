@@ -435,11 +435,13 @@ function modeForSide(side){
 }
 function applyAttach(side, kind, name, url){
   OV._src = OV._src || {}; OV._src[side] = {kind, name, url, parsed:false};
-  const mode = modeForSide(side);                 // <-- Mode updates automatically on attach
-  D.ia.inputs.mode = mode; OV._ia = D.ia.inputs;
+  if(side!=='qb'){                                // a closing statement sets the deal Mode; the QB file does NOT
+    const mode = modeForSide(side);
+    D.ia.inputs.mode = mode; OV._ia = D.ia.inputs;
+  }
   saveOV();
   tryParse(side);                                  // optional backend parse fills the lines
-  render(side==='buySide'?'buy':'sell');
+  render(side==='qb' ? 'qb' : (side==='buySide'?'buy':'sell'));  // stay on the tab you uploaded from
 }
 function fileStmt(side, inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
 function dropStmt(side, ev){ ev.preventDefault(); ev.currentTarget.classList.remove('drag'); const f=ev.dataTransfer.files&&ev.dataTransfer.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
@@ -497,7 +499,7 @@ async function tryParse(side){
   }catch(e){ /* backend not available; attachment + Mode update remain in effect */ }
 }
 function uploadCard(sideKey){
-  const label = sideKey==='buySide' ? 'buy-side' : 'sell-side';
+  const label = sideKey==='buySide' ? 'buy-side' : sideKey==='qb' ? 'QuickBooks accounting' : 'sell-side';
   const s = srcState(sideKey);
   const have = s.name || s.url;
   // Once a doc is attached the dropzone collapses; the file shows as a chip in the
@@ -1241,7 +1243,7 @@ function renderQB(){
   const totalsHtml=`<div class="section"><h2>Totals by category</h2><table><tbody>`+
     Object.keys(tot).map(c=>`<tr><td>${c}</td><td class="num">${money(tot[c])}</td></tr>`).join('')+
     `</tbody></table></div>`;
-  let html=uploadCard('sellSide') + docChip('sellSide') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}
+  let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}
    <div class="section"><h2>Ledger <span class="pill">${rows.length} lines</span></h2>
    <table><thead><tr>${['Date','Memo','Source','Conf','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
   qbSortRows(rows).forEach(r=>{
