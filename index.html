@@ -767,6 +767,26 @@ function computeIA(i){
   // − unused 1st credit − interest from 1st payoff − 2nd "Loan Amount" (F25 = total cash invested + any 2nd loan).
   r.cashOutEscrow = r.grossProfit - r.loan1st - (+i.additional1stPayments||0) - (+i.unused1stCredit||0)
       - (+i.interestFrom1stPayoff||0) - (r.totalCashAndReserves + (+i.loan2ndAmount||0));   // G56
+
+  // ── SOLD overwrite: a closed deal shows ACTUAL final accounting (QB + closing), not the estimate ──
+  // Estimated formulas above are untouched; this only swaps in the actuals when Mode = Sold.
+  if((i.mode||'')==='Sold' && i.soldActuals){
+    const a=i.soldActuals;
+    r.actual=true;
+    r.totAcq        = a.acquisition;                  // QB Acquisition
+    r.hardMoney     = a.interest;                     // QB Interest Charges (actual carrying cost, not the estimate)
+    r.rehabCost     = a.rehab;                        // QB Rehab (M+L+O)
+    r.miscLessInterest = a.holding + a.settlement;    // QB Holding + Settlement
+    r.totalDevCost  = a.totalCost;                    // QB total (530,403.30)
+    r.netProfit     = a.netProfit;                    // QB net profit (32,596.70)
+    const cashIn    = a.netProceeds - a.netProfit;    // equity in = proceeds returned − profit
+    r.cashInvestedActual = cashIn;
+    r.cashOnCashROI    = cashIn>0 ? a.netProfit/cashIn : 0;             // 32,597 / 85,588 = 38.09%
+    r.cashOnCashIRR    = r.days>0 ? r.cashOnCashROI/r.days*360 : 0;     // annualized (linear)
+    r.returnOnCash     = a.totalCost>0 ? a.netProfit/a.totalCost : 0;   // ROI on total capital deployed
+    r.returnOnCashAnnual = r.days>0 ? r.returnOnCash/r.days*360 : 0;    // annualized (linear)
+    r.roi = r.returnOnCash; r.irrLinear = r.returnOnCashAnnual;
+  }
   return r;
 }
 

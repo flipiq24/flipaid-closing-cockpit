@@ -11,7 +11,8 @@
       "Estimated Closing",
       "Final"
     ],
-    "notes": "Actual closed deal. Buy side FINAL (First American, 11/24/2025). Sell side FINAL (Diamond Quality, 3/16/2026). QB actuals through 06/15/26."
+    "notes": "Actual closed deal. Buy side FINAL (First American, 11/24/2025). Sell side FINAL (Diamond Quality, 3/16/2026). QB actuals through 06/15/26.",
+    "mode": "Sold"
   },
   "taxonomy": {
     "_comment": "IA-aligned taxonomy (MASTER IA v4.1). Closing-tab Category/Sub dropdowns map each statement line to one IA bucket. 'sides' filters which Categories show per closing tab (buy = Purchase + Loans; sell = Loans + Gross Profits). Auto/total IA rows are intentionally not mapping targets.",
@@ -610,7 +611,7 @@
     ],
     "inputs": {
       "address": "4595 Bronson St, San Bernardino, CA 92407",
-      "mode": "Estimated",
+      "mode": "Sold",
       "financingType": "Loan",
       "coeDate": "2025-11-24",
       "eomDate": "2026-03-16",
@@ -665,7 +666,18 @@
       "taxAssessedValue": null,
       "constructionHoldback": 0,
       "ov_escrowTitleResale": 1585.21,
-      "ov_proratedTaxResale": 1159.7
+      "ov_proratedTaxResale": 1159.7,
+      "soldActuals": {
+        "acquisition": 445201.23,
+        "rehab": 36259.23,
+        "holding": 14316.26,
+        "interest": 2811.44,
+        "settlement": 31815.14,
+        "totalCost": 530403.3,
+        "salePrice": 563000,
+        "netProfit": 32596.7,
+        "netProceeds": 118184.86
+      }
     },
     "_fieldNotes": {
       "overrideLoanAmt": "Blank = use computed 1st loan = the LOWER of (arvLoanPct x ARV) and (costLoanPct x all-in cost, repairs baked in). Enter a number to override.",
