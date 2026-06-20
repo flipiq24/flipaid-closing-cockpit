@@ -394,7 +394,7 @@ function dontMapSub(cat,sel){
 // reorder by editing this array. isTotal emphasizes the sum card.
 function renderSumBand(){
   const el=$('#sumband'); if(!el) return;
-  const i=D.ia.inputs, r=computeIA(i);
+  const i=effIA(), r=computeIA(i);
   const opt=(arr,sel)=>(arr||[]).map(o=>`<option ${o===sel?'selected':''}>${o}</option>`).join('');
   const sumCards=[
     {label:'Total Acquisition Cost',     amount:r.totAcq},
@@ -621,7 +621,7 @@ function renderClosing(sideKey, tabKey){
 }
 
 function resaleTaxBlock(){
-  const t=D.taxInputs, price=D.ia.inputs.arv, purchase=D.ia.inputs.purchasePrice;
+  const _e=effIA(), t=D.taxInputs, price=_e.arv, purchase=_e.purchasePrice;
   const tt = transferTax(price, t.transferTaxRatePer1000);
   const prorate = countyProration(t.semiAnnualBill, 12); // sample 12-day seller share
   const supp = supplemental(purchase, t.priorAssessedValue, t.annualTaxRatePct, 0.5);
@@ -795,7 +795,7 @@ function showModePrompt(side, mode){
 function closeModePrompt(){ const e=document.getElementById('modeModal'); if(e) e.remove(); }
 function dismissModePrompt(side){ OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; saveOV(); closeModePrompt(); }
 function modeUpload(side,inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; OV._modeAck=OV._modeAck||{}; OV._modeAck[side]=true; applyAttach(side,'file',f.name,''); closeModePrompt(); const tabEl=document.querySelector('.tab[data-tab="'+(side==='buySide'?'buy':'sell')+'"]'); if(tabEl) tabEl.click(); }
-const arvOf=()=> +D.ia.inputs.arv||0;
+const arvOf=()=> +((IA_ACTUAL&&IA_ACTUAL.arv!=null)?IA_ACTUAL.arv:D.ia.inputs.arv)||0;
 
 /* ----- per-line tooltips + source links back to the Buy/Sell closing tabs ----- */
 const IA_META = {
@@ -832,6 +832,78 @@ const IA_META = {
   ov_assetMgmt:{tip:'Asset-management fee (ARV × %).'}
 };
 const meta=(k)=> IA_META[k]||{};
+/* ----- estimate -> actual: when a closing statement is attached to a side, its mapped
+   lines OVERWRITE the matching IA inputs so the model recomputes on the ACTUAL numbers.
+   Keyed by "<Category>|<Sub>". ov_* targets feed computeIA()'s override layer; the rest
+   are direct inputs. With no statement attached, iaActuals() is empty and effIA() returns
+   the manual estimate inputs unchanged -> the IA is byte-identical to before. ----- */
+const SUB2IA = {
+  'Total Purchase Cost|Purchase Price':'purchasePrice',
+  'Total Purchase Cost|Due Diligence Cost':'dueDiligence',
+  'Total Purchase Cost|Insurance':'insurance',
+  'Total Purchase Cost|Cash for Keys':'cashForKeys',
+  'Total Purchase Cost|Escrow and Title':'escrowTitlePurchase',
+  'Total Purchase Cost|Prorated Property Tax':'proratedPropTaxPurchase',
+  'Lender Cost – 1st Loan|Prepaid Interest 1st':'ov_prepaidInt1st',
+  'Lender Cost – 1st Loan|Interest on New Loan 1st':'ov_intOnNewLoan1st',
+  'Lender Cost – 1st Loan|Loan Origination Fee 1st':'ov_loanOrig1st',
+  'Lender Cost – 1st Loan|Loan Fees & Appraisal Fee 1st':'ov_loanFeesAppr1st',
+  'Lender Cost – 1st Loan|Additional 1st Payments Made':'additional1stPayments',
+  'Lender Cost – 1st Loan|Unused 1st Payments Credit':'unused1stCredit',
+  'Lender Cost – 1st Loan|Interest from 1st Payoff':'interestFrom1stPayoff',
+  'Lender Cost – 2nd Loan|Prepaid Interest 2nd':'prepaidInt2nd',
+  'Lender Cost – 2nd Loan|Interest on New Loan 2nd':'ov_intOnNewLoan2nd',
+  'Lender Cost – 2nd Loan|Loan Origination Fee 2nd':'ov_loanOrig2nd',
+  'Lender Cost – 2nd Loan|Loan Fees 2nd':'ov_loanFees2nd',
+  'Lender Cost – 2nd Loan|Additional 2nd Payments Made':'additional2ndPayments',
+  'Lender Cost – 2nd Loan|Unused 2nd Payments Credit':'unused2ndCredit',
+  'Lender Cost – 2nd Loan|Interest from 2nd Payoff':'interestFrom2ndPayoff',
+  'Gross Profits|After Repair Value':'arv',
+  'Gross Profits|Escrow and Title':'ov_escrowTitleResale',
+  'Gross Profits|Prorated Tax':'ov_proratedTaxResale',
+  'Gross Profits|Prorated Property Tax':'ov_proratedTaxResale',
+  "Gross Profits|Concessions (Buyer's Help)":'ov_concessions',
+  'Gross Profits|Buyers Agent Commissions':'ov_buyersComm',
+  'Gross Profits|Listing Agents Commissions':'ov_listingComm',
+  'Gross Profits|Per Diem Adjustment':'perDiemAdjustment',
+  'Gross Profits|Asset Management Services':'ov_assetMgmt'
+};
+let IA_ACTUAL = {};
+// Actuals overlay the IA only once the deal MODE says they exist: buy-side actuals at
+// "Acquired" or "Sold", sell-side actuals at "Sold". In "Estimated" mode the IA always shows
+// the estimates (byte-identical), even if a statement is already attached — Mode is the switch.
+function hasActualStmt(side){
+  const s=srcState(side); if(!(s.name||s.url)) return false;
+  const mode=(D.ia.inputs&&D.ia.inputs.mode)||'';
+  if(side==='buySide') return /Acquired|Sold/i.test(mode);
+  if(side==='sellSide') return /Sold/i.test(mode);
+  return false;
+}
+function iaActuals(){
+  const ov={};
+  const addv=(key,amt)=>{ if(!key||amt==null) return; ov[key]=(ov[key]||0)+(+amt||0); };
+  // A loan disbursement / payoff is PRINCIPAL (a financing flow), not an IA cost — even
+  // though the closing buckets it under a Lender "interest" sub. Route it to the loan
+  // amount and never into an interest/cost field, or it would dwarf the real interest.
+  const isPrincipal=(s)=> /Lender Cost/.test(s.category||'') && /(payoff|principal|trust deed|loan proceeds)/i.test(s.label||'') && !/interest/i.test(s.label||'');
+  const take=(s)=>{
+    const key=SUB2IA[(s.category||'')+'|'+(s.sub||'')];
+    if(!key) return;
+    if(key==='arv'){ addv('arv', s.credit!=null?s.credit:s.debit); return; }   // sale price books as a credit
+    if(isPrincipal(s)){ const amt=s.debit!=null?s.debit:(s.credit!=null?s.credit:null); if(amt!=null) ov.overrideLoanAmt=Math.max(+ov.overrideLoanAmt||0, Math.abs(amt)); return; }
+    if(s.debit!=null) addv(key, s.debit);   // costs book as debits; ignore credits (deposits / refunds)
+  };
+  ['buySide','sellSide'].forEach(side=>{
+    if(!hasActualStmt(side)) return;
+    (D[side].lines||[]).forEach((l,idx)=> take(lineState(side,idx)));
+    additions(side).forEach(a=> take({category:a.category, sub:a.sub, label:a.label, debit:a.debit, credit:a.credit}));
+  });
+  return ov;
+}
+// IA inputs with ACTUAL closing numbers overlaid (when a statement is attached); otherwise
+// the manual estimate inputs unchanged. Refreshes IA_ACTUAL for L$()'s actual/locked styling.
+function effIA(){ IA_ACTUAL=iaActuals(); const ks=Object.keys(IA_ACTUAL); return ks.length?Object.assign({},D.ia.inputs,IA_ACTUAL):D.ia.inputs; }
+function isActualKey(key){ return IA_ACTUAL && Object.prototype.hasOwnProperty.call(IA_ACTUAL,key); }
 function srcLink(m,val){ if(!m.src)return ''; const base=D[m.src[0]]&&D[m.src[0]].lines[m.src[1]]; if(!base)return ''; if(val==null||val===''||+val===0)return ''; const sd=m.src[0]==='buySide'?'Buy-side':'Sell-side'; return ` <a class="srclink" title="Source: ${sd} closing — click to open" onclick="gotoSource('${m.src[0]}',${m.src[1]})">↗</a>`; }
 function gotoSource(side,idx){
   const tabKey=side==='buySide'?'buy':'sell';
@@ -881,7 +953,9 @@ function Lc(sec,idx,line){
 // ----- IA ledger renderers (compact spreadsheet layout, matches the reference) -----
 function Ppct(v){const a=arvOf();return a?((+v||0)/a*100).toFixed(2)+'%':'';}
 // editable $ line:  percent (dbl-click to drive from % of ARV) | input | label (+tooltip & source link)
-function L$(label,key,val,metaKey){const m=meta(metaKey||key);const tip=(m.tip||'').replace(/"/g,'&quot;');return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val)}</span></div>`;}
+function L$(label,key,val,metaKey){const m=meta(metaKey||key);const tip=(m.tip||'').replace(/"/g,'&quot;');
+  if(isActualKey(key)){ return `<div class="lr act"><span class="lp">${Ppct(val)}</span><span class="av">${money(val)}</span><span class="ll"${tip?` title="${tip}"`:''}>${label} <span style="background:#15803d;color:#fff;font-size:9px;font-weight:600;padding:1px 5px;border-radius:8px;margin-left:5px;letter-spacing:.3px" title="Pulled from the actual closing statement — edit it on that tab">actual</span>${srcLink(m,val)}</span></div>`; }
+  return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val)}</span></div>`;}
 // read-only computed line: percent | amount | label  (opt.tot=subtotal, opt.big=emphasis, opt.pct=override %, opt.blank=no $, opt.valtxt=raw amount text)
 function L_(label,val,opt){opt=opt||{};const cls='lr'+(opt.tot?' tot':'')+(opt.big?' big':'');const p=opt.pct!=null?opt.pct:Ppct(val);const av=opt.valtxt!=null?opt.valtxt:(opt.blank?'':money(val));let links='';if(opt.add2nd)links+=` <a class="addcost" onclick="add2nd()">+ 2nd Loan</a>`;if(opt.add)links+=` <a class="addcost" onclick="addCost('${opt.add}')">+ Add cost</a>`;return `<div class="${cls}"><span class="lp">${p}</span><span class="av">${av}</span><span class="ll">${label}${links}</span></div>`;}
 // param input box + label (kind: pct|money|num)
@@ -896,7 +970,7 @@ function Pdate(label,key,val){return `<div class="pr dt"><input type="date" valu
 function Lbox(title,key,val){return `<div class="lbox"><div class="t">${title}</div><input value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"></div>`;}
 
 function renderIA(){
-  const i=D.ia.inputs, r=computeIA(i);
+  const i=effIA(), r=computeIA(i);
   // Buy-side close date becomes "Acquired" once the deal is Acquired or Sold; otherwise "Estimated".
   const acquired = /Acquired|Sold/i.test(i.mode||'');
   const coeLabel = (acquired?'Acquired':'Estimated')+' Buy-Side Close Date';
@@ -1087,7 +1161,7 @@ function qbRows(){
   // purchase line and the lender-cost lines, so re-adding them would double-count the deal.
   // Broken into their IA sub-components so each maps to a real sub and the rows sum exactly
   // to the IA tab's Rehab + Misc totals. Read-only here; edit them on the IA tab.
-  const _i=D.ia.inputs, _ia=computeIA(_i);
+  const _i=effIA(), _ia=computeIA(_i);
   const _cSum=(sec)=> ((_i.customLines&&_i.customLines[sec])||[]).reduce((a,l)=>a+(+l.amount||0),0);
   [
     {cat:'Rehabilitation Costs', sub:'Estimated Repairs', label:'Estimated Repairs', amt:+_i.estimatedRepairs||0},
@@ -1227,7 +1301,7 @@ async function askAI(){
   if(btn){ btn.disabled=true; btn.textContent='Thinking…'; }
   try{
     const res=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({deal:D.deal,ia:D.ia.inputs,qb:qbRows(),question:q})});
+      body:JSON.stringify({deal:D.deal,ia:effIA(),qb:qbRows(),question:q})});
     if(!res.ok) throw new Error('no server');
     const j=await res.json(); showDraft(j.answer||JSON.stringify(j),'ai');
   }catch(e){
@@ -1242,7 +1316,7 @@ async function evaluateDeal(ev){
   if(btn){ btn.disabled=true; btn.textContent='Evaluating…'; }
   try{
     const res=await fetch('/api/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({deal:D.deal,ia:D.ia.inputs,qb:qbRows()})});
+      body:JSON.stringify({deal:D.deal,ia:effIA(),qb:qbRows()})});
     if(!res.ok) throw new Error('no server');
     const j=await res.json(); showDraft(j.comment||JSON.stringify(j),'ai');
   }catch(e){

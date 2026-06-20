@@ -9,9 +9,12 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static('.'));            // serves index.html + data/
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-const client = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null;
+// Prefer Replit AI Integrations (no own key needed; billed to Replit credits) when present,
+// otherwise fall back to a plain ANTHROPIC_API_KEY secret. Either path enables the AI mapping
+// (/api/parse), evaluate, and ask endpoints.
+const client = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL
+  ? new Anthropic({ baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL, apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || 'integration' })
+  : (process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null);
 
 // POST /api/evaluate  { deal, ia, qb }  -> { comment }
 app.post('/api/evaluate', async (req, res) => {
