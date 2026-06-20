@@ -130,10 +130,16 @@
   .col.purchleft{display:flex;flex-direction:column}
   .col.purchleft .lr.tot{margin-top:auto}
   .summary{margin-top:8px;padding:0 16px 8px}
-  .summary .s{display:flex;justify-content:flex-end;align-items:center;gap:12px;font-weight:700;padding:1px 0;font-size:12px}
+  .summary .s{display:grid;grid-template-columns:1fr 96px;align-items:center;gap:8px;font-weight:700;padding:1px 0;font-size:12px;position:relative}
+  .summary .s .delx{position:absolute;right:-13px;top:50%;transform:translateY(-50%)}
+  .summary .s>*:nth-child(1){text-align:right}
+  .summary .s>*:nth-child(2){text-align:right}
   .summary .s .lab{color:#c00000}
   .summary .s.tot{border-top:1px solid var(--line);margin-top:3px;padding-top:4px}
-  .summary .s .sum-in{width:96px;text-align:right;font:inherit;font-weight:700;font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 6px;color:var(--ink)}
+  .summary .s.addrow2{display:block;text-align:right;padding-top:2px}
+  .summary .s input.clab2{text-align:left;border:1px dashed #cfcfcf;background:#fff;padding:1px 4px;font:inherit;font-size:12px;width:100%}
+  .summary .s input.clab2:focus{border-color:var(--accent);border-style:solid;outline:none}
+  .summary .s .sum-in{width:100%;text-align:right;font:inherit;font-weight:700;font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 6px;color:var(--ink)}
   .summary .s .sum-in:focus{outline:none;border-color:var(--accent)}
   .ai-wrap{padding:8px 16px}
   .ia-notes{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;resize:vertical}
@@ -178,7 +184,11 @@
   .stmt-meta{display:grid;grid-template-columns:repeat(2,auto);gap:4px 22px;font-size:12.5px;text-align:right}
   .stmt-meta div span{color:var(--muted);margin-right:8px}
   h2.stmt-sec{font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:#1f3864;border-bottom:2px solid #e5e7eb;padding-bottom:6px}
-  table.stmt{width:100%;border-collapse:collapse;font-size:13px}
+  table.stmt{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  table.stmt col.c-num{width:118px}
+  table.stmt col.c-cat{width:150px}
+  table.stmt col.c-cf{width:64px}
+  table.stmt td.desc{overflow-wrap:anywhere}
   table.stmt th{color:var(--muted);font-weight:600;font-size:11.5px;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
   table.stmt th.num,table.stmt td.num{text-align:right;font-variant-numeric:tabular-nums;width:118px}
   table.stmt th.cf,table.stmt td.cf{width:64px;text-align:center}
@@ -451,7 +461,7 @@ function renderClosing(sideKey, tabKey){
   let tDeb=0, tCred=0;
   order.forEach(g=>{
     html += `<div class="section"><h2 class="stmt-sec">${g}</h2>
-      <table class="stmt"><thead><tr><th>Description</th><th class="num deb">Debits</th><th class="num cred">Credits</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead><tbody>`;
+      <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup><thead><tr><th>Description</th><th class="num deb">Debits</th><th class="num cred">Credits</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead><tbody>`;
     groups[g].forEach(i=>{
       const s=lineState(sideKey,i); const k=sideKey+':'+i;
       const isCredit = s.credit!=null || (s.debit==null && /deposit|proceeds|trust deed|sale price|credit/i.test(s.label));
@@ -477,7 +487,7 @@ function renderClosing(sideKey, tabKey){
   const diff = tDeb-tCred, bal = Math.abs(diff) < 0.01;
   const role = (side.role||'party');
   const netMsg = diff<0 ? `Net proceeds to ${role}: ${money(-diff)}` : `Funds to close from ${role}: ${money(diff)}`;
-  html += `<div class="section"><table class="stmt stmt-total"><tbody><tr>
+  html += `<div class="section"><table class="stmt stmt-total"><colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup><tbody><tr>
      <td class="desc"><b>TOTAL</b></td>
      <td class="num deb"><b>${money(tDeb)}</b></td>
      <td class="num cred"><b>${money(tCred)}</b></td>
@@ -566,7 +576,7 @@ function computeIA(i){
   }
   // cash reserves held for the hold period (editable; defaults to 5,000)
   r.reserves = (i.reserves==null||i.reserves==='') ? 5000 : +i.reserves;
-  r.totalCashAndReserves = r.cashInclPayments + r.cashToClose + r.reserves;
+  r.totalCashAndReserves = r.cashInclPayments + r.cashToClose + r.reserves + cSum('reserves');
   // rehab
   r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0)+cSum('rehab');        // B34
   // supplemental tax (B38) -- only fires if taxFactor set (overridable)
@@ -683,6 +693,12 @@ function hide2nd(){
 }
 function customRows(sec){ const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[]; return arr.map((l,idx)=>Lc(sec,idx,l)).join(''); }
 function addLink(sec){ return `<div class="addrow"><a class="addcost" onclick="addCost('${sec}')">+ Add cost</a></div>`; }
+// Custom cost rows for the IA cash summary — same 3-col grid as the other .s rows
+// (label | amount | delete), so values stay vertically aligned. Feeds totalCashAndReserves.
+function sumCustomRows(sec){
+  const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[];
+  return arr.map((l,idx)=>`<div class="s"><input class="clab2" value="${(l.label||'').replace(/"/g,'&quot;')}" placeholder="Cost name" onchange="renCustom('${sec}',${idx},this.value)"><input class="sum-in" value="${fmt2(l.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></div>`).join('');
+}
 function Lc(sec,idx,line){
   return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEditC(this,'${sec}',${idx})">${Ppct(line.amount)}</span>`+
     `<input class="m" value="${fmt2(line.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)">`+
@@ -733,9 +749,11 @@ function renderIA(){
         <div class="pr d"><span class="dv">${r.days}</span><span class="pl">days · ${(r.months||0).toFixed(1)} mos est.</span></div>
       </div>
       <div class="summary">
-        <div class="s"><span class="lab">Payment Reserves</span><span>${money(r.cashInclPayments)}</span></div>
+        <div class="s"><span>Payment Reserves</span><span>${money(r.cashInclPayments)}</span></div>
         <div class="s"><span>Cash Required to Close:</span><span>${money(r.cashToClose)}</span></div>
-        <div class="s"><span class="lab">Reserves</span><input class="sum-in" value="${fmt2(r.reserves)}" onchange="setIA('reserves',this.value)"></div>
+        <div class="s"><span>Reserves</span><input class="sum-in" value="${fmt2(r.reserves)}" onchange="setIA('reserves',this.value)"></div>
+        ${sumCustomRows('reserves')}
+        <div class="s addrow2"><a class="addcost" onclick="addCost('reserves')">+ Add cost</a></div>
         <div class="s tot"><span class="lab">Total Cash Investment Including Payments and Reserves</span><span>${money(r.totalCashAndReserves)}</span></div>
       </div>
     </div>
