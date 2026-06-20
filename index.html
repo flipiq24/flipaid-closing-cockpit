@@ -320,6 +320,8 @@ async function boot(){
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
   // restore any parsed statement lines from a prior attach
   ['buySide','sellSide'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)&&dd.lines.length){ D[sd].lines=dd.lines; if(dd.meta) Object.assign(D[sd], dd.meta); } });
+  // No closing data -> deal is estimate-only: pin Mode to "Estimated" once here (controlled, not in render).
+  if(!hasClosingData() && D.ia.inputs.mode!=='Estimated'){ D.ia.inputs.mode='Estimated'; OV._ia=D.ia.inputs; localStorage.setItem(LS, JSON.stringify(OV)); }
   renderHeaderMeta();
   renderTabs(); bindTabs(); render('ia');
 }
@@ -410,6 +412,11 @@ function dontMapSub(cat,sel){
     + (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
 }
 
+// True when at least one closing statement has line data (buy or sell side).
+function hasClosingData(){
+  return !!((D.buySide&&D.buySide.lines&&D.buySide.lines.length) || (D.sellSide&&D.sellSide.lines&&D.sellSide.lines.length));
+}
+
 /* ---------- RENDER ---------- */
 // Global summary band — shown above the panel on EVERY tab. Data-driven: add/remove/
 // reorder by editing this array. isTotal emphasizes the sum card.
@@ -426,7 +433,12 @@ function renderSumBand(){
   ];
   const sumCell=c=>`<div class="su${c.isTotal?' tot':''}"><b>${money(c.amount)}</b><span>${Ppct(c.amount)}</span><em>${c.label}</em></div>`;
   const hc=$('#hdrControls');
-  if(hc) hc.innerHTML=`<span class="hdr-ctl"><label>Mode</label><select onchange="setIA('mode',this.value)">${opt(D.ia.modeOptions,i.mode)}</select></span>`+
+  // No closing data -> Mode is locked to "Estimated" (pinned once at boot); render the dropdown disabled.
+  const noData = !hasClosingData();
+  const modeSel = noData
+    ? `<select disabled title="Upload a buy-side or sell-side closing statement before you can set Acquired or Sold">${opt(D.ia.modeOptions,'Estimated')}</select>`
+    : `<select onchange="setIA('mode',this.value)">${opt(D.ia.modeOptions,i.mode)}</select>`;
+  if(hc) hc.innerHTML=`<span class="hdr-ctl"><label>Mode</label>${modeSel}</span>`+
     `<span class="hdr-ctl"><label>Financing</label><select onchange="setIA('financingType',this.value)">${opt(D.ia.financingOptions,i.financingType)}</select></span>`;
   el.innerHTML=`<div class="ia-header">
   <div class="ia-sum">${sumCards.map(sumCell).join('')}</div>
@@ -795,6 +807,8 @@ const pct=(n)=> (n==null||isNaN(n))?'' : (n*100).toFixed(2)+'%';
 // two-decimal display for editable $ inputs; leaves non-numeric strings (dates/text) untouched
 const fmt2=(v)=>{ if(v==null||v==='')return''; const n=+(''+v).replace(/[$,\s]/g,''); return isNaN(n)?v:n.toFixed(2); };
 function setIA(key,val){
+  // Can't change the deal Mode while there is no closing data — it must stay "Estimated".
+  if(key==='mode' && !hasClosingData()) return;
   let v;
   if(val===''||val===null){ v=null; }
   else if(typeof val==='string'){
