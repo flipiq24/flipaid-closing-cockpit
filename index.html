@@ -1435,7 +1435,7 @@ async function evaluateDeal(ev){
     alert('AI Evaluate needs the backend running (server/index.js) with ANTHROPIC_API_KEY set.\nIn Replit: add the secret, run the server, then this button calls /api/evaluate.');
   }
 }
-function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); render('ia'); document.querySelector('.tab').click(); } }
+function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); location.reload(); } }  // reload re-fetches the data file (boot's Object.assign mutates D in place, so render() alone won't undo it)
 
 boot();
 </script>
