@@ -184,6 +184,11 @@
   .lr.roi .av,.lr.roi .lp{font-weight:700;color:#1f3864}
   tr.flash{background:#fff3bf;transition:background .4s}
   tr.hilite, tr.hilite td{background:#fff3bf}   /* persistent source highlight (stays until you jump elsewhere) */
+  .escrow-recon{border:1.5px dashed #4472c4;border-radius:6px;padding:10px 14px;margin:6px 0 0 auto;max-width:340px}
+  .escrow-recon .er{display:flex;justify-content:space-between;gap:18px;font-size:13px;padding:2px 0}
+  .escrow-recon .erl{color:#374151}
+  .escrow-recon .erv{font-weight:700;text-align:right;white-space:nowrap}
+  .escrow-recon .erd{border-top:1px solid #ccc;margin-top:4px;padding-top:5px}
   tr.qb-bad>td{background:#fef2f2;color:#991b1b}
   tr.qb-bad>td:first-child{box-shadow:inset 3px 0 0 var(--red)}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
@@ -1136,7 +1141,21 @@ function renderIA(){
     </div>
   </div>`;
 
-  // NET PROFITS
+  // NET PROFITS  (+ escrow reconciliation when Mode = Sold)
+  let reconBox='';
+  if((i.mode||'')==='Sold'){
+    const ss=(D.sellSide&&D.sellSide.lines)||[];
+    let _c=0,_d=0; ss.forEach(l=>{_c+=(+l.credit||0);_d+=(+l.debit||0);});
+    const sellNet=_c-_d;                                                   // sell-side statement net proceeds
+    const holdback=ss.filter(l=>/holdback/i.test(l.label||l.desc||'')).reduce((a,l)=>a+(+l.credit||0),0);
+    const cashToSeller=r.grossProfit-r.loan1st+holdback-(+i.additional1stPayments||0)+(+i.unused1stCredit||0); // MASTER IA G55
+    const diff=cashToSeller-sellNet;
+    reconBox=`<div class="escrow-recon">
+      <div class="er"><span class="erl">Cash to Seller at Close</span><span class="erv">${money(cashToSeller)}</span></div>
+      <div class="er"><span class="erl">Sell-Side Closing from escrow</span><span class="erv">${money(sellNet)}</span></div>
+      <div class="er erd"><span class="erl">Diff</span><span class="erv">${money(diff)}</span></div>
+    </div>`;
+  }
   const net = `<div class="band">Net Profits</div>
   <div class="cols">
     <div class="col">
@@ -1146,7 +1165,7 @@ function renderIA(){
       <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCash)}</span><span class="ll">Levered ROI</span></div>
       <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCashAnnual)}</span><span class="ll">Levered IRR</span></div>
     </div>
-    <div class="col r"></div>
+    <div class="col r">${reconBox}</div>
   </div>`;
 
   // AI ASSISTANT & NOTES (full-width section, bottom of sheet)

@@ -580,6 +580,13 @@
         },
         "confidence": 80,
         "why": "Termite work."
+      },
+      {
+        "label": "Construction Holdback Release",
+        "credit": 27000,
+        "category": "Financing (profit-neutral)",
+        "sub": "Construction Holdback",
+        "conf": 100
       }
     ]
   },
