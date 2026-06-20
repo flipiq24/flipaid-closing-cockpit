@@ -417,7 +417,9 @@
     "party": "(Seller of record)",
     "role": "Seller",
     "escrowNo": "(est.)",
-    "_comment": "ESTIMATED resale. Line order preserved (0=Sale,1=Commission,2=Transfer Tax,3=Tax Proration) so IA source-links stay valid. Replace with the actual seller statement when issued.",
+    "cashOutOfEscrow": 35751.07826,
+    "cashOutOfEscrowLabel": "Cash out of escrow (model input)",
+    "_comment": "ESTIMATED resale. Line order preserved (0=Sale,1=Commission,2=Transfer Tax,3=Tax Proration) so IA source-links stay valid. Replace with the actual seller statement when issued. cashOutOfEscrow = MASTER IA v4.1 'Cash out of escrow' (G56); reconciled against the statement net proceeds — shown as-is, math not forced.",
     "lines": [
       {
         "label": "Sale Price",

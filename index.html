@@ -582,6 +582,21 @@ function renderClosing(sideKey, tabKey){
      <td colspan="3" class="${bal?'bal-ok':'bal-net'}">${bal?'✓ Balanced':netMsg+' <span class="bal-hint">(balancing line — add on the actual statement to foot to zero)</span>'}</td>
    </tr></tbody></table></div>`;
 
+  // CASH-OUT-OF-ESCROW reconciliation (sell side only): model input vs statement net proceeds, shown as-is.
+  if(sideKey==='sellSide' && side.cashOutOfEscrow!=null){
+    const stmtNet = tCred - tDeb;                 // cash leaving escrow per the statement
+    const input = side.cashOutOfEscrow;           // MASTER IA "Cash out of escrow" (G56)
+    const cd = stmtNet - input;                   // statement − input (not forced to zero)
+    const match = Math.abs(cd) < 0.01;
+    html += `<div class="section"><h2 class="stmt-sec">Cash-out-of-escrow reconciliation</h2>
+       <div class="note" style="margin:0 0 8px">${side.cashOutOfEscrowLabel||'Cash out of escrow (model input)'} vs the statement's net proceeds. Shown as-is — the difference is real, not forced to match.</div>
+       <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup><tbody>
+       <tr><td class="desc">${side.cashOutOfEscrowLabel||'Cash out of escrow (model input)'}</td><td class="num"></td><td class="num">${money(input)}</td><td colspan="3" class="muted">MASTER IA v4.1</td></tr>
+       <tr><td class="desc">Statement net proceeds to ${role}</td><td class="num"></td><td class="num">${money(stmtNet)}</td><td colspan="3" class="muted">Credits − Debits above</td></tr>
+       <tr class="${match?'bal-ok':'qb-bad'}"><td class="desc"><b>Difference (statement − input)</b></td><td class="num"></td><td class="num"><b>${money(cd)}</b></td><td colspan="3" class="${match?'bal-ok':'bal-net'}">${match?'✓ Match':'Mismatch — '+money(Math.abs(cd))+(cd>0?' more out of escrow than the model':' less out of escrow than the model')}</td></tr>
+       </tbody></table></div>`;
+  }
+
   // ADDITIONS — user items not on the closing statement. Do NOT affect the balance above.
   const adds = additions(sideKey);
   const addRows = adds.map((a,idx)=>`<tr>
