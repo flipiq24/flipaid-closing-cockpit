@@ -563,7 +563,7 @@ function computeIA(i){
   // net
   r.netProfit = r.grossProfit - r.totAcq - r.hardMoney - r.rehabCost - r.miscLessInterest; // B55
   r.roi = (r.netProfit+r.totalLender)/(r.totAcq+r.rehabCost); // B56
-  r.irr = r.roi/r.days*360;                                  // B57
+  r.irr = r.days>0 ? Math.pow(1+r.roi, 365/r.days)-1 : 0;     // B57 — compounded annualized return (matches fixed workbook)
   return r;
 }
 
@@ -815,7 +815,7 @@ function renderIA(){
     <div class="col">
       ${L_('Net Profit', r.netProfit,{big:1})}
       <div class="lr big roi"><span class="lp">${pct(r.roi)}</span><span class="av">${pct(r.roi)}</span><span class="ll">ROI</span></div>
-      <div class="lr big roi"><span class="lp">${pct(r.irr)}</span><span class="av">${pct(r.irr)}</span><span class="ll">IRR</span></div>
+      <div class="lr big roi"><span class="lp">${pct(r.irr)}</span><span class="av">${pct(r.irr)}</span><span class="ll">Annualized Return</span></div>
     </div>
     <div class="col r"></div>
   </div>`;
