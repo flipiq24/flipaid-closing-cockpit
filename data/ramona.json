@@ -68,18 +68,25 @@
         "Per Diem Adjustment",
         "Asset Management Services",
         "Escrow Refunds"
+      ],
+      "Financing (profit-neutral)": [
+        "Loan Proceeds",
+        "Construction Holdback",
+        "Payoff"
       ]
     },
     "sides": {
       "buySide": [
         "Total Purchase Cost",
         "Lender Cost – 1st Loan",
-        "Lender Cost – 2nd Loan"
+        "Lender Cost – 2nd Loan",
+        "Financing (profit-neutral)"
       ],
       "sellSide": [
         "Lender Cost – 1st Loan",
         "Lender Cost – 2nd Loan",
-        "Gross Profits"
+        "Gross Profits",
+        "Financing (profit-neutral)"
       ]
     }
   },
