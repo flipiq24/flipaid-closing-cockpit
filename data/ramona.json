@@ -12,6 +12,7 @@
   "taxonomy": {
     "_comment": "The QB export taxonomy. Every closing-statement line maps to one Category + Sub. These are the dropdown options used everywhere.",
     "categories": {
+      "Total Purchase Cost": ["Purchase Price", "Due Diligence Cost", "Insurance", "Cash for Keys", "Escrow and Title", "Property Transfer Tax", "Prorated Property Tax"],
       "Acquisition": ["Purchase Price", "Assignment Fee", "Acquisition Other"],
       "Rehab": ["Materials", "Labor", "Rehab Other"],
       "Holding": ["Utilities", "Insurance", "Property Tax (Holding)", "HOA", "Holding Other"],
@@ -142,6 +143,8 @@
       "additional2ndPayments": 0,
       "unused2ndCredit": 0,
       "interestFrom2ndPayoff": 0,
+
+      "reserves": 5000,
 
       "estimatedRepairs": 85000,
       "utilitiesRehab": 0,

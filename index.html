@@ -130,8 +130,11 @@
   .col.purchleft{display:flex;flex-direction:column}
   .col.purchleft .lr.tot{margin-top:auto}
   .summary{margin-top:8px;padding:0 16px 8px}
-  .summary .s{display:flex;justify-content:flex-end;gap:12px;font-weight:700;padding:1px 0;font-size:12px}
+  .summary .s{display:flex;justify-content:flex-end;align-items:center;gap:12px;font-weight:700;padding:1px 0;font-size:12px}
   .summary .s .lab{color:#c00000}
+  .summary .s.tot{border-top:1px solid var(--line);margin-top:3px;padding-top:4px}
+  .summary .s .sum-in{width:96px;text-align:right;font:inherit;font-weight:700;font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 6px;color:var(--ink)}
+  .summary .s .sum-in:focus{outline:none;border-color:var(--accent)}
   .ai-wrap{padding:8px 16px}
   .ia-notes{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;resize:vertical}
   .ai-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
@@ -307,11 +310,25 @@ function badge(c){
   const cls = c>=100?'b100':c>=90?'b90':c>=80?'b80':'blo';
   return `<span class="badge ${cls}">${c}%</span>`;
 }
+// taxCats() = the dropdown taxonomy, with "Total Purchase Cost" mirrored 1:1 to the IA
+// Total Purchase Cost section — including any custom "+ add cost" lines — so the
+// Buy/Sell/QB mapping dropdowns stay 100% aligned with the form.
+function taxCats(){
+  const cats={};
+  for(const k in D.taxonomy.categories) cats[k]=D.taxonomy.categories[k].slice();
+  if(cats['Total Purchase Cost']){
+    const custom=((D.ia&&D.ia.inputs&&D.ia.inputs.customLines&&D.ia.inputs.customLines.purchase)||[])
+      .map(l=>l&&l.label).filter(Boolean);
+    cats['Total Purchase Cost']=cats['Total Purchase Cost'].concat(custom);
+  }
+  return cats;
+}
+function firstSub(cat){ const a=taxCats()[cat]; return (a&&a[0])||''; }
 function catOptions(sel){
-  return Object.keys(D.taxonomy.categories).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+  return Object.keys(taxCats()).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
 }
 function subOptions(cat,sel){
-  return (D.taxonomy.categories[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
+  return (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
 }
 
 /* ---------- RENDER ---------- */
@@ -440,7 +457,7 @@ function renderClosing(sideKey, tabKey){
         <td class="desc">${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
         <td class="num">${debCell}</td>
         <td class="num">${credCell}</td>
-        <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',D.taxonomy.categories[this.value][0]);render('${tabKey}')">${catOptions(s.category)}</select></td>
+        <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('${tabKey}')">${catOptions(s.category)}</select></td>
         <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select></td>
         <td class="cf"><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
       </tr>`;
@@ -523,10 +540,12 @@ function computeIA(i){
   r.loanOrig1st = ov('loanOrig1st', r.loan1st*i.points1st);  // B15
   r.loanFeesAppr1st = ov('loanFeesAppr1st', i.estLoanFees1st);// B16
   r.lender1st = r.prepaidInt1st+r.intOnNewLoan1st+r.loanOrig1st+r.loanFeesAppr1st+(+i.additional1stPayments||0)-(+i.unused1stCredit||0)+(+i.interestFrom1stPayoff||0)+cSum('lender1');
-  // 2nd loan
-  r.intOnNewLoan2nd = ov('intOnNewLoan2nd', (+i.loan2ndAmount||0)*i.interestRate2nd/12*r.months); // B24
-  r.loanOrig2nd = ov('loanOrig2nd', (+i.loan2ndAmount||0)*i.points2nd); // B25
-  r.lender2nd = (+i.prepaidInt2nd||0)+r.intOnNewLoan2nd+r.loanOrig2nd+(+i.loanFees2nd||0)+(+i.additional2ndPayments||0)-(+i.unused2ndCredit||0)+(+i.interestFrom2ndPayoff||0)+cSum('lender2');
+  // 2nd loan — mirrors the 1st-loan design: rate/points drive interest & origination,
+  // and the "Est. Loan Fees" param defaults into the Loan Fees 2nd ledger line.
+  r.intOnNewLoan2nd = ov('intOnNewLoan2nd', (+i.loan2ndAmount||0)*(+i.interestRate2nd||0)/12*r.months); // B24
+  r.loanOrig2nd = ov('loanOrig2nd', (+i.loan2ndAmount||0)*(+i.points2nd||0)); // B25
+  r.loanFees2nd = ov('loanFees2nd', (+i.loanFees2nd||0) || (+i.estLoanFees2nd||0)); // prefer legacy ledger value, else Est. Loan Fees param
+  r.lender2nd = (+i.prepaidInt2nd||0)+r.intOnNewLoan2nd+r.loanOrig2nd+r.loanFees2nd+(+i.additional2ndPayments||0)-(+i.unused2ndCredit||0)+(+i.interestFrom2ndPayoff||0)+cSum('lender2');
   r.totalLender = r.lender1st+r.lender2nd;                   // B30
   // cash deals carry no lender cost — zero the financing side entirely
   // and make the cash-to-close / cash-invested autos reflect a no-loan reality.
@@ -537,6 +556,9 @@ function computeIA(i){
     r.cashInclPayments=0;
     r.cashToClose=r.totalPurchase;
   }
+  // cash reserves held for the hold period (editable; defaults to 5,000)
+  r.reserves = (i.reserves==null||i.reserves==='') ? 5000 : +i.reserves;
+  r.totalCashAndReserves = r.cashInclPayments + r.cashToClose + r.reserves;
   // rehab
   r.totalRehab = (+i.estimatedRepairs||0)+(+i.utilitiesRehab||0)+cSum('rehab');        // B34
   // supplemental tax (B38) -- only fires if taxFactor set (overridable)
@@ -602,7 +624,7 @@ const IA_META = {
   prepaidInt2nd:{tip:'Prepaid interest on the 2nd loan.'},
   ov_intOnNewLoan2nd:{tip:'Interest on the 2nd loan across the hold period.'},
   ov_loanOrig2nd:{tip:'2nd loan origination = loan amount × points.'},
-  loanFees2nd:{tip:'2nd loan fees.'},
+  ov_loanFees2nd:{tip:'2nd loan fees (defaults to the Est. Loan Fees param).'},
   additional2ndPayments:{tip:'Extra 2nd-loan payments made during the hold.'},
   unused2ndCredit:{tip:'Credit for unused 2nd-loan interest reserve.'},
   interestFrom2ndPayoff:{tip:'Interest captured at 2nd-loan payoff.'},
@@ -647,7 +669,7 @@ function hide2nd(){
   // Fully clear every 2nd-loan input that feeds computeIA() so removal truly zeroes r.lender2nd.
   const i=D.ia.inputs;
   i.show2nd=false;
-  ['loan2ndAmount','prepaidInt2nd','loanFees2nd','additional2ndPayments','unused2ndCredit','interestFrom2ndPayoff','interestRate2nd','points2nd','estLoanFees2nd','ov_intOnNewLoan2nd','ov_loanOrig2nd'].forEach(k=>{ i[k]=0; });
+  ['loan2ndAmount','prepaidInt2nd','loanFees2nd','ov_loanFees2nd','additional2ndPayments','unused2ndCredit','interestFrom2ndPayoff','interestRate2nd','points2nd','estLoanFees2nd','ov_intOnNewLoan2nd','ov_loanOrig2nd'].forEach(k=>{ i[k]=0; });
   if(i.customLines) i.customLines.lender2=[];
   persistIA();
 }
@@ -703,8 +725,10 @@ function renderIA(){
         <div class="pr d"><span class="dv">${r.days}</span><span class="pl">days · ${(r.months||0).toFixed(1)} mos est.</span></div>
       </div>
       <div class="summary">
-        <div class="s"><span class="lab">Total Cash Investment Including Payments</span><span>${money(r.cashInclPayments)}</span></div>
+        <div class="s"><span class="lab">Payment Reserves</span><span>${money(r.cashInclPayments)}</span></div>
         <div class="s"><span>Cash Required to Close:</span><span>${money(r.cashToClose)}</span></div>
+        <div class="s"><span class="lab">Reserves</span><input class="sum-in" value="${fmt2(r.reserves)}" onchange="setIA('reserves',this.value)"></div>
+        <div class="s tot"><span class="lab">Total Cash Investment Including Payments and Reserves</span><span>${money(r.totalCashAndReserves)}</span></div>
       </div>
     </div>
   </div>`;
@@ -753,7 +777,7 @@ function renderIA(){
         ${L$('Prepaid Interest 2nd','prepaidInt2nd',i.prepaidInt2nd)}
         ${L$('Interest on New Loan 2nd','ov_intOnNewLoan2nd', r.intOnNewLoan2nd)}
         ${L$('Loan Origination Fee 2nd','ov_loanOrig2nd', r.loanOrig2nd)}
-        ${L$('Loan Fees 2nd','loanFees2nd',i.loanFees2nd)}
+        ${L$('Loan Fees 2nd','ov_loanFees2nd', r.loanFees2nd)}
         ${L$('Additional 2nd Payments Made','additional2ndPayments',i.additional2ndPayments)}
         ${L$('Unused 2nd Payments Credit','unused2ndCredit',i.unused2ndCredit)}
         ${L$('Interest from 2nd Payoff','interestFrom2ndPayoff',i.interestFrom2ndPayoff)}
@@ -855,7 +879,7 @@ function renderQB(){
   rows.forEach(r=>{
     const k=r.side+':'+r.idx;
     html+=`<tr><td>${r.Date}</td><td>${r.Memo}</td>
-      <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',D.taxonomy.categories[this.value][0]);render('qb')">${catOptions(r.Category)}</select></td>
+      <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('qb')">${catOptions(r.Category)}</select></td>
       <td><select onchange="setOV('${k}','sub',this.value);render('qb')">${subOptions(r.Category,r.Sub)}</select></td>
       <td class="num"><input class="num" value="${r.Amount}" onchange="setOV('${k}','amount',this.value);render('qb')"></td></tr>`;
   });
