@@ -1,0 +1,94 @@
+{
+  "deal": {
+    "id": "15620-ramona",
+    "address": "15620 Ramona Ave, Apple Valley, CA 92307",
+    "apn": "0440-071-20",
+    "county": "San Bernardino",
+    "status": "Estimated Closing",
+    "_statusOptions": ["Estimated", "Acquired", "Estimated Closing", "Final"],
+    "notes": "Both closing statements are the SAME property. Buy side = FINAL (closed 11/7/2025). Sell side = ESTIMATED (closing 6/19/2026)."
+  },
+
+  "taxonomy": {
+    "_comment": "The QB export taxonomy. Every closing-statement line maps to one Category + Sub. These are the dropdown options used everywhere.",
+    "categories": {
+      "Acquisition": ["Purchase Price", "Assignment Fee", "Acquisition Other"],
+      "Rehab": ["Materials", "Labor", "Rehab Other"],
+      "Holding": ["Utilities", "Insurance", "Property Tax (Holding)", "HOA", "Holding Other"],
+      "Interest": ["Loan Interest", "Origination / Points", "Lender Fees"],
+      "Settlement": ["Title", "Escrow", "Recording", "Transfer Tax", "Tax Proration", "Commission", "Payoff", "Settlement Other"],
+      "Financing": ["Loan Proceeds", "Construction Holdback", "Payoff (out)"],
+      "Resale": ["Sale Price"]
+    }
+  },
+
+  "taxInputs": {
+    "_comment": "EDITABLE. Drives transfer tax, county proration, and supplemental. Verify the rate against the actual county secured bill for APN 0440-071-20.",
+    "transferTaxRatePer1000": 1.10,
+    "transferTaxSource": "CA documentary transfer tax, county base. $1.10 per $1,000. Apple Valley adds no city transfer tax. Verified: $460,000 x 1.10/1000 = $506.00, matches sell-side statement.",
+    "annualTaxRatePct": 1.10,
+    "annualTaxRateSource": "PLACEHOLDER 1.10% base. 92307 effective rate ~1.14% incl. bonds per assessor area. Confirm TRA rate off the actual secured bill. Tooltip shows APN 0440-071-20, San Bernardino County.",
+    "dayCount": "30/360",
+    "dayCountSource": "Escrows used 30/360. Verified: $1,562.40 semi-annual / 180 x 54 days (11/7->1/1) = $468.72 exact; /180 x 12 days (6/18->6/30) = $104.16 exact.",
+    "semiAnnualBill": 1562.40,
+    "priorAssessedValue": null,
+    "priorAssessedValueNote": "NEEDED for supplemental calc. If null, supplemental estimated as (purchasePrice - priorAssessedValue) x rate. Default estimate uses priorAssessedValue = 60% of purchase price if left null.",
+    "supplementalNote": "Supplemental = (purchase price - prior assessed value) x annual rate x month-of-closing proration factor. A SECOND supplemental bill applies when the reassessment spans two fiscal years (closing in months Jan-May per the old factor table). On Ramona this is most of the profit -- workbook Summary note: 'Need Supplemental Tax EST from Tony'."
+  },
+
+  "buySide": {
+    "title": "Buy-Side Closing (zBuyerz / Autumn Skye)",
+    "status": "FINAL",
+    "date": "2025-11-07",
+    "role": "Buyer",
+    "lines": [
+      { "label": "Total Consideration / Purchase Price", "amount": 300000, "section": "Consideration", "map": {"category": "Acquisition", "sub": "Purchase Price"}, "confidence": 100, "why": "Contract purchase price. QB booked acquisition basis as $308,000 = $300,000 + $8,000 assignment, so this is the price component." },
+      { "label": "Assignment Fee (to SPG)", "amount": 8000, "section": "Consideration", "map": {"category": "Acquisition", "sub": "Assignment Fee"}, "confidence": 100, "why": "Assignment fee paid to SPG. Confirmed in QB: acquisition basis $308K = $300K price + $8K assignment." },
+      { "label": "Kiavi Loan Proceeds", "amount": 371000, "section": "Loan", "map": {"category": "Financing", "sub": "Loan Proceeds"}, "confidence": 100, "why": "Kiavi acquisition+rehab loan. Includes the $63K construction holdback. Loan proceeds are NOT a cost and NOT profit -- financing only. See DECISIONS.md." },
+      { "label": "Construction Holdback (within loan)", "amount": 63000, "section": "Loan", "map": {"category": "Financing", "sub": "Construction Holdback"}, "confidence": 100, "why": "Portion of the $371K loan held by lender, released as rehab draws. Profit-neutral: it funds rehab, which is already a cost line. Do NOT double-count." },
+      { "label": "Loan Interest (closing)", "amount": 2145.73, "section": "Loan", "map": {"category": "Interest", "sub": "Loan Interest"}, "confidence": 100, "why": "Per-diem / first-period interest collected at closing." },
+      { "label": "County Property Tax Proration", "amount": 468.72, "section": "Prorations", "map": {"category": "Settlement", "sub": "Tax Proration"}, "confidence": 100, "why": "30/360 day-count: $1,562.40 semi-annual / 180 x 54 days (11/7->1/1) = $468.72 exact. County ad-valorem only (not supplemental)." },
+      { "label": "Origination / Service Fees", "amount": null, "section": "Loan", "map": {"category": "Interest", "sub": "Origination / Points"}, "confidence": 90, "why": "Lender origination/service fees. Cost of money -> Interest bucket. Fill exact amount from statement." },
+      { "label": "Title Fees", "amount": null, "section": "Title", "map": {"category": "Settlement", "sub": "Title"}, "confidence": 100, "why": "Title insurance / title charges -> Settlement." },
+      { "label": "Escrow Fees", "amount": null, "section": "Escrow", "map": {"category": "Settlement", "sub": "Escrow"}, "confidence": 100, "why": "Escrow charges -> Settlement." }
+    ]
+  },
+
+  "sellSide": {
+    "title": "Sell-Side Closing (Diamond Quality)",
+    "status": "ESTIMATED",
+    "date": "2026-06-19",
+    "role": "Seller",
+    "lines": [
+      { "label": "Sale Price", "amount": 460000, "section": "Consideration", "map": {"category": "Resale", "sub": "Sale Price"}, "confidence": 100, "why": "Contract resale price." },
+      { "label": "Real Brokerage Commission", "amount": 9200, "section": "Commission", "map": {"category": "Settlement", "sub": "Commission"}, "confidence": 100, "why": "2% of $460,000 = $9,200. Selling commission -> Settlement." },
+      { "label": "Documentary Transfer Tax", "amount": 506.00, "section": "Government", "map": {"category": "Settlement", "sub": "Transfer Tax"}, "confidence": 100, "why": "$460,000 x $1.10/$1,000 = $506.00. County documentary transfer tax. AUTO-CALCULATED in the Resale section." },
+      { "label": "Property Tax Proration (2nd half)", "amount": 1728.63, "section": "Prorations", "map": {"category": "Settlement", "sub": "Tax Proration"}, "confidence": 90, "why": "Seller's share of unpaid 2nd-half (Jan-Jun) taxes prorated to COE. County ad-valorem. AUTO-CALCULATED in Resale section; verify against bill." },
+      { "label": "Kiavi Loan Payoff", "amount": 371000, "section": "Payoff", "map": {"category": "Financing", "sub": "Payoff (out)"}, "confidence": 100, "why": "Payoff of the same $371K Kiavi loan from the buy side. Profit-neutral (repays financing)." },
+      { "label": "Loan Interest (payoff)", "amount": 1938.48, "section": "Payoff", "map": {"category": "Interest", "sub": "Loan Interest"}, "confidence": 100, "why": "Accrued interest to payoff date -> Interest (a real holding cost)." },
+      { "label": "Pad / TC / Property-ID Fees", "amount": null, "section": "Other", "map": {"category": "Settlement", "sub": "Settlement Other"}, "confidence": 85, "why": "Misc closing fees (transaction coordinator, property ID, pad). Settlement bucket; confirm exact line + amount." }
+    ]
+  },
+
+  "ia": {
+    "_comment": "Investment Analysis. Only the fields here are editable inputs. Everything else is derived. Status gates which inputs are live.",
+    "inputs": {
+      "arv": 460000,
+      "purchasePrice": 300000,
+      "assignmentFee": 8000,
+      "rehabBudget": 63000,
+      "loanAmount": 371000,
+      "loanRatePct": 10,
+      "holdMonths": 7,
+      "sellingCommissionPct": 2.0
+    },
+    "_inputNotes": {
+      "rehabBudget": "At Estimated/Acquired this is the budget. At Final it is REPLACED by QB construction actuals.",
+      "arv": "After-repair value = projected sale price. Sell-side contract is $460,000."
+    },
+    "derivedFromWorkbook": {
+      "reportedProfit": 9367,
+      "warning": "Razor-thin. Workbook note: 'Need Supplemental Tax EST from Tony'. Supplemental tax is most of the remaining margin."
+    }
+  }
+}

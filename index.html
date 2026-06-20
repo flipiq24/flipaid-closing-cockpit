@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FlipAid · Closing Cockpit</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f3f4f6; --card:#fff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#f97316; --accent-soft:#fff1e6; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --radius:12px; --fs:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs)/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header.top{display:flex;align-items:center;gap:12px;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  .title{font-size:20px;font-weight:700}
+  .sub{color:var(--muted);font-size:14px}
+  .saved{margin-left:auto;color:var(--green);font-size:13px}
+  .tabs{display:flex;gap:24px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .tab{padding:14px 2px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab .count{font-size:11px;background:#f3f4f6;border-radius:10px;padding:2px 7px;margin-left:6px;color:var(--muted)}
+  .wrap{max-width:1180px;margin:22px auto;padding:0 28px}
+  .section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:18px}
+  .section h2{font-size:16px;margin:0 0 16px;display:flex;align-items:center;gap:10px}
+  .pill{font-size:11px;font-weight:600;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 9px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:12px;color:var(--muted)}
+  .field input,.field select{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff}
+  .field input[readonly]{background:#f9fafb;color:var(--muted)}
+  .req{color:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td input,td select{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 7px;font-size:13px}
+  td input.num{text-align:right}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;cursor:help}
+  .b100{background:#dcfce7;color:#166534}
+  .b90{background:#fef9c3;color:#854d0e}
+  .b80{background:#ffedd5;color:#9a3412}
+  .blo{background:#fee2e2;color:#991b1b}
+  .help{border-bottom:1px dotted var(--muted);cursor:help}
+  .row-tot td{font-weight:700;border-top:2px solid var(--ink)}
+  .kpi{display:flex;gap:18px;flex-wrap:wrap}
+  .kpi .box{flex:1;min-width:150px;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:14px}
+  .kpi .box .k{font-size:12px;color:var(--muted)}
+  .kpi .box .v{font-size:22px;font-weight:700;margin-top:4px}
+  .v.good{color:var(--green)} .v.bad{color:var(--red)}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+  .warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+  .statusrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .statusrow select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-weight:600}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="dot"></span>
+  <div>
+    <div class="title">Closing Cockpit <span class="sub" id="dealAddr"></span></div>
+  </div>
+  <span class="saved" id="saved">✓ Saved locally</span>
+</header>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-tab="ia">Investment Analysis</div>
+  <div class="tab" data-tab="buy">Buy-Side Closing</div>
+  <div class="tab" data-tab="sell">Sell-Side Closing</div>
+  <div class="tab" data-tab="qb">QB Accounting Export</div>
+</div>
+
+<div class="wrap">
+  <div class="bar">
+    <button class="btn" onclick="exportXlsx()">⬇ Download .xlsx (4 tabs)</button>
+    <button class="btn ghost" onclick="evaluateDeal()">🤖 AI Evaluate &amp; Comment</button>
+    <button class="btn ghost" onclick="resetOverrides()">↺ Reset overrides</button>
+  </div>
+  <div id="panel"></div>
+</div>
+
+<script>
+let D=null, OV={};            // OV = user overrides keyed by line id
+const $=s=>document.querySelector(s);
+const money=n=> (n==null||n==='')?'—':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const LS='flipaid-ramona-overrides';
+
+/* ---------- CA TAX MATH (single source of truth) ---------- */
+function transferTax(price, ratePer1000){ return +(price * ratePer1000/1000).toFixed(2); }
+function countyProration(semiAnnual, days){ return +(semiAnnual/180*days).toFixed(2); } // 30/360
+function supplemental(purchase, priorAssessed, annualRatePct, monthsFactor){
+  const base = purchase - (priorAssessed==null? purchase*0.60 : priorAssessed);
+  return +(base * (annualRatePct/100) * monthsFactor).toFixed(2);
+}
+
+/* ---------- load ---------- */
+async function boot(){
+  D = await (await fetch('./data/ramona.json')).json();
+  try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
+  $('#dealAddr').textContent = '· '+D.deal.address;
+  bindTabs(); render('ia');
+}
+function bindTabs(){
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active'); render(t.dataset.tab);
+  });
+}
+function saveOV(){ localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); }
+function flashSaved(){ const s=$('#saved'); s.textContent='✓ Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+
+/* ---------- helpers for line state (override-aware) ---------- */
+function lineState(side, idx){
+  const k = side+':'+idx; const base = D[side].lines[idx];
+  const o = OV[k]||{};
+  return {
+    amount: o.amount!==undefined ? o.amount : base.amount,
+    category: o.category || base.map.category,
+    sub: o.sub || base.map.sub,
+    confidence: base.confidence, why: base.why, label: base.label, section: base.section,
+    overridden: !!Object.keys(o).length
+  };
+}
+function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount') val=val===''?null:+val; OV[k][field]=val; saveOV(); }
+
+function badge(c){
+  const cls = c>=100?'b100':c>=90?'b90':c>=80?'b80':'blo';
+  return `<span class="badge ${cls}">${c}%</span>`;
+}
+function catOptions(sel){
+  return Object.keys(D.taxonomy.categories).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+}
+function subOptions(cat,sel){
+  return (D.taxonomy.categories[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
+}
+
+/* ---------- RENDER ---------- */
+function render(tab){
+  if(tab==='ia') return renderIA();
+  if(tab==='qb') return renderQB();
+  return renderClosing(tab==='buy'?'buySide':'sellSide', tab);
+}
+
+/* ----- closing tabs ----- */
+function renderClosing(sideKey, tabKey){
+  const side = D[sideKey];
+  // group by section
+  const groups={};
+  side.lines.forEach((l,i)=>{ (groups[l.section]=groups[l.section]||[]).push(i); });
+  let html = `<div class="warn">${side.title} — <b>${side.status}</b> · ${side.date} · you are the <b>${side.role}</b>.
+     Mapping dropdowns are pre-filled with my best guess; the % badge is my confidence — hover it for why. Change anything and it re-rolls into QB + the IA.</div>`;
+  for(const g in groups){
+    html += `<div class="section"><h2>${g} <span class="pill">${groups[g].length}</span></h2>
+      <table><thead><tr><th>Line</th><th class="num">Amount</th><th>Category</th><th>Sub-category</th><th>Conf.</th></tr></thead><tbody>`;
+    groups[g].forEach(i=>{
+      const s=lineState(sideKey,i); const k=sideKey+':'+i;
+      html += `<tr>
+        <td>${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
+        <td class="num"><input class="num" value="${s.amount==null?'':s.amount}" placeholder="—"
+            onchange="setOV('${k}','amount',this.value);render('${tabKey}')"></td>
+        <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',D.taxonomy.categories[this.value][0]);render('${tabKey}')">${catOptions(s.category)}</select></td>
+        <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select></td>
+        <td><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  // resale tax block on sell side
+  if(sideKey==='sellSide') html += resaleTaxBlock();
+  $('#panel').innerHTML = html;
+}
+
+function resaleTaxBlock(){
+  const t=D.taxInputs, price=D.ia.inputs.arv;
+  const tt = transferTax(price, t.transferTaxRatePer1000);
+  const prorate = countyProration(t.semiAnnualBill, 12); // sample 12-day seller share
+  const supp = supplemental(D.ia.inputs.purchasePrice, t.priorAssessedValue, t.annualTaxRatePct, 0.5);
+  const apnTip = `APN ${D.deal.apn}, ${D.deal.county} County. ${t.annualTaxRateSource}`;
+  return `<div class="section"><h2>Resale — Tax (auto-calculated) <span class="pill">CA</span></h2>
+    <table><tbody>
+    <tr><td>Documentary Transfer Tax</td><td class="num">${money(tt)}</td>
+        <td><span class="help" title="${t.transferTaxSource.replace(/"/g,'&quot;')}">${badge(100)} why</span></td></tr>
+    <tr><td>County Property Tax Proration (30/360)</td><td class="num">${money(prorate)}</td>
+        <td><span class="help" title="${t.dayCountSource.replace(/"/g,'&quot;')}">${badge(90)} why</span></td></tr>
+    <tr><td>Supplemental Tax (reassessment)</td><td class="num">${money(supp)}</td>
+        <td><span class="help" title="${(t.supplementalNote+' '+apnTip).replace(/"/g,'&quot;')}">${badge(70)} why</span></td></tr>
+    </tbody></table>
+    <div class="note">Rate ${t.annualTaxRatePct}% is a placeholder — confirm against the secured bill for ${D.deal.apn}. County vs. Supplemental are split deliberately: the supplemental reassessment bite is most of this deal's remaining margin.</div>
+  </div>`;
+}
+
+/* ----- IA tab ----- */
+function renderIA(){
+  const ia=D.ia.inputs, st=D.deal.status, opts=D.deal._statusOptions;
+  // status gating: which fields are live
+  const live = {
+    Estimated:   ['arv','purchasePrice','assignmentFee','rehabBudget','loanAmount','loanRatePct','holdMonths','sellingCommissionPct'],
+    Acquired:    ['arv','rehabBudget','loanRatePct','holdMonths','sellingCommissionPct'],
+    'Estimated Closing': ['arv','rehabBudget','sellingCommissionPct'],
+    Final:       ['arv','sellingCommissionPct']
+  }[st];
+  const flds=[
+    ['arv','ARV / Sale Price'],['purchasePrice','Purchase Price'],['assignmentFee','Assignment Fee'],
+    ['rehabBudget', st==='Final'?'Rehab (actuals from QB)':'Rehab Budget'],
+    ['loanAmount','Loan Amount'],['loanRatePct','Loan Rate %'],['holdMonths','Hold Months'],['sellingCommissionPct','Selling Commission %']
+  ];
+  // math
+  const acq = ia.purchasePrice + ia.assignmentFee;
+  const interest = ia.loanAmount*(ia.loanRatePct/100)/12*ia.holdMonths;
+  const commission = ia.arv*(ia.sellingCommissionPct/100);
+  const tt = transferTax(ia.arv, D.taxInputs.transferTaxRatePer1000);
+  const supp = supplemental(ia.purchasePrice, D.taxInputs.priorAssessedValue, D.taxInputs.annualTaxRatePct, 0.5);
+  const costs = acq + ia.rehabBudget + interest + commission + tt + supp;
+  const profit = ia.arv - costs;
+
+  let g='';
+  flds.forEach(([key,lab])=>{
+    const on=live.includes(key);
+    g+=`<div class="field"><label>${lab}${on?'':' <span class="note">(locked at this status)</span>'}</label>
+      <input ${on?'':'readonly'} value="${ia[key]}" onchange="D.ia.inputs.${key}=+this.value;OV._ia=D.ia.inputs;saveOV();render('ia')"></div>`;
+  });
+
+  $('#panel').innerHTML = `
+   <div class="section">
+     <div class="statusrow"><b>Status</b>
+       <select onchange="D.deal.status=this.value;OV._status=this.value;saveOV();render('ia')">
+         ${opts.map(o=>`<option ${o===st?'selected':''}>${o}</option>`).join('')}</select>
+       <span class="note">Estimated → Acquired → Estimated Closing → Final. Status controls which inputs stay live; the rest lock so the face shows only what you fill.</span>
+     </div>
+     <div class="warn">Workbook reported profit was <b>$9,367</b> — razor-thin. Note on file: "Need Supplemental Tax EST from Tony." Supplemental is split out below so you can see it bite.</div>
+     <h2>Inputs <span class="pill">${live.length} live</span></h2>
+     <div class="grid">${g}</div>
+   </div>
+   <div class="section">
+     <h2>Result</h2>
+     <div class="kpi">
+       <div class="box"><div class="k">Total Cost Basis</div><div class="v">${money(costs)}</div></div>
+       <div class="box"><div class="k">Est. Net Profit</div><div class="v ${profit>=0?'good':'bad'}">${money(profit)}</div></div>
+       <div class="box"><div class="k">Supplemental Tax</div><div class="v">${money(supp)}</div></div>
+       <div class="box"><div class="k">Transfer Tax</div><div class="v">${money(tt)}</div></div>
+     </div>
+     <div class="note">Cost = Acquisition (${money(acq)}) + Rehab (${money(ia.rehabBudget)}) + Interest (${money(interest)}) + Commission (${money(commission)}) + Transfer Tax + Supplemental.
+     Loan proceeds and the $63K holdback are financing — profit-neutral, not counted here (see DECISIONS.md).</div>
+   </div>`;
+}
+
+/* ----- QB export tab ----- */
+function qbRows(){
+  const rows=[];
+  ['buySide','sellSide'].forEach(side=>{
+    D[side].lines.forEach((l,i)=>{
+      const s=lineState(side,i); if(s.amount==null) return;
+      rows.push({Type:D[side].role, Date:D[side].date, Name:D[side].title, Memo:s.label,
+                 Category:s.category, Sub:s.sub, Amount:s.amount, side, idx:i});
+    });
+  });
+  return rows;
+}
+function renderQB(){
+  const rows=qbRows();
+  let html=`<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Download writes all four tabs to one .xlsx.</div>
+   <div class="section"><h2>Ledger <span class="pill">${rows.length} lines</span></h2>
+   <table><thead><tr><th>Date</th><th>Memo</th><th>Category</th><th>Sub</th><th class="num">Amount</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const k=r.side+':'+r.idx;
+    html+=`<tr><td>${r.Date}</td><td>${r.Memo}</td>
+      <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',D.taxonomy.categories[this.value][0]);render('qb')">${catOptions(r.Category)}</select></td>
+      <td><select onchange="setOV('${k}','sub',this.value);render('qb')">${subOptions(r.Category,r.Sub)}</select></td>
+      <td class="num"><input class="num" value="${r.Amount}" onchange="setOV('${k}','amount',this.value);render('qb')"></td></tr>`;
+  });
+  // category totals
+  const tot={}; rows.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+r.Amount);
+  html+=`</tbody></table></div><div class="section"><h2>Totals by category</h2><table><tbody>`;
+  Object.keys(tot).forEach(c=>html+=`<tr><td>${c}</td><td class="num">${money(tot[c])}</td></tr>`);
+  html+=`</tbody></table></div>`;
+  $('#panel').innerHTML=html;
+}
+
+/* ---------- xlsx export (all 4 tabs) ---------- */
+function exportXlsx(){
+  const wb=XLSX.utils.book_new();
+  // IA
+  const ia=D.ia.inputs;
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Investment Analysis','',], ['Status',D.deal.status],
+    ...Object.entries(ia).map(([k,v])=>[k,v])
+  ]), 'IA');
+  // closings
+  ['buySide','sellSide'].forEach((side,n)=>{
+    const aoa=[['Line','Amount','Category','Sub','Confidence','Why']];
+    D[side].lines.forEach((l,i)=>{const s=lineState(side,i);aoa.push([s.label,s.amount,s.category,s.sub,s.confidence+'%',s.why]);});
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), n? 'Sell-Side':'Buy-Side');
+  });
+  // QB
+  const rows=qbRows();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    rows.map(r=>({Type:r.Type,Date:r.Date,Name:r.Name,Memo:r.Memo,Category:r.Category,Sub:r.Sub,Amount:r.Amount}))
+  ), 'QB Export');
+  XLSX.writeFile(wb, '15620-ramona-closing.xlsx');
+}
+
+/* ---------- AI evaluate (optional server) ---------- */
+async function evaluateDeal(){
+  try{
+    const res=await fetch('/api/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({deal:D.deal,ia:D.ia.inputs,qb:qbRows()})});
+    if(!res.ok) throw new Error('no server');
+    const j=await res.json(); alert('AI Evaluation:\n\n'+(j.comment||JSON.stringify(j)));
+  }catch(e){
+    alert('AI Evaluate needs the backend running (server/index.js) with ANTHROPIC_API_KEY set.\nIn Replit: add the secret, run the server, then this button calls /api/evaluate.');
+  }
+}
+function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); render('ia'); document.querySelector('.tab').click(); } }
+
+/* apply persisted status/ia overrides before first render */
+boot().then(()=>{ if(OV._status){D.deal.status=OV._status;} if(OV._ia){Object.assign(D.ia.inputs,OV._ia);} render('ia'); });
+</script>
+</body>
+</html>
