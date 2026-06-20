@@ -190,6 +190,24 @@
   .bal-bad{color:var(--red);font-weight:700}
   .bal-net{color:#1f3864;font-weight:700}
   .bal-hint{color:var(--muted);font-weight:400;font-size:11px}
+  /* statement ingest dropzone */
+  .upl{border:1.5px dashed #c7ccd3;border-radius:12px;background:#fafbfc;padding:14px 16px;margin-bottom:14px;transition:border-color .15s,background .15s}
+  .upl.drag{border-color:var(--accent);background:#fff7f0}
+  .upl-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .upl-ico{width:36px;height:36px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+  .upl-txt{flex:1;min-width:200px}
+  .upl-t{font-weight:700;font-size:14px}
+  .upl-s{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .upl-browse{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline}
+  .upl-browse input{display:none}
+  .upl-link{display:flex;flex-direction:column;gap:4px;min-width:240px}
+  .upl-link span{font-size:11.5px;color:var(--muted)}
+  .upl-link input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+  .upl-link input:focus{border-color:var(--accent);outline:none}
+  .upl-have{margin-top:10px;font-size:12.5px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+  .upl-have .ok{color:var(--green);font-weight:600}
+  .upl-have .muted{color:var(--muted)}
+  .upl-x{color:var(--red);cursor:pointer;margin-left:8px;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -236,6 +254,8 @@ async function boot(){
   try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
   if(OV._status){ D.deal.status=OV._status; }
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
+  // restore any parsed statement lines from a prior attach
+  ['buySide','sellSide'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)&&dd.lines.length){ D[sd].lines=dd.lines; if(dd.meta) Object.assign(D[sd], dd.meta); } });
   renderHeaderMeta();
   renderTabs(); bindTabs(); render('ia');
 }
@@ -324,6 +344,62 @@ function render(tab){
   return renderClosing(tab==='buy'?'buySide':'sellSide', tab);
 }
 
+/* ----- statement ingest: file / drag-drop / Google Doc link -> auto-sets Mode ----- */
+function srcState(side){ return (OV._src && OV._src[side]) || {}; }
+// which IA Mode (H2) an attached statement implies
+function modeForSide(side){
+  const st = D[side].status;
+  if(side==='buySide') return st==='FINAL' ? 'Final HUD-1 Purchase' : 'Acquisition Approved';
+  return st==='FINAL' ? 'Final HUD-1 Resale' : 'Estimated HUD-1 Resale';
+}
+function applyAttach(side, kind, name, url){
+  OV._src = OV._src || {}; OV._src[side] = {kind, name, url, parsed:false};
+  const mode = modeForSide(side);                 // <-- Mode updates automatically on attach
+  D.ia.inputs.mode = mode; OV._ia = D.ia.inputs;
+  saveOV();
+  tryParse(side);                                  // optional backend parse fills the lines
+  render(side==='buySide'?'buy':'sell');
+}
+function fileStmt(side, inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
+function dropStmt(side, ev){ ev.preventDefault(); ev.currentTarget.classList.remove('drag'); const f=ev.dataTransfer.files&&ev.dataTransfer.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
+function linkStmt(side, url){ url=(url||'').trim(); if(!url) return; applyAttach(side,'link','',url); }
+function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; saveOV(); render(side==='buySide'?'buy':'sell'); } }
+async function tryParse(side){
+  try{
+    const src=srcState(side); const f=window.__stmtFiles&&window.__stmtFiles[side];
+    let res;
+    if(f){ const fd=new FormData(); fd.append('file',f); fd.append('side',side); res=await fetch('/api/parse',{method:'POST',body:fd}); }
+    else { res=await fetch('/api/parse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({side,link:src.url})}); }
+    if(!res||!res.ok) return;                       // no backend/key -> attachment + Mode still applied
+    const j=await res.json();
+    if(j && Array.isArray(j.lines) && j.lines.length){
+      D[side].lines=j.lines; if(j.meta) Object.assign(D[side], j.meta);
+      OV._src[side].parsed=true; OV['_data_'+side]={lines:D[side].lines, meta:j.meta||null};
+      saveOV(); render(side==='buySide'?'buy':'sell');
+    }
+  }catch(e){ /* backend not available; attachment + Mode update remain in effect */ }
+}
+function uploadCard(sideKey){
+  const label = sideKey==='buySide' ? 'buy-side' : 'sell-side';
+  const s = srcState(sideKey);
+  const have = s.name || s.url;
+  return `<div class="upl" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropStmt('${sideKey}',event)">
+     <div class="upl-row">
+       <div class="upl-ico">⬆</div>
+       <div class="upl-txt">
+         <div class="upl-t">Add the ${label} settlement statement</div>
+         <div class="upl-s">Drag &amp; drop a PDF / image / XLSX here, or
+           <label class="upl-browse">browse your computer<input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv" onchange="fileStmt('${sideKey}',this)"></label></div>
+       </div>
+       <div class="upl-link">
+         <span>or paste a Google Doc / Drive link</span>
+         <input type="url" placeholder="https://docs.google.com/…" value="${s.url||''}" onchange="linkStmt('${sideKey}',this.value)">
+       </div>
+     </div>
+     ${have ? `<div class="upl-have">📎 <b>${s.name||s.url}</b> — Mode auto-set to <b>${D.ia.inputs.mode}</b>${s.parsed?' · <span class="ok">parsed ✓</span>':' · <span class="muted">attached (auto-parse runs on the backend with ANTHROPIC_API_KEY; lines stay editable meanwhile)</span>'} <a class="upl-x" onclick="clearStmt('${sideKey}')">remove</a></div>` : ''}
+   </div>`;
+}
+
 /* ----- closing tabs ----- */
 function renderClosing(sideKey, tabKey){
   const side = D[sideKey];
@@ -331,8 +407,8 @@ function renderClosing(sideKey, tabKey){
   const groups={}, order=[];
   side.lines.forEach((l,i)=>{ if(!groups[l.section]){groups[l.section]=[];order.push(l.section);} groups[l.section].push(i); });
 
-  // statement-style header card
-  let html = `<div class="stmt-hd">
+  // statement-style header card (preceded by the ingest dropzone)
+  let html = uploadCard(sideKey) + `<div class="stmt-hd">
      <div class="stmt-hd-l">
        <div class="stmt-co">${side.escrowCompany||''}</div>
        <div class="stmt-ttl">${side.title} <span class="stmt-badge ${side.status==='FINAL'?'fin':'est'}">${side.status}</span></div>
