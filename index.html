@@ -376,6 +376,16 @@ function catOptions(sel,side){
 function subOptions(cat,sel){
   return (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
 }
+// "Don't Map" dropdowns: show EVERY category / sub (not side-filtered), with an explicit
+// "Don't Map" choice (value="") as the default. Used by the auto-calculated resale tax block.
+function dontMapCat(sel){
+  return `<option value="" ${sel?'':'selected'}>— Don't Map —</option>`
+    + Object.keys(taxCats()).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+}
+function dontMapSub(cat,sel){
+  return `<option value="" ${sel?'':'selected'}>— Don't Map —</option>`
+    + (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
+}
 
 /* ---------- RENDER ---------- */
 // Global summary band — shown above the panel on EVERY tab. Data-driven: add/remove/
@@ -564,21 +574,41 @@ function renderClosing(sideKey, tabKey){
 }
 
 function resaleTaxBlock(){
-  const t=D.taxInputs, price=D.ia.inputs.arv;
+  const t=D.taxInputs, price=D.ia.inputs.arv, purchase=D.ia.inputs.purchasePrice;
   const tt = transferTax(price, t.transferTaxRatePer1000);
   const prorate = countyProration(t.semiAnnualBill, 12); // sample 12-day seller share
-  const supp = supplemental(D.ia.inputs.purchasePrice, t.priorAssessedValue, t.annualTaxRatePct, 0.5);
+  const supp = supplemental(purchase, t.priorAssessedValue, t.annualTaxRatePct, 0.5);
+  const prior = (t.priorAssessedValue==null ? purchase*0.60 : t.priorAssessedValue);
+  const suppBase = purchase - prior;
   const apnTip = `APN ${D.deal.apn}, ${D.deal.county} County. ${t.annualTaxRateSource}`;
-  return `<div class="section"><h2>Resale — Tax (auto-calculated) <span class="pill">CA</span></h2>
-    <table><tbody>
-    <tr><td>Documentary Transfer Tax</td><td class="num">${money(tt)}</td>
-        <td><span class="help" title="${t.transferTaxSource.replace(/"/g,'&quot;')}">${badge(100)} why</span></td></tr>
-    <tr><td>County Property Tax Proration (30/360)</td><td class="num">${money(prorate)}</td>
-        <td><span class="help" title="${t.dayCountSource.replace(/"/g,'&quot;')}">${badge(90)} why</span></td></tr>
-    <tr><td>Supplemental Tax (reassessment)</td><td class="num">${money(supp)}</td>
-        <td><span class="help" title="${(t.supplementalNote+' '+apnTip).replace(/"/g,'&quot;')}">${badge(70)} why</span></td></tr>
-    </tbody></table>
-    <div class="note">Rate ${t.annualTaxRatePct}% is a placeholder — confirm against the secured bill for ${D.deal.apn}. County vs. Supplemental are split deliberately: the supplemental reassessment bite is most of this deal's remaining margin.</div>
+  // Each line shows its own formula so the math is explicit.
+  const rows=[
+    {key:'resaleTax:transferTax', label:'Documentary Transfer Tax', amt:tt, conf:100, why:t.transferTaxSource,
+      math:`${money(price)} (ARV) × ${(+t.transferTaxRatePer1000).toFixed(2)} ÷ 1,000`},
+    {key:'resaleTax:proration', label:'County Property Tax Proration (30/360)', amt:prorate, conf:90, why:t.dayCountSource,
+      math:`${money(t.semiAnnualBill)} (semi-annual bill) ÷ 180 days × 12 days (seller share)`},
+    {key:'resaleTax:supplemental', label:'Supplemental Tax (reassessment)', amt:supp, conf:70, why:t.supplementalNote+' '+apnTip,
+      math:`(${money(purchase)} purchase − ${money(prior)} prior assessed${t.priorAssessedValue==null?' est. @60%':''}) × ${t.annualTaxRatePct}% × 0.5 yr = ${money(suppBase)} × ${t.annualTaxRatePct}% × 0.5`},
+  ];
+  const sel=k=>(OV[k]||{});
+  const anyUnmapped = rows.some(r=>!sel(r.key).category);
+  const secStyle = anyUnmapped ? ' style="border:2px solid #d33;border-radius:8px"' : '';
+  const headStyle = anyUnmapped ? ' style="color:#d33"' : '';
+  const body = rows.map(r=>{
+    const s=sel(r.key);
+    return `<tr>
+      <td class="desc">${r.label}<div class="note" style="margin:3px 0 0">= ${r.math}</div></td>
+      <td class="num">${money(r.amt)}</td>
+      <td><select onchange="setOV('${r.key}','category',this.value);setOV('${r.key}','sub',this.value?firstSub(this.value):'');render('sell')">${dontMapCat(s.category)}</select></td>
+      <td><select onchange="setOV('${r.key}','sub',this.value);render('sell')">${dontMapSub(s.category,s.sub)}</select></td>
+      <td class="cf"><span class="help" title="${(r.why||'').replace(/"/g,'&quot;')}">${badge(r.conf)} why</span></td>
+    </tr>`;
+  }).join('');
+  return `<div class="section"${secStyle}><h2${headStyle}>Resale — Tax (auto-calculated) <span class="pill">CA</span>${anyUnmapped?' <span class="pill" style="background:#d33;color:#fff">unmapped</span>':''}</h2>
+    <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup>
+    <thead><tr><th>Tax (with math)</th><th class="num">Amount</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead>
+    <tbody>${body}</tbody></table>
+    <div class="note">Rate ${t.annualTaxRatePct}% is a placeholder — confirm against the secured bill for ${D.deal.apn}. County vs. Supplemental are split deliberately: the supplemental reassessment bite is most of this deal's remaining margin. These are auto-calculated cross-checks: left as “Don't Map” (default) they stay informational and do not post to QuickBooks — the actual sell-side statement lines already carry these taxes.</div>
   </div>`;
 }
 
