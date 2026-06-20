@@ -188,7 +188,15 @@
   table.stmt td.num input:focus{border-color:var(--accent);outline:none}
   table.stmt select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font:inherit;background:#fff}
   table.stmt .dash{color:#cbd0d6}
+  /* Debit / Credit "lanes" — tinted columns so the eye tracks money-out vs money-in */
+  table.stmt th.deb,table.stmt td.deb{background:#fdf3ef;border-left:1px solid #efddd2}
+  table.stmt th.cred,table.stmt td.cred{background:#eef7f1;border-right:1px solid #d8ebdf}
+  table.stmt th.deb{color:#9a4a28}
+  table.stmt th.cred{color:#166534}
+  table.stmt td.deb b{color:#9a4a28}
+  table.stmt td.cred b{color:#166534}
   table.stmt.stmt-total td{border-top:2px solid var(--ink);border-bottom:none;padding-top:10px;font-size:14px}
+  table.stmt.stmt-total td.deb,table.stmt.stmt-total td.cred{border-top:2px solid var(--ink)}
   .bal-ok{color:var(--green);font-weight:700}
   .bal-bad{color:var(--red);font-weight:700}
   .bal-net{color:#1f3864;font-weight:700}
@@ -443,7 +451,7 @@ function renderClosing(sideKey, tabKey){
   let tDeb=0, tCred=0;
   order.forEach(g=>{
     html += `<div class="section"><h2 class="stmt-sec">${g}</h2>
-      <table class="stmt"><thead><tr><th>Description</th><th class="num">Debits</th><th class="num">Credits</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead><tbody>`;
+      <table class="stmt"><thead><tr><th>Description</th><th class="num deb">Debits</th><th class="num cred">Credits</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead><tbody>`;
     groups[g].forEach(i=>{
       const s=lineState(sideKey,i); const k=sideKey+':'+i;
       const isCredit = s.credit!=null || (s.debit==null && /deposit|proceeds|trust deed|sale price|credit/i.test(s.label));
@@ -455,8 +463,8 @@ function renderClosing(sideKey, tabKey){
         : '<span class="dash">—</span>';
       html += `<tr id="src-${sideKey}-${i}">
         <td class="desc">${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
-        <td class="num">${debCell}</td>
-        <td class="num">${credCell}</td>
+        <td class="num deb">${debCell}</td>
+        <td class="num cred">${credCell}</td>
         <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('${tabKey}')">${catOptions(s.category)}</select></td>
         <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select></td>
         <td class="cf"><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
@@ -471,8 +479,8 @@ function renderClosing(sideKey, tabKey){
   const netMsg = diff<0 ? `Net proceeds to ${role}: ${money(-diff)}` : `Funds to close from ${role}: ${money(diff)}`;
   html += `<div class="section"><table class="stmt stmt-total"><tbody><tr>
      <td class="desc"><b>TOTAL</b></td>
-     <td class="num"><b>${money(tDeb)}</b></td>
-     <td class="num"><b>${money(tCred)}</b></td>
+     <td class="num deb"><b>${money(tDeb)}</b></td>
+     <td class="num cred"><b>${money(tCred)}</b></td>
      <td colspan="3" class="${bal?'bal-ok':'bal-net'}">${bal?'✓ Balanced':netMsg+' <span class="bal-hint">(balancing line — add on the actual statement to foot to zero)</span>'}</td>
    </tr></tbody></table></div>`;
 
