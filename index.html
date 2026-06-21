@@ -332,6 +332,9 @@ function supplemental(purchase, priorAssessed, annualRatePct, monthsFactor){
 async function boot(){
   D = await (await fetch('./data/ramona.json')).json();
   try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
+  // Saved overrides are scoped to a deal. If they belong to a different deal (or are legacy/unstamped),
+  // discard them so one deal's edits can never bleed onto another via localStorage.
+  if(OV._dealId !== D.deal.id){ OV={}; localStorage.removeItem(LS); }
   // One-time wipe of Buy-Side, Sell-Side and QB Accounting data (user requested clearing these tabs).
   // Guarded by a flag so future uploads/additions/manual entries are NOT wiped on every reload.
   if(!OV._wipeClosingV1){
@@ -395,6 +398,7 @@ function saveOV(){
     let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){}
     h.push(prev!=null?prev:'{}'); if(h.length>200) h.shift(); localStorage.setItem(LS_HIST, JSON.stringify(h));
   }catch(e){}
+  if(D&&D.deal) OV._dealId=D.deal.id;   // stamp the deal so boot() can discard cross-deal overrides
   localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); updateBackBtn();
 }
 // "← Back": revert the last input by restoring the previous saved state, then rebuild from boot.
@@ -1695,7 +1699,7 @@ async function evaluateDeal(ev){
     alert('AI Evaluate needs the backend running (server/index.js) with ANTHROPIC_API_KEY set.\nIn Replit: add the secret, run the server, then this button calls /api/evaluate.');
   }
 }
-function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); render('ia'); document.querySelector('.tab').click(); } }
+function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); location.reload(); } }  // reload re-fetches the data file (boot's Object.assign mutates D in place, so render() alone won't undo it)
 
 boot();
 </script>
