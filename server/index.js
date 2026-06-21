@@ -160,11 +160,17 @@ app.post('/api/parse', upload.single('file'), async (req, res) => {
       if (!doc) return res.status(400).json({ error: 'Provide a file, a public link, or pasted text.' });
       content.push({ type: 'text', text: instr + '\n\nSTATEMENT TEXT:\n' + String(doc).slice(0, 60000) });
     }
-    const msg = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 4000, messages: [{ role: 'user', content }] });
-    const raw = msg.content.map(c => c.text || '').join('').trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
+    const msg = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 16000, messages: [{ role: 'user', content }] });
+    const text = msg.content.map(c => c.text || '').join('').trim();
+    // Robust extraction: grab the outermost {…} so leading prose or a stray ``` fence can't break JSON.parse.
+    const first = text.indexOf('{'), last = text.lastIndexOf('}');
+    const raw = (first !== -1 && last !== -1 && last > first) ? text.slice(first, last + 1) : text;
     let parsed;
     try { parsed = JSON.parse(raw); }
-    catch (e) { return res.status(502).json({ error: 'Model did not return valid JSON', raw: raw.slice(0, 500) }); }
+    catch (e) {
+      // stop_reason === 'max_tokens' means the model was truncated mid-JSON — raise max_tokens.
+      return res.status(502).json({ error: 'Model did not return valid JSON', stop_reason: msg.stop_reason, raw: text.slice(0, 2000) });
+    }
     res.json(parsed);
   } catch (e) {
     res.status(500).json({ error: String(e) });

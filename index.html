@@ -74,6 +74,9 @@
   .bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
   .warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
   .warn-err{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+  .raw-dump{margin-top:6px}
+  .raw-dump summary{cursor:pointer;font-weight:600}
+  .raw-dump pre{margin:6px 0 0;padding:8px;background:#fff;border:1px solid #fecaca;border-radius:6px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px}
   .statusrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
   .statusrow select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-weight:600}
   .note{font-size:12px;color:var(--muted);margin-top:8px}
@@ -572,8 +575,15 @@ async function tryParse(side){
         saveOV();
       } else { setParseErr(side,'No lines found in that document. Check the file or paste the text.'); }
     } else if(res){                                  // backend reachable but returned an error
-      let m=''; try{ m=(await res.json()).error||''; }catch(e){}
-      setParseErr(side, res.status===503 ? 'AI parsing is off (no API key) — the file is attached; map lines manually.' : (m||('Could not process the file ('+res.status+').')));
+      let j={}; try{ j=await res.json(); }catch(e){}
+      const m=j.error||'';
+      if(res.status===503){ setParseErr(side,'AI parsing is off (no API key) — the file is attached; map lines manually.'); }
+      else {
+        let msg = m || ('Could not process the file ('+res.status+').');
+        if(j.stop_reason){ msg += ` <span class="muted">(stop_reason: ${esc(String(j.stop_reason))}${j.stop_reason==='max_tokens'?' — output was truncated':''})</span>`; }
+        if(j.raw){ msg += `<details class="raw-dump"><summary>Show raw model output</summary><pre>${esc(String(j.raw))}</pre></details>`; }
+        setParseErr(side, msg);
+      }
     }
   }catch(e){ setParseErr(side,'Could not reach the parser. The file is attached; map lines manually.'); }
   finally{ setParsing(side,false); render(tabFor(side)); }   // clear the spinner; show whatever we have
