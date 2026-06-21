@@ -1528,7 +1528,8 @@ function renderQB(){
     <table class="qbtot"><tbody>`+
     catsOrdered.map(c=>{const col=qbCatColor(c);
       const act=(qbView.filter===c)?' qb-tot-filter':((qbView.hi===c)?' qb-tot-hi':'');
-      return `<tr class="${act}" style="background:${col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num${tot[c]<0?' neg':''}">${money(tot[c])}</td></tr>`;
+      const dim=qbView.hi && qbView.hi!==c;   // another category is highlighted → fade this row to white
+      return `<tr class="${act}" style="background:${dim?'#fff':col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num${tot[c]<0?' neg':''}">${money(tot[c])}</td></tr>`;
     }).join('')+
     `</tbody></table></div>`;
   // ledger rows: default order = category then sub (canonical); a column-header click overrides it.
@@ -1543,8 +1544,9 @@ function renderQB(){
     const bad=redImp[qbRowKey(r)];
     const col=qbCatColor(r.Category);
     const hi = qbView.hi && r.Category===qbView.hi;
+    const dim = qbView.hi && !hi;   // another category is highlighted → fade this row to white
     const cls = ((bad?'qb-bad':'') + (hi?' qb-hi':'')).trim();
-    const st = (!bad && !hi) ? ` style="background:${col.bg}"` : '';
+    const st = (!bad && !hi) ? ` style="background:${dim?'#fff':col.bg}"` : '';
     const trHead = `<tr class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
       html+=`${trHead}<td></td><td>${r.Memo}</td>
