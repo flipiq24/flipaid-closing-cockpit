@@ -213,6 +213,7 @@
   tr.qb-hi>td{background:#fde68a !important}
   .qb-filterbar{font-size:12.5px;margin:8px 0 4px;color:#334155}
   .qb-filterbar .pill{cursor:pointer;background:#e2e8f0;margin-left:6px}
+  .pill-qb{background:#e2e8f0;color:#475569}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
   .stmt-hd{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .stmt-co{font-size:12px;color:var(--muted);font-weight:600}
@@ -1359,19 +1360,11 @@ function renderIA(){
 }
 
 /* ----- QB export tab ----- */
-function qbRows(){
+// The buy/sell closing lines + additions + IA-only costs, composed into ledger rows.
+// Used directly as the ledger when no QB doc is uploaded, AND (always) to work out which
+// of these sources each uploaded QB line matches — see derivedSourceMap / matchSource.
+function derivedRows(){
   const rows=[];
-  // An uploaded QB document (parsed into D.qb.lines) overwrites the auto-derived ledger below;
-  // manual entries are always kept (see the QB tab warn text).
-  if(D.qb && Array.isArray(D.qb.lines) && D.qb.lines.length){
-    D.qb.lines.forEach((l,i)=>{
-      try{
-        const s=lineState('qb',i); if(s.amount==null) return;
-        rows.push({Type:'QB', Date:(D.qb.date||''), Name:(D.qb.title||'QuickBooks Accounting'), Memo:(s.label||'(line)'),
-                   Category:s.category, Sub:s.sub, Amount:s.amount, side:'qb', idx:i, source:'QB Import', conf:s.confidence});
-      }catch(e){ /* skip a malformed parsed line rather than crash the whole ledger */ }
-    });
-  } else {
   ['buySide','sellSide'].forEach(side=>{
     const source = side==='buySide' ? 'Buy-Side Closing' : 'Sell-Side Closing';
     D[side].lines.forEach((l,i)=>{
@@ -1408,6 +1401,47 @@ function qbRows(){
     rows.push({Type:'IA', Date:'', Name:'Investment Analysis', Memo:x.label,
                Category:x.cat, Sub:x.sub, Amount:x.amt, idx, isIA:true, source:'Investment Analysis', conf:null});
   });
+  return rows;
+}
+// Map each Category (and Category|Sub) in the derived ledger to the source(s) carrying a cost
+// there, so an uploaded QB line can show what it matches instead of a blanket "QB Import".
+const DERIVED_SRC_ORDER=['Buy-Side Closing','Sell-Side Closing','Investment Analysis'];
+function derivedSourceMap(){
+  const byCat={}, bySub={};
+  const add=(m,k,src)=>{ (m[k]=m[k]||new Set()).add(src); };
+  derivedRows().forEach(r=>{ add(byCat,r.Category||'',r.source); add(bySub,(r.Category||'')+'|'+(r.Sub||''),r.source); });
+  return {byCat,bySub};
+}
+// For an uploaded QB line: prefer a Category|Sub match, fall back to Category. No match -> "QB".
+function matchSource(map, cat, sub){
+  const subKey=(cat||'')+'|'+(sub||'');
+  const set = (map.bySub[subKey] && map.bySub[subKey].size) ? map.bySub[subKey] : map.byCat[cat||''];
+  if(!set || !set.size) return 'QB';
+  const ordered = DERIVED_SRC_ORDER.filter(s=>set.has(s));
+  return (ordered.length?ordered:Array.from(set)).join(' + ');
+}
+// Render a source string ("Buy-Side Closing + Investment Analysis" / "QB") as one pill each.
+function srcPills(src){
+  return String(src||'').split(' + ').filter(Boolean)
+    .map(s=>`<span class="pill${s==='QB'?' pill-qb':''}">${s}</span>`).join(' ');
+}
+function qbRows(){
+  const rows=[];
+  // An uploaded QB document (parsed into D.qb.lines) overwrites the auto-derived ledger below;
+  // manual entries are always kept (see the QB tab warn text). Each uploaded line shows which
+  // derived source (Buy/Sell/IA) it matches, or "QB" when it's only in QuickBooks.
+  if(D.qb && Array.isArray(D.qb.lines) && D.qb.lines.length){
+    const srcMap=derivedSourceMap();
+    D.qb.lines.forEach((l,i)=>{
+      try{
+        const s=lineState('qb',i); if(s.amount==null) return;
+        rows.push({Type:'QB', Date:(D.qb.date||''), Name:(D.qb.title||'QuickBooks Accounting'), Memo:(s.label||'(line)'),
+                   Category:s.category, Sub:s.sub, Amount:s.amount, side:'qb', idx:i,
+                   source:matchSource(srcMap, s.category, s.sub), conf:s.confidence});
+      }catch(e){ /* skip a malformed parsed line rather than crash the whole ledger */ }
+    });
+  } else {
+    derivedRows().forEach(r=>rows.push(r));
   }
   // Manual QB-only entries: keyed in the QB tab, never imported. Source = "QB Accounting".
   qbManual().forEach((m,idx)=>{
@@ -1499,7 +1533,7 @@ function renderQB(){
     ? `<div class="qb-filterbar">Showing only <b>${qbView.filter}</b><span class="pill" onclick="qbClearView()">show all ✕</span></div>` : '';
   let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}
    <div class="section"><h2>Ledger <span class="pill">${ledger.length} lines</span></h2>${filterBar}
-   <table><thead><tr>${['Date','Memo','Source','Conf','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
+   <table><thead><tr>${['Date','Memo','Source','Conf','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c==='Source'?'Match / Source':c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
   ledger.forEach(r=>{
     const bad=redImp[qbRowKey(r)];
     const col=qbCatColor(r.Category);
@@ -1509,7 +1543,7 @@ function renderQB(){
     const trHead = `<tr class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
       html+=`${trHead}<td></td><td>${r.Memo}</td>
-        <td><span class="pill">${r.source}</span></td>
+        <td>${srcPills(r.source)}</td>
         <td><span class="muted">computed</span></td>
         <td>${r.Category}</td><td>${r.Sub}</td>
         <td class="num">${money(r.Amount)}</td></tr>`;
@@ -1524,7 +1558,7 @@ function renderQB(){
                           : `setOV('${k}','amount',this.value);render('qb')`;
     const conf = r.isAdd ? '<span class="muted">manual</span>' : badge(r.conf);
     html+=`${trHead}<td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
-      <td><span class="pill">${r.source}</span></td>
+      <td>${srcPills(r.source)}</td>
       <td>${conf}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
