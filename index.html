@@ -53,6 +53,7 @@
   th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
   th{color:var(--muted);font-weight:600;font-size:12px}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.num.neg,td.num.neg b,td input.num.neg{color:var(--red)}
   td input,td select{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 7px;font-size:13px}
   td input.num{text-align:right}
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;cursor:help}
@@ -1523,7 +1524,7 @@ function renderQB(){
     <table class="qbtot"><tbody>`+
     catsOrdered.map(c=>{const col=qbCatColor(c);
       const act=(qbView.filter===c)?' qb-tot-filter':((qbView.hi===c)?' qb-tot-hi':'');
-      return `<tr class="${act}" style="background:${col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num">${money(tot[c])}</td></tr>`;
+      return `<tr class="${act}" style="background:${col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num${tot[c]<0?' neg':''}">${money(tot[c])}</td></tr>`;
     }).join('')+
     `</tbody></table></div>`;
   // ledger rows: default order = category then sub (canonical); a column-header click overrides it.
@@ -1546,7 +1547,7 @@ function renderQB(){
         <td>${srcPills(r.source)}</td>
         <td><span class="muted">computed</span></td>
         <td>${r.Category}</td><td>${r.Sub}</td>
-        <td class="num">${money(r.Amount)}</td></tr>`;
+        <td class="num${r.Amount<0?' neg':''}">${money(r.Amount)}</td></tr>`;
       return;
     }
     const k=r.side+':'+r.idx;
@@ -1562,7 +1563,7 @@ function renderQB(){
       <td>${conf}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
-      <td class="num"><input class="num" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
+      <td class="num"><input class="num${r.Amount<0?' neg':''}" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
   });
   html+=`</tbody></table></div>`;
   // manual QB-only entries: add new lines, reconcile against the imported ledger
