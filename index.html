@@ -147,7 +147,7 @@
   .col.purchleft .lr.tot{margin-top:auto}
   .col.grossleft{display:flex;flex-direction:column}
   .col.grossleft .lr.tot{margin-top:auto}
-  .col.r.grosscol{display:flex;flex-direction:column;justify-content:flex-end}  /* whole breakdown sits at the bottom, total aligns with Gross Profit to Seller */
+  .col.r.grosscol{display:flex;flex-direction:column;justify-content:flex-end}  /* whole breakdown sits at the bottom, total aligns with the Sales Cost total */
   .summary{margin-top:8px;padding:0 16px 8px}
   .summary .s{display:grid;grid-template-columns:1fr 96px;align-items:center;gap:8px;font-weight:700;padding:1px 0;font-size:12px;position:relative}
   .summary .s .delx{position:absolute;right:-13px;top:50%;transform:translateY(-50%)}
@@ -211,6 +211,10 @@
   .qbcat-dot{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}
   .qbtot tr.qb-tot-hi{outline:2px solid #0d9488;outline-offset:-2px}
   .qbtot tr.qb-tot-filter{outline:2px solid #0f172a;outline-offset:-2px;font-weight:700}
+  .qbtot tr.qbtot-grand{cursor:default;border-top:2px solid var(--ink);background:#fff}
+  .qbledger{display:block;overflow-x:auto}
+  .qbledger td,.qbledger th{white-space:nowrap}
+  .qbledger td:nth-child(5){white-space:normal;min-width:120px}
   tr.qb-hi>td{background:#99f6e4 !important}
   .qb-filterbar{font-size:12.5px;margin:8px 0 4px;color:#334155}
   .qb-filterbar .pill{cursor:pointer;background:#e2e8f0;margin-left:6px}
@@ -353,6 +357,7 @@ async function boot(){
   D.qb = D.qb || {lines:[], role:'QB', title:'QuickBooks Accounting', status:'', date:''};
   // restore any parsed statement lines from a prior attach
   ['buySide','sellSide','qb'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)&&dd.lines.length){ D[sd].lines=dd.lines; if(dd.meta) Object.assign(D[sd], dd.meta); } });
+  { const dd=OV['_data_qb']; if(dd && Array.isArray(dd.summary) && dd.summary.length) D.qb.summary=dd.summary; }  // restore QB category Summary (the $530,403.30 report)
   // No closing data -> deal is estimate-only: pin Mode to "Estimated" once here (controlled, not in render).
   if(!hasClosingData() && D.ia.inputs.mode!=='Estimated'){ D.ia.inputs.mode='Estimated'; OV._ia=D.ia.inputs; localStorage.setItem(LS, JSON.stringify(OV)); }
   renderHeaderMeta();
@@ -384,7 +389,7 @@ function bindTabs(){
 function migrateTaxonomyNames(){
   // Category rename (string-only, no math): keep any previously-stored parsed lines,
   // overrides, manual entries and additions in lockstep with the renamed taxonomy.
-  const REN={'Gross Profits':'Sales Cost','Total Purchase Cost':'Purchase Cost'};
+  const REN={'Total Purchase Cost':'Purchase Cost'};   // canonical taxonomy already uses Sales Cost / Purchase Cost; this migrates any older stored override
   let changed=false; const fix=c=>{ if(REN[c]){ changed=true; return REN[c]; } return c; };
   Object.keys(OV||{}).forEach(k=>{ const o=OV[k]; if(o && typeof o==='object' && !Array.isArray(o) && REN[o.category]) o.category=fix(o.category); });
   ['buySide','sellSide','qb'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)) dd.lines.forEach(l=>{ if(l&&l.map&&REN[l.map.category]) l.map.category=fix(l.map.category); }); });
@@ -596,11 +601,13 @@ async function tryParse(side){
     else { res=await fetch('/api/parse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({side,link:src.url})}); }
     if(res && res.ok){
       const j=await res.json();
-      if(j && Array.isArray(j.lines) && j.lines.length){
+      const hasSummary = side==='qb' && Array.isArray(j.summary) && j.summary.length;
+      if(j && ((Array.isArray(j.lines) && j.lines.length) || hasSummary)){
         if(!D[side]) D[side]={lines:[]};
-        D[side].lines=j.lines; if(j.meta) Object.assign(D[side], j.meta);
+        D[side].lines=Array.isArray(j.lines)?j.lines:[]; if(j.meta) Object.assign(D[side], j.meta);
+        if(side==='qb') D.qb.summary = hasSummary ? j.summary : null;   // authoritative category subtotals
         if(OV._src && OV._src[side]) OV._src[side].parsed=true;
-        OV['_data_'+side]={lines:D[side].lines, meta:j.meta||null};
+        OV['_data_'+side]={lines:D[side].lines, meta:j.meta||null, summary:(side==='qb'?D.qb.summary:undefined)};
         saveOV();
       } else { setParseErr(side,'No lines found in that document. Check the file or paste the text.'); }
     } else if(res){                                  // backend reachable but returned an error
@@ -1441,7 +1448,10 @@ function qbRows(){
     D.qb.lines.forEach((l,i)=>{
       try{
         const s=lineState('qb',i); if(s.amount==null) return;
-        rows.push({Type:'QB', Date:(D.qb.date||''), Name:(D.qb.title||'QuickBooks Accounting'), Memo:(s.label||'(line)'),
+        // Transaction-register lines carry 5 independent fields (Type/Date/Num/Name/Memo); a
+        // category-level (AI-parsed) line falls back to the label. See Phase 1.1.
+        rows.push({Type:(l.type||'QB'), Date:(l.date||D.qb.date||''), Num:(l.num||''),
+                   Name:(l.name||D.qb.title||'QuickBooks Accounting'), Memo:(l.memo||s.label||'(line)'),
                    Category:s.category, Sub:s.sub, Amount:s.amount, side:'qb', idx:i,
                    source:matchSource(srcMap, s.category, s.sub), conf:s.confidence});
       }catch(e){ /* skip a malformed parsed line rather than crash the whole ledger */ }
@@ -1490,13 +1500,15 @@ function qbClearView(){ qbView.hi=''; qbView.filter=''; render('qb'); }
 function sortQb(c){ if(qbSort.col===c){ qbSort.dir*=-1; } else { qbSort.col=c; qbSort.dir=1; } render('qb'); }
 function qbSortRows(list){
   const c=qbSort.col; if(!c) return list;
-  const num=(c==='Amount'||c==='Conf');
+  const num=(c==='Amount');
   const val=r=>{
     switch(c){
+      case 'Type':return r.Type||'';
       case 'Date':return r.Date||'';
+      case 'Num':return r.Num||'';
+      case 'Name':return r.Name||'';
       case 'Memo':return r.Memo||'';
       case 'Source':return r.source||'';
-      case 'Conf':return r.conf==null?-1:+r.conf;
       case 'Category':return r.Category||'';
       case 'Sub':return r.Sub||'';
       case 'Amount':return +r.Amount||0;
@@ -1520,11 +1532,16 @@ function renderQB(){
     return;
   }
   const {redMan,redImp,matched,unmatched}=qbRecon();
-  // category totals (imported + additions + manual) — shown at the top, colour-coded & in taxonomy order.
-  const tot={}; all.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+(+r.Amount||0));
+  // category totals — the authoritative QB "Development Cost" Summary when a workbook was uploaded
+  // ($530,403.30 incl. computed Interest Charges), else aggregated from the ledger rows.
+  const hasSummary = D.qb && Array.isArray(D.qb.summary) && D.qb.summary.length;
+  const tot={};
+  if(hasSummary){ D.qb.summary.forEach(s=>{ const c=(s.map&&s.map.category)||s.label; tot[c]=(tot[c]||0)+(+s.amount||0); }); }
+  else { all.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+(+r.Amount||0)); }
+  const grandTotal = Object.values(tot).reduce((a,v)=>a+v,0);
   const catsOrdered = qbCatOrder().filter(c=>tot[c]!=null)
     .concat(Object.keys(tot).filter(c=>!qbCatOrder().includes(c)));   // any non-taxonomy cats last
-  const totalsHtml=`<div class="section"><h2>Totals by category</h2>
+  const totalsHtml=`<div class="section"><h2>Totals by category${hasSummary?' <span class="pill">from QB report summary</span>':''}</h2>
     <div class="help">Click a category to highlight its lines in the ledger · double-click to filter to just that category.</div>
     <table class="qbtot"><tbody>`+
     catsOrdered.map(c=>{const col=qbCatColor(c);
@@ -1532,6 +1549,7 @@ function renderQB(){
       const dim=qbView.hi && qbView.hi!==c;   // another category is highlighted → fade this row to white
       return `<tr class="${act}" style="background:${dim?'#fff':col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num${tot[c]<0?' neg':''}">${money(tot[c])}</td></tr>`;
     }).join('')+
+    `<tr class="qbtot-grand"><td><b>Total Development Cost</b></td><td class="num"><b>${money(grandTotal)}</b></td></tr>`+
     `</tbody></table></div>`;
   // ledger rows: default order = category then sub (canonical); a column-header click overrides it.
   let ledger = qbSort.col ? qbSortRows(rows) : qbSortByCatSub(rows);
@@ -1540,7 +1558,7 @@ function renderQB(){
     ? `<div class="qb-filterbar">Showing only <b>${qbView.filter}</b><span class="pill" onclick="qbClearView()">show all ✕</span></div>` : '';
   let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}
    <div class="section"><h2>Ledger <span class="pill">${ledger.length} lines</span></h2>${filterBar}
-   <table><thead><tr>${['Date','Memo','Source','Conf','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c==='Source'?'Match / Source':c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
+   <table class="qbledger"><thead><tr>${['Type','Date','Num','Name','Memo','Source','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c==='Source'?'Match / Source':c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
   ledger.forEach(r=>{
     const bad=redImp[qbRowKey(r)];
     const col=qbCatColor(r.Category);
@@ -1549,10 +1567,11 @@ function renderQB(){
     const cls = ((bad?'qb-bad':'') + (hi?' qb-hi':'')).trim();
     const st = (!bad && !hi) ? ` style="background:${dim?'#fff':col.bg}"` : '';
     const trHead = `<tr class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
+    // 5 independent columns (Phase 1.1): Type | Date | Num | Name | Memo — never one merged blob.
+    const ident = `<td>${esc(r.Type||'')}</td><td>${esc(r.Date||'')}</td><td>${esc(r.Num||'')}</td><td>${esc(r.Name||'')}</td><td>${esc(r.Memo||'')}${r.isAdd?' <span class="pill">addition</span>':''}</td>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
-      html+=`${trHead}<td></td><td>${r.Memo}</td>
+      html+=`${trHead}${ident}
         <td>${srcPills(r.source)}</td>
-        <td><span class="muted">computed</span></td>
         <td>${r.Category}</td><td>${r.Sub}</td>
         <td class="num${r.Amount<0?' neg':''}">${money(r.Amount)}</td></tr>`;
       return;
@@ -1564,10 +1583,8 @@ function renderQB(){
                           : `setOV('${k}','sub',this.value);render('qb')`;
     const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+this.value||0))`
                           : `setOV('${k}','amount',this.value);render('qb')`;
-    const conf = r.isAdd ? '<span class="muted">manual</span>' : badge(r.conf);
-    html+=`${trHead}<td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
+    html+=`${trHead}${ident}
       <td>${srcPills(r.source)}</td>
-      <td>${conf}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
       <td class="num"><input class="num${r.Amount<0?' neg':''}" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
@@ -1611,7 +1628,7 @@ function exportXlsx(){
   // QB
   const rows=qbRows();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
-    rows.map(r=>({Type:r.Type,Date:r.Date,Name:r.Name,Memo:r.Memo,Source:r.source,
+    rows.map(r=>({Type:r.Type,Date:r.Date,Num:r.Num||'',Name:r.Name,Memo:r.Memo,Source:r.source,
                   Confidence:(r.conf==null?'manual':r.conf+'%'),Category:r.Category,Sub:r.Sub,Amount:r.Amount}))
   ), 'QB Export');
   XLSX.writeFile(wb, '15620-ramona-closing.xlsx');
