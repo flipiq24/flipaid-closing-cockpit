@@ -63,6 +63,9 @@
   .kpi .box .v{font-size:22px;font-weight:700;margin-top:4px}
   .v.good{color:var(--green)} .v.bad{color:var(--red)}
   .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn-back{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn-back:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  .btn-back:disabled{opacity:.4;cursor:default}
   .bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
   .warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
   .statusrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
@@ -269,6 +272,7 @@
 <header class="top">
   <span class="dot"></span>
   <div class="hdr-meta">
+    <button class="btn-back" id="backBtn" onclick="undoInput()" title="Undo your last change" disabled>← Back</button>
     <span class="title">Investment Analysis</span>
     <input class="hdr-addr" id="dealAddr" placeholder="Property address" onchange="setIA('address',this.value)">
     <span class="hdr-controls" id="hdrControls"></span>
@@ -294,6 +298,7 @@ let D=null, OV={};            // OV = user overrides keyed by line id
 const $=s=>document.querySelector(s);
 const money=n=> (n==null||n==='')?'—':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const LS='flipaid-ramona-overrides';
+const LS_HIST='flipaid-ramona-history';   // undo stack of prior OV snapshots (survives reloads)
 
 /* ---------- CA TAX MATH (single source of truth) ---------- */
 function transferTax(price, ratePer1000){ return +(price * ratePer1000/1000).toFixed(2); }
@@ -324,7 +329,7 @@ async function boot(){
   // No closing data -> deal is estimate-only: pin Mode to "Estimated" once here (controlled, not in render).
   if(!hasClosingData() && D.ia.inputs.mode!=='Estimated'){ D.ia.inputs.mode='Estimated'; OV._ia=D.ia.inputs; localStorage.setItem(LS, JSON.stringify(OV)); }
   renderHeaderMeta();
-  renderTabs(); bindTabs(); render('ia');
+  renderTabs(); bindTabs(); render('ia'); updateBackBtn();
 }
 function renderHeaderMeta(){
   $('#dealAddr').value = (D.ia.inputs.address==null?'':D.ia.inputs.address);
@@ -349,7 +354,24 @@ function bindTabs(){
     t.classList.add('active'); render(t.dataset.tab);
   });
 }
-function saveOV(){ localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); }
+function saveOV(){
+  // push the currently-persisted state onto the undo stack BEFORE overwriting it.
+  // Seed a synthetic '{}' when nothing is stored yet, so the very first edit stays undoable.
+  try{ const prev=localStorage.getItem(LS);
+    let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){}
+    h.push(prev!=null?prev:'{}'); if(h.length>200) h.shift(); localStorage.setItem(LS_HIST, JSON.stringify(h));
+  }catch(e){}
+  localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); updateBackBtn();
+}
+// "← Back": revert the last input by restoring the previous saved state, then rebuild from boot.
+function undoInput(){
+  let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){}
+  if(!h.length) return;
+  const prev=h.pop(); localStorage.setItem(LS_HIST, JSON.stringify(h));
+  localStorage.setItem(LS, prev); location.reload();
+}
+function updateBackBtn(){ const b=document.getElementById('backBtn'); if(!b) return;
+  let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){} b.disabled=!h.length; }
 function flashSaved(){ const s=$('#saved'); if(s) s.textContent='✓ Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
 
 /* ---------- helpers for line state (override-aware) ---------- */
