@@ -209,9 +209,9 @@
   .qbtot td{padding:5px 10px}
   .qbcat-cell{display:inline-flex;align-items:center;gap:8px}
   .qbcat-dot{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}
-  .qbtot tr.qb-tot-hi{outline:2px solid #f59e0b;outline-offset:-2px}
+  .qbtot tr.qb-tot-hi{outline:2px solid #0d9488;outline-offset:-2px}
   .qbtot tr.qb-tot-filter{outline:2px solid #0f172a;outline-offset:-2px;font-weight:700}
-  tr.qb-hi>td{background:#fde68a !important}
+  tr.qb-hi>td{background:#99f6e4 !important}
   .qb-filterbar{font-size:12.5px;margin:8px 0 4px;color:#334155}
   .qb-filterbar .pill{cursor:pointer;background:#e2e8f0;margin-left:6px}
   .pill-qb{background:#e2e8f0;color:#475569}
@@ -1477,9 +1477,9 @@ function qbSortByCatSub(list){
     String(a.Memo||'').localeCompare(String(b.Memo||'')));
 }
 function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
-// Single click highlights the category's lines; double click filters to just that category.
+// Single click clears any active filter and highlights the category's lines; double click filters to just that category.
 // The 180ms timer lets a double click cancel the pending single-click highlight.
-function qbCatClick(c){ clearTimeout(qbClickT); qbClickT=setTimeout(()=>{ qbView.hi=(qbView.hi===c?'':c); render('qb'); },180); }
+function qbCatClick(c){ clearTimeout(qbClickT); qbClickT=setTimeout(()=>{ qbView.filter=''; qbView.hi=(qbView.hi===c?'':c); render('qb'); },180); }
 function qbCatDbl(c){ clearTimeout(qbClickT); qbView.filter=(qbView.filter===c?'':c); qbView.hi=''; render('qb'); }
 function qbClearView(){ qbView.hi=''; qbView.filter=''; render('qb'); }
 function sortQb(c){ if(qbSort.col===c){ qbSort.dir*=-1; } else { qbSort.col=c; qbSort.dir=1; } render('qb'); }
