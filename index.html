@@ -900,7 +900,7 @@ function computeIA(i){
   r.f25equity = r.cashInclPayments + r.cashToClose + (+i.estimatedRepairs||0)*0.25;   // F25
   r.returnOnCash = r.f25equity>0 ? r.netProfit/r.f25equity : 0;
   r.returnOnCashAnnual = r.days>0 ? r.returnOnCash/r.days*360 : 0;   // (4) Levered IRR = Levered ROI ÷ days × 360 [B59]
-  // Cash out of escrow (MASTER IA G56) = Gross Profit to Seller − 1st-loan payoff − add'l 1st pmts
+  // Cash out of escrow (MASTER IA G56) = Sales Cost gross profit − 1st-loan payoff − add'l 1st pmts
   // − unused 1st credit − interest from 1st payoff − 2nd "Loan Amount" (F25 = total cash invested + any 2nd loan).
   r.cashOutEscrow = r.grossProfit - r.loan1st - (+i.additional1stPayments||0) - (+i.unused1stCredit||0)
       - (+i.interestFrom1stPayoff||0) - (r.totalCashAndReserves + (+i.loan2ndAmount||0));   // G56
@@ -983,8 +983,8 @@ const IA_META = {
   additional2ndPayments:{tip:'Extra 2nd-loan payments made during the hold.'},
   unused2ndCredit:{tip:'Credit for unused 2nd-loan interest reserve.'},
   interestFrom2ndPayoff:{tip:'Interest captured at 2nd-loan payoff.'},
-  estimatedRepairs:{tip:'Estimated rehab / repair budget.'},
-  utilitiesRehab:{tip:'Utilities during the rehab / hold period.'},
+  estimatedRepairs:{tip:'Estimated rehab / repair budget.',qbsrc:'Rehabilitation Costs'},
+  utilitiesRehab:{tip:'Utilities during the rehab / hold period.',qbsrc:'Rehabilitation Costs'},
   arv:{tip:'After Repair Value — projected resale price.',src:['sellSide',0]},
   ov_escrowTitleResale:{tip:'Sell-side escrow + title (ARV × escrow %).'},
   ov_transferTaxResale:{tip:'Sell-side documentary transfer tax at resale.',src:['sellSide',2]},
@@ -1086,9 +1086,18 @@ function srcLinesFor(key, mode){
   });
   return hits;
 }
+// Indices of uploaded QB ledger lines whose mapped taxonomy category matches `cat` (e.g. rehab).
+// Used by the IA Rehab ↗ link-back, which targets the QB tab rather than a closing statement.
+function qbLinesForCategory(cat){
+  const out=[];
+  if(D.qb && Array.isArray(D.qb.lines)){
+    D.qb.lines.forEach((l,idx)=>{ const s=lineState('qb',idx); if(s.amount!=null && s.category===cat) out.push(idx); });
+  }
+  return out;
+}
 function srcLink(m,val,key){
   // Stage-gate link-backs by mode: Estimated -> none; Acquired -> buy-side only
-  // (Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Gross Profit).
+  // (Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Sales Cost).
   const mode=(effIA().mode||'');
   if(mode!=='Acquired' && mode!=='Sold') return '';
   // Preferred: highlight EVERY closing-statement line feeding this IA total (handles fields
@@ -1104,6 +1113,15 @@ function srcLink(m,val,key){
     });
     return out;
   }
+  // QB link-back: rehab's actual comes from the QB ledger, not a closing statement. In Sold mode,
+  // if an uploaded QB doc carries lines in this field's category, link ↗ to those QB rehab rows.
+  if(m.qbsrc && mode==='Sold'){
+    const idxs=qbLinesForCategory(m.qbsrc);
+    if(idxs.length){
+      const n=idxs.length;
+      return ` <a class="srclink" title="Source: ${n} QB ledger line${n>1?'s':''} feeding this total — click to highlight ${n>1?'them all':'it'}" onclick='gotoSourceMulti("qb",${JSON.stringify(idxs)})'>↗</a>`;
+    }
+  }
   // Fallback: a single canonical source row (fields with no live statement match).
   if(!m.src)return '';
   if(mode==='Acquired' && m.src[0]!=='buySide') return '';
@@ -1113,14 +1131,14 @@ function srcLink(m,val,key){
   return ` <a class="srclink" title="Source: ${sd} closing — click to open" onclick="gotoSource('${m.src[0]}',${m.src[1]})">↗</a>`;
 }
 function gotoSource(side,idx){
-  const tabKey=side==='buySide'?'buy':'sell';
+  const tabKey=side==='buySide'?'buy':(side==='qb'?'qb':'sell');
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
   render(tabKey);
   setTimeout(()=>{ document.querySelectorAll('.hilite').forEach(e=>e.classList.remove('hilite')); const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('hilite'); } },60);  // persistent highlight: stays until you jump to another source
 }
 // Like gotoSource but highlights EVERY contributing row (e.g. all "Escrow and Title" lines).
 function gotoSourceMulti(side, idxs){
-  const tabKey=side==='buySide'?'buy':'sell';
+  const tabKey=side==='buySide'?'buy':(side==='qb'?'qb':'sell');
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tabKey));
   render(tabKey);
   setTimeout(()=>{
@@ -1303,7 +1321,7 @@ function renderIA(){
     ${L_('Total Rehab Costs', r.totalRehab,{tot:1,add:'rehab'})}
   </div><div class="col"></div></div>`;
 
-  // GROSS PROFITS — resale lines on the left, Total Development Cost summary on the right
+  // SALES COST — resale lines on the left, Total Development Cost summary on the right
   const gross = `<div class="band">Sales Cost</div>
   <div class="cols">
     <div class="col grossleft">
@@ -1317,7 +1335,7 @@ function renderIA(){
       ${L$('Per Diem Adjustment','perDiemAdjustment',i.perDiemAdjustment)}
       ${L$('Asset Management Services','ov_assetMgmt', r.assetMgmt)}
       ${customRows('gross')}
-      ${L_('Gross Profit to Seller', r.grossProfit,{tot:1,add:'gross'})}
+      ${L_('Sales Cost', r.grossProfit,{tot:1,add:'gross'})}
     </div>
     <div class="col r grosscol">
       <div class="subband">Total Development Cost</div>
@@ -1566,7 +1584,9 @@ function renderQB(){
     const dim = qbView.hi && !hi;   // another category is highlighted → fade this row to white
     const cls = ((bad?'qb-bad':'') + (hi?' qb-hi':'')).trim();
     const st = (!bad && !hi) ? ` style="background:${dim?'#fff':col.bg}"` : '';
-    const trHead = `<tr class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
+    // Uploaded QB lines are link targets for the IA Rehab ↗ (gotoSourceMulti 'qb'). See Phase 2.1.
+    const anchor = (r.side==='qb' && r.idx!=null) ? ` id="src-qb-${r.idx}"` : '';
+    const trHead = `<tr${anchor} class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
     // 5 independent columns (Phase 1.1): Type | Date | Num | Name | Memo — never one merged blob.
     const ident = `<td>${esc(r.Type||'')}</td><td>${esc(r.Date||'')}</td><td>${esc(r.Num||'')}</td><td>${esc(r.Name||'')}</td><td>${esc(r.Memo||'')}${r.isAdd?' <span class="pill">addition</span>':''}</td>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
