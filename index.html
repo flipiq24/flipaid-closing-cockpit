@@ -497,7 +497,14 @@ async function tryParse(side){
     let res;
     if(f){ const fd=new FormData(); fd.append('file',f); fd.append('side',side); res=await fetch('/api/parse',{method:'POST',body:fd}); }
     else { res=await fetch('/api/parse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({side,link:src.url})}); }
-    if(!res||!res.ok) return;                       // no backend/key -> attachment + Mode still applied
+    if(!res||!res.ok){                              // surface the parse error instead of failing silently
+      try{ const er=await res.json(); const panel=document.getElementById('panel');
+        if(panel && er && er.error){ panel.insertAdjacentHTML('afterbegin',
+          `<div class="warn">⚠ ${er.error}${er.stop_reason?` — stop_reason: <b>${er.stop_reason}</b>${er.stop_reason==='max_tokens'?' (response was truncated)':''}`:''}`
+          +`${er.raw?`<details style="margin-top:6px"><summary style="cursor:pointer">show raw model output</summary><pre style="white-space:pre-wrap;font-size:11px;max-height:240px;overflow:auto">${(er.raw||'').replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;')}</pre></details>`:''}</div>`); }
+      }catch(_){}
+      return;                                        // attachment + Mode still applied
+    }
     const j=await res.json();
     if(j && Array.isArray(j.lines) && j.lines.length){
       D[side].lines=j.lines; if(j.meta) Object.assign(D[side], j.meta);
