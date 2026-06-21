@@ -53,7 +53,7 @@
   th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
   th{color:var(--muted);font-weight:600;font-size:12px}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-  td.num.neg,td.num.neg b,td input.num.neg{color:var(--red)}
+  .neg,td.num.neg,td.num.neg b,td input.num.neg{color:var(--red)}
   td input,td select{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 7px;font-size:13px}
   td input.num{text-align:right}
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;cursor:help}
@@ -316,7 +316,8 @@
 <script>
 let D=null, OV={};            // OV = user overrides keyed by line id
 const $=s=>document.querySelector(s);
-const money=n=> (n==null||n==='')?'—':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const moneyT=n=> (n==null||n==='')?'—':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const money=n=>{ const t=moneyT(n); return (n!=null&&n!==''&&Number(n)<0)?`<span class="neg">${t}</span>`:t; };
 const LS='flipaid-ramona-overrides';
 const LS_HIST='flipaid-ramona-history';   // undo stack of prior OV snapshots (survives reloads)
 
@@ -575,8 +576,8 @@ function qbRecon(){
     if(hit){ used.add(qbRowKey(hit)); matched++; return; }   // reconciled 1:1
     unmatched++;
     if(!cands.length){ redMan[idx]='No imported line for '+(m.category||'?')+' / '+(m.sub||'?'); }
-    else { redMan[idx]='Amount '+money(m.amount)+' differs from imported';
-           cands.forEach(r=>{ redImp[qbRowKey(r)]='Manual entry expects '+money(m.amount); }); }
+    else { redMan[idx]='Amount '+moneyT(m.amount)+' differs from imported';
+           cands.forEach(r=>{ redImp[qbRowKey(r)]='Manual entry expects '+moneyT(m.amount); }); }
   });
   return {redMan,redImp,matched,unmatched};
 }
@@ -691,9 +692,9 @@ function renderClosing(sideKey, tabKey){
       const isCredit = s.credit!=null || (s.debit==null && /deposit|proceeds|trust deed|sale price|credit/i.test(s.label));
       tDeb += s.debit||0; tCred += s.credit||0;
       const debCell = isCredit ? '<span class="dash">—</span>'
-        : `<input class="num" value="${s.debit==null?'':s.debit}" placeholder="—" onchange="setOV('${k}','debit',this.value);render('${tabKey}')">`;
+        : `<input class="num${(+s.debit<0)?' neg':''}" value="${s.debit==null?'':s.debit}" placeholder="—" onchange="setOV('${k}','debit',this.value);render('${tabKey}')">`;
       const credCell = isCredit
-        ? `<input class="num" value="${s.credit==null?'':s.credit}" placeholder="—" onchange="setOV('${k}','credit',this.value);render('${tabKey}')">`
+        ? `<input class="num${(+s.credit<0)?' neg':''}" value="${s.credit==null?'':s.credit}" placeholder="—" onchange="setOV('${k}','credit',this.value);render('${tabKey}')">`
         : '<span class="dash">—</span>';
       html += `<tr id="src-${sideKey}-${i}">
         <td class="desc">${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
@@ -1158,7 +1159,7 @@ function sumCustomRows(sec){
 }
 function Lc(sec,idx,line){
   return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEditC(this,'${sec}',${idx})">${Ppct(line.amount)}</span>`+
-    `<input class="m" value="${fmt2(line.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)">`+
+    `<input class="m${(+line.amount<0)?' neg':''}" value="${fmt2(line.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)">`+
     `<span class="ll"><input class="clab" value="${(line.label||'').replace(/"/g,'&quot;')}" onchange="renCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></span></div>`;
 }
 // ----- IA ledger renderers (compact spreadsheet layout, matches the reference) -----
@@ -1670,11 +1671,11 @@ async function findDiscrepancies(){
     // 1) escrow: IA "cash out of escrow" vs sell-side statement net proceeds
     let sd=0, sc=0; ((D.sellSide&&D.sellSide.lines)||[]).forEach((l,idx)=>{const s=lineState('sellSide',idx); sd+=(+s.debit||0); sc+=(+s.credit||0);});
     const stmtNet=sc-sd, cd=stmtNet-r.cashOutEscrow;
-    if(Math.abs(cd)>=1) issues.push(`Escrow off by ${money(cd)} — statement net proceeds ${money(stmtNet)} vs IA cash-out ${money(r.cashOutEscrow)}.`);
+    if(Math.abs(cd)>=1) issues.push(`Escrow off by ${moneyT(cd)} — statement net proceeds ${moneyT(stmtNet)} vs IA cash-out ${moneyT(r.cashOutEscrow)}.`);
     // 2) QB manual vs imported ledger
     try{ const rec=qbRecon(); Object.values(rec.redMan||{}).forEach(m=>issues.push('QB: '+m)); }catch(e){}
     // 3) unmapped / low-confidence closing lines
-    ['buySide','sellSide'].forEach(side=>{((D[side]&&D[side].lines)||[]).forEach((l,idx)=>{const s=lineState(side,idx); const tag=side==='buySide'?'Buy':'Sell'; const amt=money(s.debit!=null?s.debit:(s.credit!=null?s.credit:(s.amount||0)));
+    ['buySide','sellSide'].forEach(side=>{((D[side]&&D[side].lines)||[]).forEach((l,idx)=>{const s=lineState(side,idx); const tag=side==='buySide'?'Buy':'Sell'; const amt=moneyT(s.debit!=null?s.debit:(s.credit!=null?s.credit:(s.amount||0)));
       if(!s.category||/don.?t ?map/i.test(s.category)) issues.push(`${tag}-side "${s.label}" (${amt}) is unmapped.`);
       else if((s.confidence!=null?s.confidence:100)<80) issues.push(`${tag}-side "${s.label}" mapped ${s.category}/${s.sub} at only ${s.confidence}% confidence.`);});});
     const q = issues.length
