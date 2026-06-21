@@ -1105,7 +1105,7 @@ function ProFac(key,factor,suffix,val){const pct=(+(factor*100).toFixed(4)).toSt
 // date input + label
 function Pdate(label,key,val){return `<div class="pr dt"><input type="date" value="${val||''}" onchange="setIA('${key}',this.value)"><span class="pl">${label}</span></div>`;}
 // bordered loan-amount box (editable)
-const fmtc=(v)=>{ if(v==null||v==='')return''; const n=+(''+v).replace(/[$,\s]/g,''); return isNaN(n)?v:n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+const fmtc=(v)=>{ if(v==null||v==='')return''; const n=+(''+v).replace(/[$,\s]/g,''); return isNaN(n)?v:'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 function Lbox(title,key,val){return `<div class="lbox"><div class="t">${title}</div><input value="${fmtc(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"></div>`;}
 
 function renderIA(){
