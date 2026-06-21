@@ -536,7 +536,7 @@ function uploadCard(sideKey){
      <div class="upl-row">
        <div class="upl-ico">⬆</div>
        <div class="upl-txt">
-         <div class="upl-t">Add the ${label} settlement statement</div>
+         <div class="upl-t">Add the ${label}${sideKey==='qb' ? '' : ' settlement statement'}</div>
          <div class="upl-s">Drag &amp; drop a PDF / image / XLSX here, or
            <label class="upl-browse">browse your computer<input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv" onchange="fileStmt('${sideKey}',this)"></label></div>
        </div>
