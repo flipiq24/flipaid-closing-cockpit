@@ -491,15 +491,16 @@ function render(tab){
 function srcState(side){ return (OV._src && OV._src[side]) || {}; }
 // which IA Mode (H2) an attached statement implies
 function modeForSide(side){
-  const st = D[side].status;
-  if(side==='buySide') return st==='FINAL' ? 'Final HUD-1 Purchase' : 'Acquisition Approved';
-  return st==='FINAL' ? 'Final HUD-1 Resale' : 'Estimated HUD-1 Resale';
+  // Mode has exactly three states: Estimated / Acquired / Sold.
+  // A buy-side closing means the property is Acquired; a sell-side closing means it's Sold.
+  return side==='buySide' ? 'Acquired' : 'Sold';
 }
 function applyAttach(side, kind, name, url){
   OV._src = OV._src || {}; OV._src[side] = {kind, name, url, parsed:false};
   if(side!=='qb'){                                // a closing statement sets the deal Mode; the QB file does NOT
     const mode = modeForSide(side);
-    D.ia.inputs.mode = mode; OV._ia = D.ia.inputs;
+    // Don't downgrade Sold -> Acquired if a buy-side doc is attached after the deal is already Sold.
+    if(!(mode==='Acquired' && D.ia.inputs.mode==='Sold')){ D.ia.inputs.mode = mode; OV._ia = D.ia.inputs; }
   }
   saveOV();
   setParsing(side,true);                           // show the "processing" spinner immediately
