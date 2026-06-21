@@ -513,11 +513,28 @@ function renderSumBand(){
   </div>`;
 }
 
+let CURRENT_TAB='ia';   // which tab a note/AI post is tagged with (shared conversation, see aiNotesBlock)
 function render(tab){
+  CURRENT_TAB=tab||'ia';
   renderSumBand();
   if(tab==='ia') return renderIA();
   if(tab==='qb') return renderQB();
   return renderClosing(tab==='buy'?'buySide':'sellSide', tab);
+}
+// The AI Assistant & Notes panel — ONE shared conversation (OV._log) rendered on all four tabs.
+// Each post is tagged with the tab it was written on; the log is identical everywhere.
+function aiNotesBlock(){
+  return `<div class="band">AI Assistant &amp; Notes <span class="pill">shared across all tabs</span></div>
+  <div class="ai-wrap">
+    <textarea class="ia-notes" id="aiInput" placeholder="Write a note, or ask the AI to calculate / answer something (e.g. &quot;split the profit 50/50&quot;). The AI never changes the form — you apply any changes yourself."></textarea>
+    <div class="ai-actions">
+      <button class="btn2" id="askBtn" onclick="askAI()">🤖 Ask AI</button>
+      <button class="btn2" id="discBtn" onclick="findDiscrepancies()">🔎 Find discrepancies</button>
+      <button class="btn2 ghost2" onclick="postNote()">＋ Post note</button>
+    </div>
+    <div class="ai-draft" id="aiDraft"></div>
+    <div class="ai-log" id="aiLog">${renderLog()}</div>
+  </div>`;
 }
 
 /* ----- statement ingest: file / drag-drop / Google Doc link -> auto-sets Mode ----- */
@@ -666,7 +683,7 @@ function renderClosing(sideKey, tabKey){
   const side = D[sideKey];
   // Empty state: no statement lines yet -> show ONLY the upload dropzone (no header/tables/totals).
   if(!side || !Array.isArray(side.lines) || side.lines.length===0){
-    $('#panel').innerHTML = uploadCard(sideKey) + docChip(sideKey) + errCard(sideKey);
+    $('#panel').innerHTML = uploadCard(sideKey) + docChip(sideKey) + errCard(sideKey) + aiNotesBlock();
     return;
   }
   // group by section, preserving statement order
@@ -763,7 +780,7 @@ function renderClosing(sideKey, tabKey){
 
   // resale tax block on sell side
   if(sideKey==='sellSide') html += resaleTaxBlock();
-  $('#panel').innerHTML = html;
+  $('#panel').innerHTML = html + aiNotesBlock();
 }
 
 function resaleTaxBlock(){
@@ -1375,19 +1392,7 @@ function renderIA(){
   </div>`;
 
   // AI ASSISTANT & NOTES (full-width section, bottom of sheet)
-  const ainotes = `<div class="band">AI Assistant &amp; Notes</div>
-  <div class="ai-wrap">
-    <textarea class="ia-notes" id="aiInput" placeholder="Write a note, or ask the AI to calculate / answer something (e.g. &quot;split the profit 50/50&quot;). The AI never changes the form — you apply any changes yourself."></textarea>
-    <div class="ai-actions">
-      <button class="btn2" id="askBtn" onclick="askAI()">🤖 Ask AI</button>
-      <button class="btn2" id="discBtn" onclick="findDiscrepancies()">🔎 Find discrepancies</button>
-      <button class="btn2 ghost2" onclick="postNote()">＋ Post note</button>
-    </div>
-    <div class="ai-draft" id="aiDraft"></div>
-    <div class="ai-log" id="aiLog">${renderLog()}</div>
-  </div>`;
-
-  $('#panel').innerHTML = `<div class="ia-sheet">${purchase+lender+rehab+gross+net+ainotes}</div>`;
+  $('#panel').innerHTML = `<div class="ia-sheet">${purchase+lender+rehab+gross+net+aiNotesBlock()}</div>`;
 }
 
 /* ----- QB export tab ----- */
@@ -1546,7 +1551,7 @@ function renderQB(){
   const man=qbManual();
   // Empty state: no statement-derived or manual ledger data (only IA roll-ups, if any) -> show ONLY the dropzone.
   if(rows.filter(r=>!r.isIA).length===0 && man.length===0){
-    $('#panel').innerHTML = uploadCard('qb') + docChip('qb') + errCard('qb');
+    $('#panel').innerHTML = uploadCard('qb') + docChip('qb') + errCard('qb') + aiNotesBlock();
     return;
   }
   const {redMan,redImp,matched,unmatched}=qbRecon();
@@ -1627,7 +1632,7 @@ function renderQB(){
       <td><a class="delx" title="Remove entry" onclick="delQbManual(${idx})">✕</a></td></tr>`;
   });
   html+=`</tbody></table><button class="btn2" onclick="addQbManual()">＋ Add line</button></div>`;
-  $('#panel').innerHTML=html;
+  $('#panel').innerHTML=html + aiNotesBlock();
 }
 
 /* ---------- xlsx export (all 4 tabs) ---------- */
@@ -1660,13 +1665,14 @@ function exportXlsx(){
    where every entry is kept with a timestamp. Log lives in OV._log (localStorage). */
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function stamp(ts){ return new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+const TAB_LABEL={ia:'Investment Analysis',buy:'Buy-Side',sell:'Sell-Side',qb:'QB Accounting'};
 function renderLog(){
   const log=OV._log||[];
-  if(!log.length) return '<div class="ai-empty">No posts yet — write a note or ask the AI, then post it here. Each post is timestamped.</div>';
-  return log.map(e=>`<div class="ai-entry"><div class="ai-meta">${e.kind==='ai'?'🤖 AI':'📝 Note'} <span>${stamp(e.ts)}</span><a class="ai-del" title="Delete this post" onclick="delLog(${Number(e.ts)||0})">✕</a></div><div class="ai-text">${esc(e.text)}</div></div>`).join('');
+  if(!log.length) return '<div class="ai-empty">No posts yet — write a note or ask the AI, then post it here. This conversation is shared across all four tabs; each post is timestamped and tagged with its tab.</div>';
+  return log.map(e=>`<div class="ai-entry"><div class="ai-meta">${e.kind==='ai'?'🤖 AI':'📝 Note'}${e.tab?` <span class="ai-tab">${esc(TAB_LABEL[e.tab]||e.tab)}</span>`:''} <span>${stamp(e.ts)}</span><a class="ai-del" title="Delete this post" onclick="delLog(${Number(e.ts)||0})">✕</a></div><div class="ai-text">${esc(e.text)}</div></div>`).join('');
 }
 function refreshLog(){ const el=$('#aiLog'); if(el) el.innerHTML=renderLog(); }
-function postLog(text,kind){ const t=(text||'').trim(); if(!t) return; OV._log=OV._log||[]; OV._log.unshift({ts:Date.now(),text:t,kind:kind||'note'}); saveOV(); refreshLog(); }
+function postLog(text,kind){ const t=(text||'').trim(); if(!t) return; OV._log=OV._log||[]; OV._log.unshift({ts:Date.now(),text:t,kind:kind||'note',tab:CURRENT_TAB}); saveOV(); refreshLog(); }
 function delLog(ts){ OV._log=(OV._log||[]).filter(e=>e.ts!==ts); saveOV(); refreshLog(); }
 function postNote(){ const el=$('#aiInput'); if(!el||!el.value.trim()){ alert('Write a note first.'); return; } postLog(el.value,'note'); el.value=''; }
 
