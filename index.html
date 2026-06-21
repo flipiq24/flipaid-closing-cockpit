@@ -1245,8 +1245,8 @@ function renderIA(){
       ${L_('Net Profit', r.netProfit,{big:1})}
       <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.cashOnCashROI)}</span><span class="ll">Cash ROI</span></div>
       <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.cashOnCashIRR)}</span><span class="ll">Cash IRR</span></div>
-      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCash)}</span><span class="ll">Levered ROI</span></div>
-      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCashAnnual)}</span><span class="ll">Levered IRR</span></div>
+      ${r.isCash ? '' : `<div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCash)}</span><span class="ll">Levered ROI</span></div>
+      <div class="lr big roi"><span class="lp"></span><span class="av">${pct(r.returnOnCashAnnual)}</span><span class="ll">Levered IRR</span></div>`}
     </div>
     <div class="col r">${reconBox}</div>
   </div>`;
