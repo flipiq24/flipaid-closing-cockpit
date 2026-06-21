@@ -384,7 +384,8 @@ function flashSaved(){ const s=$('#saved'); if(s) s.textContent='✓ Saved '+new
 
 /* ---------- helpers for line state (override-aware) ---------- */
 function lineState(side, idx){
-  const k = side+':'+idx; const base = D[side].lines[idx];
+  const k = side+':'+idx; const base = (D[side] && D[side].lines && D[side].lines[idx]) || {};
+  const map = base.map || {};                       // parsed lines (esp. QB) may omit map/why/confidence — never assume
   const o = OV[k]||{};
   const debit  = o.debit!==undefined  ? o.debit  : (base.debit!==undefined  ? base.debit  : null);
   const credit = o.credit!==undefined ? o.credit : (base.credit!==undefined ? base.credit : null);
@@ -392,8 +393,8 @@ function lineState(side, idx){
   const amount = debit!=null ? debit : (credit!=null ? -credit : (o.amount!==undefined ? o.amount : (base.amount!==undefined?base.amount:null)));
   return {
     debit, credit, amount,
-    category: o.category || base.map.category,
-    sub: o.sub || base.map.sub,
+    category: o.category || map.category || '',
+    sub: o.sub || map.sub || '',
     confidence: base.confidence, why: base.why, label: base.label, section: base.section,
     overridden: !!Object.keys(o).length
   };
@@ -1332,9 +1333,11 @@ function qbRows(){
   // manual entries are always kept (see the QB tab warn text).
   if(D.qb && Array.isArray(D.qb.lines) && D.qb.lines.length){
     D.qb.lines.forEach((l,i)=>{
-      const s=lineState('qb',i); if(s.amount==null) return;
-      rows.push({Type:'QB', Date:(D.qb.date||''), Name:(D.qb.title||'QuickBooks Accounting'), Memo:s.label,
-                 Category:s.category, Sub:s.sub, Amount:s.amount, side:'qb', idx:i, source:'QB Import', conf:s.confidence});
+      try{
+        const s=lineState('qb',i); if(s.amount==null) return;
+        rows.push({Type:'QB', Date:(D.qb.date||''), Name:(D.qb.title||'QuickBooks Accounting'), Memo:(s.label||'(line)'),
+                   Category:s.category, Sub:s.sub, Amount:s.amount, side:'qb', idx:i, source:'QB Import', conf:s.confidence});
+      }catch(e){ /* skip a malformed parsed line rather than crash the whole ledger */ }
     });
   } else {
   ['buySide','sellSide'].forEach(side=>{
