@@ -94,13 +94,13 @@ Return ONLY valid JSON (no prose, no markdown fences), shaped EXACTLY as:
   "lines": [ { "label": "<exact line text>", "debit": number|null, "credit": number|null, "section": "<UPPERCASE section header exactly as printed>", "map": { "category": string, "sub": string }, "confidence": number, "why": string } ] }
 Map every line to ONE Category + Sub-category from the MASTER IA taxonomy below. Use ONLY these exact strings.
 For a BUY-side (Buyer) statement, "category" must be one of:
-  - "Total Purchase Cost" → subs: "Purchase Price","Due Diligence Cost","Insurance","Cash for Keys","Escrow and Title","Prorated Property Tax","Reserves","Escrow Refunds"
+  - "Purchase Cost" → subs: "Purchase Price","Due Diligence Cost","Insurance","Cash for Keys","Escrow and Title","Prorated Property Tax","Reserves","Escrow Refunds"
   - "Lender Cost – 1st Loan" → subs: "Prepaid Interest 1st","Interest on New Loan 1st","Loan Origination Fee 1st","Loan Fees & Appraisal Fee 1st","Additional 1st Payments Made","Unused 1st Payments Credit","Interest from 1st Payoff"
   - "Lender Cost – 2nd Loan" → subs: "Prepaid Interest 2nd","Interest on New Loan 2nd","Loan Origination Fee 2nd","Loan Fees 2nd","Additional 2nd Payments Made","Unused 2nd Payments Credit","Interest from 2nd Payoff"
 For a SELL-side (Seller) statement, "category" must be one of:
   - "Lender Cost – 1st Loan" (subs as above; loan payoff/interest goes here)
   - "Lender Cost – 2nd Loan" (subs as above)
-  - "Gross Profits" → subs: "After Repair Value","Escrow and Title","Prorated Transfer Tax","Prorated Tax","Concessions (Buyer's Help)","Buyers Agent Commissions","Listing Agents Commissions","Per Diem Adjustment","Asset Management Services","Escrow Refunds"
+  - "Sales Cost" → subs: "After Repair Value","Escrow and Title","Prorated Transfer Tax","Prorated Tax","Concessions (Buyer's Help)","Buyers Agent Commissions","Listing Agents Commissions","Per Diem Adjustment","Asset Management Services","Escrow Refunds"
 Title/escrow/recording fees → "Escrow and Title". Tax prorations → "Prorated Property Tax" (buy) or "Prorated Tax" (sell). New loan proceeds / loan principal → the matching Lender Cost loan category. If a line has no exact sub, pick the closest sub in the correct side's category. Never invent categories or subs outside this list.
 Rules: keep the statement's section order; each line is a debit OR a credit (the other is null); copy amounts exactly as numbers; NEVER summarize, merge, or omit a line; deposits / loan proceeds / sale price are credits; charges are debits; "confidence" (0-100) is how sure the category mapping is; "why" is one short sentence.`;
 
@@ -111,12 +111,12 @@ Return ONLY valid JSON (no prose, no markdown fences), shaped EXACTLY as:
 { "meta": { "title": string, "escrowCompany": string, "status": "FINAL" | "ESTIMATED", "date": "YYYY-MM-DD", "closingDate": "YYYY-MM-DD", "property": string, "party": string, "role": "QB", "escrowNo": string },
   "lines": [ { "label": "<exact line text>", "debit": number|null, "credit": number|null, "section": "<UPPERCASE section header exactly as printed>", "map": { "category": string, "sub": string }, "confidence": number, "why": string } ] }
 Map every line to ONE Category + Sub-category from the FULL MASTER taxonomy below. Use ONLY these exact strings:
-  - "Total Purchase Cost" → "Purchase Price","Due Diligence Cost","Insurance","Cash for Keys","Escrow and Title","Prorated Property Tax","Reserves","Escrow Refunds"
+  - "Purchase Cost" → "Purchase Price","Due Diligence Cost","Insurance","Cash for Keys","Escrow and Title","Prorated Property Tax","Reserves","Escrow Refunds"
   - "Lender Cost – 1st Loan" → "Prepaid Interest 1st","Interest on New Loan 1st","Loan Origination Fee 1st","Loan Fees & Appraisal Fee 1st","Additional 1st Payments Made","Unused 1st Payments Credit","Interest from 1st Payoff"
   - "Lender Cost – 2nd Loan" → "Prepaid Interest 2nd","Interest on New Loan 2nd","Loan Origination Fee 2nd","Loan Fees 2nd","Additional 2nd Payments Made","Unused 2nd Payments Credit","Interest from 2nd Payoff"
   - "Rehabilitation Costs" → "Estimated Repairs","Utilities"
   - "Misc Costs" → "ROI Adjustments","Miscellaneous Costs","Supplemental Taxes","Utilities","HOA","Additional Interest Reserve 1st","Additional Interest Reserve 2nd"
-  - "Gross Profits" → "After Repair Value","Escrow and Title","Prorated Transfer Tax","Prorated Tax","Concessions (Buyer's Help)","Buyers Agent Commissions","Listing Agents Commissions","Per Diem Adjustment","Asset Management Services","Escrow Refunds"
+  - "Sales Cost" → "After Repair Value","Escrow and Title","Prorated Transfer Tax","Prorated Tax","Concessions (Buyer's Help)","Buyers Agent Commissions","Listing Agents Commissions","Per Diem Adjustment","Asset Management Services","Escrow Refunds"
   - "Financing (profit-neutral)" → "Loan Proceeds","Construction Holdback","Payoff"
 If a line has no exact sub, pick the closest sub in the most appropriate category. Never invent categories or subs outside this list.
 Rules: keep the ledger order; each line is a debit OR a credit (the other is null); copy amounts exactly as numbers; NEVER summarize, merge, or omit a line; charges / costs are debits, income / proceeds / credits are credits; "confidence" (0-100) is how sure the category mapping is; "why" is one short sentence.`;

@@ -15,9 +15,9 @@
     "mode": "Sold"
   },
   "taxonomy": {
-    "_comment": "IA-aligned taxonomy (MASTER IA v4.1). Closing-tab Category/Sub dropdowns map each statement line to one IA bucket. 'sides' filters which Categories show per closing tab (buy = Purchase + Loans; sell = Loans + Gross Profits). Auto/total IA rows are intentionally not mapping targets.",
+    "_comment": "IA-aligned taxonomy (MASTER IA v4.1). Closing-tab Category/Sub dropdowns map each statement line to one IA bucket. 'sides' filters which Categories show per closing tab (buy = Purchase + Loans; sell = Loans + Sales Cost). Auto/total IA rows are intentionally not mapping targets.",
     "categories": {
-      "Total Purchase Cost": [
+      "Purchase Cost": [
         "Purchase Price",
         "Due Diligence Cost",
         "Insurance",
@@ -58,7 +58,7 @@
         "Additional Interest Reserve 1st",
         "Additional Interest Reserve 2nd"
       ],
-      "Gross Profits": [
+      "Sales Cost": [
         "After Repair Value",
         "Escrow and Title",
         "Prorated Transfer Tax",
@@ -78,7 +78,7 @@
     },
     "sides": {
       "buySide": [
-        "Total Purchase Cost",
+        "Purchase Cost",
         "Lender Cost – 1st Loan",
         "Lender Cost – 2nd Loan",
         "Financing (profit-neutral)"
@@ -86,7 +86,7 @@
       "sellSide": [
         "Lender Cost – 1st Loan",
         "Lender Cost – 2nd Loan",
-        "Gross Profits",
+        "Sales Cost",
         "Financing (profit-neutral)"
       ]
     }

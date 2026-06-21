@@ -331,6 +331,7 @@ async function boot(){
     OV._wipeClosingV1 = true;
     localStorage.setItem(LS, JSON.stringify(OV));
   }
+  migrateTaxonomyNames();                          // bring any stored data onto the renamed categories
   if(OV._status){ D.deal.status=OV._status; }
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
   // QB Accounting is a derived ledger by default; an uploaded QB doc parses into D.qb.lines.
@@ -364,6 +365,17 @@ function bindTabs(){
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active'); render(t.dataset.tab);
   });
+}
+function migrateTaxonomyNames(){
+  // Category rename (string-only, no math): keep any previously-stored parsed lines,
+  // overrides, manual entries and additions in lockstep with the renamed taxonomy.
+  const REN={'Gross Profits':'Sales Cost','Total Purchase Cost':'Purchase Cost'};
+  let changed=false; const fix=c=>{ if(REN[c]){ changed=true; return REN[c]; } return c; };
+  Object.keys(OV||{}).forEach(k=>{ const o=OV[k]; if(o && typeof o==='object' && !Array.isArray(o) && REN[o.category]) o.category=fix(o.category); });
+  ['buySide','sellSide','qb'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)) dd.lines.forEach(l=>{ if(l&&l.map&&REN[l.map.category]) l.map.category=fix(l.map.category); }); });
+  if(Array.isArray(OV._qbManual)) OV._qbManual.forEach(m=>{ if(m&&REN[m.category]) m.category=fix(m.category); });
+  if(OV._add) ['buySide','sellSide'].forEach(sd=>{ if(Array.isArray(OV._add[sd])) OV._add[sd].forEach(a=>{ if(a&&REN[a.category]) a.category=fix(a.category); }); });
+  if(changed){ try{ localStorage.setItem(LS, JSON.stringify(OV)); }catch(e){} }
 }
 function saveOV(){
   // push the currently-persisted state onto the undo stack BEFORE overwriting it.
@@ -408,22 +420,22 @@ function badge(c){
   const cls = c>=100?'b100':c>=90?'b90':c>=80?'b80':'blo';
   return `<span class="badge ${cls}">${c}%</span>`;
 }
-// taxCats() = the dropdown taxonomy, with "Total Purchase Cost" mirrored 1:1 to the IA
-// Total Purchase Cost section — including any custom "+ add cost" lines — so the
+// taxCats() = the dropdown taxonomy, with "Purchase Cost" mirrored 1:1 to the IA
+// Purchase Cost section — including any custom "+ add cost" lines — so the
 // Buy/Sell/QB mapping dropdowns stay 100% aligned with the form.
 function taxCats(){
   const cats={};
   for(const k in D.taxonomy.categories) cats[k]=D.taxonomy.categories[k].slice();
-  if(cats['Total Purchase Cost']){
+  if(cats['Purchase Cost']){
     const custom=((D.ia&&D.ia.inputs&&D.ia.inputs.customLines&&D.ia.inputs.customLines.purchase)||[])
       .map(l=>l&&l.label).filter(Boolean);
-    cats['Total Purchase Cost']=cats['Total Purchase Cost'].concat(custom);
+    cats['Purchase Cost']=cats['Purchase Cost'].concat(custom);
   }
   return cats;
 }
 function firstSub(cat){ const a=taxCats()[cat]; return (a&&a[0])||''; }
 // catList(side): the Category names allowed in a given closing tab. buy = Purchase + Loans;
-// sell = Loans + Gross Profits. No side (QB) = every Category. The current value is always
+// sell = Loans + Sales Cost. No side (QB) = every Category. The current value is always
 // kept in the list so an existing mapping never silently disappears.
 function catList(side,sel){
   let list = (side && D.taxonomy.sides && D.taxonomy.sides[side]) ? D.taxonomy.sides[side].slice() : Object.keys(taxCats());
@@ -785,7 +797,7 @@ function computeIA(i){
   r.days   = daysBetween(i.coeDate, i.eomDate);              // F6
   r.months = r.days/30;                                      // E2
   // TOTAL PURCHASE
-  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+i.proratedPropTaxPurchase+cSum('purchase'); // B10 (transfer tax lives in Gross Profits as a sell-side cost, not here)
+  r.totalPurchase = i.purchasePrice+i.dueDiligence+i.insurance+i.cashForKeys+i.escrowTitlePurchase+i.proratedPropTaxPurchase+cSum('purchase'); // B10 (transfer tax lives in Sales Cost as a sell-side cost, not here)
   // loan sizing — 1st loan is the LOWER of two caps: 75% of ARV, or 90% of the all-in cost
   // (purchase all-in + repairs baked in). Both % factors are editable (arvLoanPct/costLoanPct).
   r.arvLoanPct  = (i.arvLoanPct==null||i.arvLoanPct==='')   ? 0.75 : +i.arvLoanPct;
@@ -967,12 +979,12 @@ const meta=(k)=> IA_META[k]||{};
    are direct inputs. With no statement attached, iaActuals() is empty and effIA() returns
    the manual estimate inputs unchanged -> the IA is byte-identical to before. ----- */
 const SUB2IA = {
-  'Total Purchase Cost|Purchase Price':'purchasePrice',
-  'Total Purchase Cost|Due Diligence Cost':'dueDiligence',
-  'Total Purchase Cost|Insurance':'insurance',
-  'Total Purchase Cost|Cash for Keys':'cashForKeys',
-  'Total Purchase Cost|Escrow and Title':'escrowTitlePurchase',
-  'Total Purchase Cost|Prorated Property Tax':'proratedPropTaxPurchase',
+  'Purchase Cost|Purchase Price':'purchasePrice',
+  'Purchase Cost|Due Diligence Cost':'dueDiligence',
+  'Purchase Cost|Insurance':'insurance',
+  'Purchase Cost|Cash for Keys':'cashForKeys',
+  'Purchase Cost|Escrow and Title':'escrowTitlePurchase',
+  'Purchase Cost|Prorated Property Tax':'proratedPropTaxPurchase',
   'Lender Cost – 1st Loan|Prepaid Interest 1st':'ov_prepaidInt1st',
   'Lender Cost – 1st Loan|Interest on New Loan 1st':'ov_intOnNewLoan1st',
   'Lender Cost – 1st Loan|Loan Origination Fee 1st':'ov_loanOrig1st',
@@ -987,16 +999,16 @@ const SUB2IA = {
   'Lender Cost – 2nd Loan|Additional 2nd Payments Made':'additional2ndPayments',
   'Lender Cost – 2nd Loan|Unused 2nd Payments Credit':'unused2ndCredit',
   'Lender Cost – 2nd Loan|Interest from 2nd Payoff':'interestFrom2ndPayoff',
-  'Gross Profits|After Repair Value':'arv',
-  'Gross Profits|Escrow and Title':'ov_escrowTitleResale',
-  'Gross Profits|Prorated Transfer Tax':'ov_transferTaxResale',
-  'Gross Profits|Prorated Tax':'ov_proratedTaxResale',
-  'Gross Profits|Prorated Property Tax':'ov_proratedTaxResale',
-  "Gross Profits|Concessions (Buyer's Help)":'ov_concessions',
-  'Gross Profits|Buyers Agent Commissions':'ov_buyersComm',
-  'Gross Profits|Listing Agents Commissions':'ov_listingComm',
-  'Gross Profits|Per Diem Adjustment':'perDiemAdjustment',
-  'Gross Profits|Asset Management Services':'ov_assetMgmt'
+  'Sales Cost|After Repair Value':'arv',
+  'Sales Cost|Escrow and Title':'ov_escrowTitleResale',
+  'Sales Cost|Prorated Transfer Tax':'ov_transferTaxResale',
+  'Sales Cost|Prorated Tax':'ov_proratedTaxResale',
+  'Sales Cost|Prorated Property Tax':'ov_proratedTaxResale',
+  "Sales Cost|Concessions (Buyer's Help)":'ov_concessions',
+  'Sales Cost|Buyers Agent Commissions':'ov_buyersComm',
+  'Sales Cost|Listing Agents Commissions':'ov_listingComm',
+  'Sales Cost|Per Diem Adjustment':'perDiemAdjustment',
+  'Sales Cost|Asset Management Services':'ov_assetMgmt'
 };
 let IA_ACTUAL = {};
 // Actuals overlay the IA only once the deal MODE says they exist: buy-side actuals at
@@ -1053,7 +1065,7 @@ function srcLinesFor(key, mode){
 }
 function srcLink(m,val,key){
   // Stage-gate link-backs by mode: Estimated -> none; Acquired -> buy-side only
-  // (Total Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Gross Profit).
+  // (Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Gross Profit).
   const mode=(effIA().mode||'');
   if(mode!=='Acquired' && mode!=='Sold') return '';
   // Preferred: highlight EVERY closing-statement line feeding this IA total (handles fields
@@ -1165,7 +1177,7 @@ function renderIA(){
   // Mode/Financing/Months bar + summary cards now live in the global band (renderSumBand).
 
   // TOTAL PURCHASE COST — cost lines on the left, dates + cash summary on the right
-  const purchase = `<div class="band">Total Purchase Cost</div>
+  const purchase = `<div class="band">Purchase Cost</div>
   <div class="cols">
     <div class="col purchleft">
       ${L$('Purchase Price','purchasePrice',i.purchasePrice)}
@@ -1175,7 +1187,7 @@ function renderIA(){
       ${L$('Escrow and Title','escrowTitlePurchase',i.escrowTitlePurchase)}
       ${L$('Prorated Property Tax','proratedPropTaxPurchase',i.proratedPropTaxPurchase)}
       ${customRows('purchase')}
-      ${L_('Total Purchase Costs', r.totalPurchase,{tot:1,add:'purchase'})}
+      ${L_('Purchase Costs', r.totalPurchase,{tot:1,add:'purchase'})}
     </div>
     <div class="col r purchcol">
       <div class="dates">
@@ -1269,7 +1281,7 @@ function renderIA(){
   </div><div class="col"></div></div>`;
 
   // GROSS PROFITS — resale lines on the left, Total Development Cost summary on the right
-  const gross = `<div class="band">Gross Profits</div>
+  const gross = `<div class="band">Sales Cost</div>
   <div class="cols">
     <div class="col grossleft">
       ${L$('After Repair Value','arv',i.arv)}
