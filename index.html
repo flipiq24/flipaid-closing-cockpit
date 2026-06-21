@@ -204,6 +204,15 @@
   .escrow-recon .erd{border-top:1px solid #ccc;margin-top:4px;padding-top:5px}
   tr.qb-bad>td{background:#fef2f2;color:#991b1b}
   tr.qb-bad>td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+  .qbtot tr{cursor:pointer}
+  .qbtot td{padding:5px 10px}
+  .qbcat-cell{display:inline-flex;align-items:center;gap:8px}
+  .qbcat-dot{width:11px;height:11px;border-radius:3px;display:inline-block;flex:none}
+  .qbtot tr.qb-tot-hi{outline:2px solid #f59e0b;outline-offset:-2px}
+  .qbtot tr.qb-tot-filter{outline:2px solid #0f172a;outline-offset:-2px;font-weight:700}
+  tr.qb-hi>td{background:#fde68a !important}
+  .qb-filterbar{font-size:12.5px;margin:8px 0 4px;color:#334155}
+  .qb-filterbar .pill{cursor:pointer;background:#e2e8f0;margin-left:6px}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
   .stmt-hd{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .stmt-co{font-size:12px;color:var(--muted);font-weight:600}
@@ -1409,6 +1418,35 @@ function qbRows(){
   return rows;
 }
 let qbSort={col:'',dir:1};
+let qbView={hi:'',filter:''};   // hi = click-to-highlight category; filter = dbl-click-to-show-only category
+let qbClickT=null;
+// Light row tint + dot colour per category (key must match the taxonomy names exactly).
+const QBCOLORS={
+  'Purchase Cost':              {bg:'#e0f2fe',dot:'#0ea5e9'},
+  'Lender Cost – 1st Loan':     {bg:'#ede9fe',dot:'#7c3aed'},
+  'Lender Cost – 2nd Loan':     {bg:'#f5f3ff',dot:'#a855f7'},
+  'Rehabilitation Costs':       {bg:'#dcfce7',dot:'#16a34a'},
+  'Misc Costs':                 {bg:'#fef9c3',dot:'#ca8a04'},
+  'Sales Cost':                 {bg:'#ffe4e6',dot:'#e11d48'},
+  'Financing (profit-neutral)': {bg:'#f1f5f9',dot:'#64748b'}
+};
+function qbCatColor(c){ return QBCOLORS[c] || {bg:'#f8fafc',dot:'#94a3b8'}; }
+function qbCatOrder(){ return Object.keys((D&&D.taxonomy&&D.taxonomy.categories)||{}); }
+// Default ledger order: canonical category, then sub within that category, then memo.
+function qbSortByCatSub(list){
+  const co=qbCatOrder();
+  const ci=c=>{const i=co.indexOf(c);return i<0?999:i;};
+  const si=(c,s)=>{const a=(D.taxonomy.categories[c]||[]);const i=a.indexOf(s);return i<0?999:i;};
+  return list.slice().sort((a,b)=>
+    ci(a.Category)-ci(b.Category) || si(a.Category,a.Sub)-si(b.Category,b.Sub) ||
+    String(a.Memo||'').localeCompare(String(b.Memo||'')));
+}
+function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+// Single click highlights the category's lines; double click filters to just that category.
+// The 180ms timer lets a double click cancel the pending single-click highlight.
+function qbCatClick(c){ clearTimeout(qbClickT); qbClickT=setTimeout(()=>{ qbView.hi=(qbView.hi===c?'':c); render('qb'); },180); }
+function qbCatDbl(c){ clearTimeout(qbClickT); qbView.filter=(qbView.filter===c?'':c); qbView.hi=''; render('qb'); }
+function qbClearView(){ qbView.hi=''; qbView.filter=''; render('qb'); }
 function sortQb(c){ if(qbSort.col===c){ qbSort.dir*=-1; } else { qbSort.col=c; qbSort.dir=1; } render('qb'); }
 function qbSortRows(list){
   const c=qbSort.col; if(!c) return list;
@@ -1442,18 +1480,35 @@ function renderQB(){
     return;
   }
   const {redMan,redImp,matched,unmatched}=qbRecon();
-  // category totals (imported + additions + manual) — shown at the top
+  // category totals (imported + additions + manual) — shown at the top, colour-coded & in taxonomy order.
   const tot={}; all.forEach(r=>tot[r.Category]=(tot[r.Category]||0)+(+r.Amount||0));
-  const totalsHtml=`<div class="section"><h2>Totals by category</h2><table><tbody>`+
-    Object.keys(tot).map(c=>`<tr><td>${c}</td><td class="num">${money(tot[c])}</td></tr>`).join('')+
+  const catsOrdered = qbCatOrder().filter(c=>tot[c]!=null)
+    .concat(Object.keys(tot).filter(c=>!qbCatOrder().includes(c)));   // any non-taxonomy cats last
+  const totalsHtml=`<div class="section"><h2>Totals by category</h2>
+    <div class="help">Click a category to highlight its lines in the ledger · double-click to filter to just that category.</div>
+    <table class="qbtot"><tbody>`+
+    catsOrdered.map(c=>{const col=qbCatColor(c);
+      const act=(qbView.filter===c)?' qb-tot-filter':((qbView.hi===c)?' qb-tot-hi':'');
+      return `<tr class="${act}" style="background:${col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num">${money(tot[c])}</td></tr>`;
+    }).join('')+
     `</tbody></table></div>`;
+  // ledger rows: default order = category then sub (canonical); a column-header click overrides it.
+  let ledger = qbSort.col ? qbSortRows(rows) : qbSortByCatSub(rows);
+  if(qbView.filter) ledger = ledger.filter(r=>r.Category===qbView.filter);
+  const filterBar = qbView.filter
+    ? `<div class="qb-filterbar">Showing only <b>${qbView.filter}</b><span class="pill" onclick="qbClearView()">show all ✕</span></div>` : '';
   let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}
-   <div class="section"><h2>Ledger <span class="pill">${rows.length} lines</span></h2>
+   <div class="section"><h2>Ledger <span class="pill">${ledger.length} lines</span></h2>${filterBar}
    <table><thead><tr>${['Date','Memo','Source','Conf','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
-  qbSortRows(rows).forEach(r=>{
+  ledger.forEach(r=>{
     const bad=redImp[qbRowKey(r)];
+    const col=qbCatColor(r.Category);
+    const hi = qbView.hi && r.Category===qbView.hi;
+    const cls = ((bad?'qb-bad':'') + (hi?' qb-hi':'')).trim();
+    const st = (!bad && !hi) ? ` style="background:${col.bg}"` : '';
+    const trHead = `<tr class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
-      html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}><td></td><td>${r.Memo}</td>
+      html+=`${trHead}<td></td><td>${r.Memo}</td>
         <td><span class="pill">${r.source}</span></td>
         <td><span class="muted">computed</span></td>
         <td>${r.Category}</td><td>${r.Sub}</td>
@@ -1468,7 +1523,7 @@ function renderQB(){
     const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+this.value||0))`
                           : `setOV('${k}','amount',this.value);render('qb')`;
     const conf = r.isAdd ? '<span class="muted">manual</span>' : badge(r.conf);
-    html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}><td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
+    html+=`${trHead}<td>${r.Date}</td><td>${r.Memo}${r.isAdd?' <span class="pill">addition</span>':''}</td>
       <td><span class="pill">${r.source}</span></td>
       <td>${conf}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
