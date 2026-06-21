@@ -3,6 +3,18 @@
 import express from 'express';
 import multer from 'multer';
 import Anthropic from '@anthropic-ai/sdk';
+import * as XLSX from 'xlsx';
+
+// Turn a spreadsheet (XLSX/XLS) or CSV buffer into plain CSV text the model can read.
+// QuickBooks and most closing-statement exports are XLSX/CSV, so this is the QB happy path.
+function spreadsheetToText(buf, mt, name) {
+  const isCsv = (mt || '').includes('csv') || /\.csv$/i.test(name || '');
+  if (isCsv && !/\.xlsx?$/i.test(name || '')) return buf.toString('utf8');
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  return wb.SheetNames
+    .map(n => `# Sheet: ${n}\n` + XLSX.utils.sheet_to_csv(wb.Sheets[n]))
+    .join('\n\n');
+}
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -92,17 +104,48 @@ For a SELL-side (Seller) statement, "category" must be one of:
 Title/escrow/recording fees → "Escrow and Title". Tax prorations → "Prorated Property Tax" (buy) or "Prorated Tax" (sell). New loan proceeds / loan principal → the matching Lender Cost loan category. If a line has no exact sub, pick the closest sub in the correct side's category. Never invent categories or subs outside this list.
 Rules: keep the statement's section order; each line is a debit OR a credit (the other is null); copy amounts exactly as numbers; NEVER summarize, merge, or omit a line; deposits / loan proceeds / sale price are credits; charges are debits; "confidence" (0-100) is how sure the category mapping is; "why" is one short sentence.`;
 
+// QB Accounting upload: a QuickBooks export/ledger, mapped across the FULL taxonomy
+// (purchase, both loans, rehab, misc, gross profits, financing) rather than one side.
+const QB_INSTRUCTIONS = `Extract this QuickBooks accounting export / ledger into JSON for a universal viewer.
+Return ONLY valid JSON (no prose, no markdown fences), shaped EXACTLY as:
+{ "meta": { "title": string, "escrowCompany": string, "status": "FINAL" | "ESTIMATED", "date": "YYYY-MM-DD", "closingDate": "YYYY-MM-DD", "property": string, "party": string, "role": "QB", "escrowNo": string },
+  "lines": [ { "label": "<exact line text>", "debit": number|null, "credit": number|null, "section": "<UPPERCASE section header exactly as printed>", "map": { "category": string, "sub": string }, "confidence": number, "why": string } ] }
+Map every line to ONE Category + Sub-category from the FULL MASTER taxonomy below. Use ONLY these exact strings:
+  - "Total Purchase Cost" → "Purchase Price","Due Diligence Cost","Insurance","Cash for Keys","Escrow and Title","Prorated Property Tax","Reserves","Escrow Refunds"
+  - "Lender Cost – 1st Loan" → "Prepaid Interest 1st","Interest on New Loan 1st","Loan Origination Fee 1st","Loan Fees & Appraisal Fee 1st","Additional 1st Payments Made","Unused 1st Payments Credit","Interest from 1st Payoff"
+  - "Lender Cost – 2nd Loan" → "Prepaid Interest 2nd","Interest on New Loan 2nd","Loan Origination Fee 2nd","Loan Fees 2nd","Additional 2nd Payments Made","Unused 2nd Payments Credit","Interest from 2nd Payoff"
+  - "Rehabilitation Costs" → "Estimated Repairs","Utilities"
+  - "Misc Costs" → "ROI Adjustments","Miscellaneous Costs","Supplemental Taxes","Utilities","HOA","Additional Interest Reserve 1st","Additional Interest Reserve 2nd"
+  - "Gross Profits" → "After Repair Value","Escrow and Title","Prorated Transfer Tax","Prorated Tax","Concessions (Buyer's Help)","Buyers Agent Commissions","Listing Agents Commissions","Per Diem Adjustment","Asset Management Services","Escrow Refunds"
+  - "Financing (profit-neutral)" → "Loan Proceeds","Construction Holdback","Payoff"
+If a line has no exact sub, pick the closest sub in the most appropriate category. Never invent categories or subs outside this list.
+Rules: keep the ledger order; each line is a debit OR a credit (the other is null); copy amounts exactly as numbers; NEVER summarize, merge, or omit a line; charges / costs are debits, income / proceeds / credits are credits; "confidence" (0-100) is how sure the category mapping is; "why" is one short sentence.`;
+
 app.post('/api/parse', upload.single('file'), async (req, res) => {
   if (!client) return res.status(503).json({ error: 'Set ANTHROPIC_API_KEY' });
   try {
+    const instr = ((req.body && req.body.side) === 'qb') ? QB_INSTRUCTIONS : PARSE_INSTRUCTIONS;
     const content = [];
     if (req.file) {
-      const b64 = req.file.buffer.toString('base64');
       const mt = req.file.mimetype || '';
-      if (mt.includes('pdf')) content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } });
-      else if (mt.startsWith('image/')) content.push({ type: 'image', source: { type: 'base64', media_type: mt, data: b64 } });
-      else return res.status(415).json({ error: 'Upload a PDF or image. For XLSX/CSV, paste the text or use a link.' });
-      content.push({ type: 'text', text: PARSE_INSTRUCTIONS });
+      const nm = req.file.originalname || '';
+      const isSheet = mt.includes('sheet') || mt.includes('excel') || mt.includes('csv')
+        || /\.(xlsx|xls|csv)$/i.test(nm);
+      if (mt.includes('pdf')) {
+        content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: req.file.buffer.toString('base64') } });
+        content.push({ type: 'text', text: instr });
+      } else if (mt.startsWith('image/')) {
+        content.push({ type: 'image', source: { type: 'base64', media_type: mt, data: req.file.buffer.toString('base64') } });
+        content.push({ type: 'text', text: instr });
+      } else if (isSheet) {
+        let sheetText;
+        try { sheetText = spreadsheetToText(req.file.buffer, mt, nm); }
+        catch (e) { return res.status(422).json({ error: 'Could not read that spreadsheet — try saving it as CSV.' }); }
+        if (!sheetText || !sheetText.trim()) return res.status(422).json({ error: 'The spreadsheet appears to be empty.' });
+        content.push({ type: 'text', text: instr + '\n\nSTATEMENT TEXT:\n' + sheetText.slice(0, 60000) });
+      } else {
+        return res.status(415).json({ error: 'Upload a PDF, image, XLSX, or CSV.' });
+      }
     } else {
       const { link, text } = req.body || {};
       let doc = text;
@@ -115,7 +158,7 @@ app.post('/api/parse', upload.single('file'), async (req, res) => {
         doc = await r.text();
       }
       if (!doc) return res.status(400).json({ error: 'Provide a file, a public link, or pasted text.' });
-      content.push({ type: 'text', text: PARSE_INSTRUCTIONS + '\n\nSTATEMENT TEXT:\n' + String(doc).slice(0, 60000) });
+      content.push({ type: 'text', text: instr + '\n\nSTATEMENT TEXT:\n' + String(doc).slice(0, 60000) });
     }
     const msg = await client.messages.create({ model: 'claude-opus-4-8', max_tokens: 4000, messages: [{ role: 'user', content }] });
     const raw = msg.content.map(c => c.text || '').join('').trim().replace(/^```(?:json)?\s*|\s*```$/g, '');

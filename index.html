@@ -38,6 +38,11 @@
   th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
   th.sortable:hover{color:var(--accent)}
   .pill{font-size:11px;font-weight:600;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 9px}
+  .proc-card{display:flex;align-items:center;gap:14px}
+  .proc-t{font-weight:700;font-size:15px}
+  .proc-s{color:var(--muted);font-size:13px}
+  .spinner{width:22px;height:22px;border:3px solid var(--accent-soft);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
   .field{display:flex;flex-direction:column;gap:5px}
   .field label{font-size:12px;color:var(--muted)}
@@ -68,6 +73,7 @@
   .btn-back:disabled{opacity:.4;cursor:default}
   .bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
   .warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+  .warn-err{background:#fef2f2;border-color:#fecaca;color:#991b1b}
   .statusrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
   .statusrow select{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-weight:600}
   .note{font-size:12px;color:var(--muted);margin-top:8px}
@@ -324,8 +330,10 @@ async function boot(){
   }
   if(OV._status){ D.deal.status=OV._status; }
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
+  // QB Accounting is a derived ledger by default; an uploaded QB doc parses into D.qb.lines.
+  D.qb = D.qb || {lines:[], role:'QB', title:'QuickBooks Accounting', status:'', date:''};
   // restore any parsed statement lines from a prior attach
-  ['buySide','sellSide'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)&&dd.lines.length){ D[sd].lines=dd.lines; if(dd.meta) Object.assign(D[sd], dd.meta); } });
+  ['buySide','sellSide','qb'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)&&dd.lines.length){ D[sd].lines=dd.lines; if(dd.meta) Object.assign(D[sd], dd.meta); } });
   // No closing data -> deal is estimate-only: pin Mode to "Estimated" once here (controlled, not in render).
   if(!hasClosingData() && D.ia.inputs.mode!=='Estimated'){ D.ia.inputs.mode='Estimated'; OV._ia=D.ia.inputs; localStorage.setItem(LS, JSON.stringify(OV)); }
   renderHeaderMeta();
@@ -490,13 +498,21 @@ function applyAttach(side, kind, name, url){
     D.ia.inputs.mode = mode; OV._ia = D.ia.inputs;
   }
   saveOV();
-  tryParse(side);                                  // optional backend parse fills the lines
-  render(side==='qb' ? 'qb' : (side==='buySide'?'buy':'sell'));  // stay on the tab you uploaded from
+  setParsing(side,true);                           // show the "processing" spinner immediately
+  tryParse(side);                                  // backend parse fills the lines, then clears the spinner
+  render(tabFor(side));                            // stay on the tab you uploaded from (now showing the spinner)
 }
 function fileStmt(side, inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
 function dropStmt(side, ev){ ev.preventDefault(); ev.currentTarget.classList.remove('drag'); const f=ev.dataTransfer.files&&ev.dataTransfer.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); }
 function linkStmt(side, url){ url=(url||'').trim(); if(!url) return; applyAttach(side,'link','',url); }
-function clearStmt(side){ if(OV._src&&OV._src[side]){ delete OV._src[side]; saveOV(); renderActive(); } }
+function clearStmt(side){
+  if(OV._src&&OV._src[side]) delete OV._src[side];
+  if(side==='qb'){                                  // removing the QB doc reverts to the derived ledger
+    if(D.qb) D.qb.lines=[]; delete OV._data_qb;
+    Object.keys(OV).forEach(k=>{ if(k.indexOf('qb:')===0) delete OV[k]; });
+  }
+  saveOV(); renderActive();
+}
 /* ----- "Additions" : user items NOT on the closing statement. Stored in OV._add per
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
@@ -533,21 +549,38 @@ function qbRecon(){
   return {redMan,redImp,matched,unmatched};
 }
 function qbRowKey(r){ return r.isIA?('ia:'+r.idx):(r.isAdd?('add:'+r.side+':'+r.idx):(r.side+':'+r.idx)); }
+function tabFor(side){ return side==='qb' ? 'qb' : (side==='buySide' ? 'buy' : 'sell'); }
+function setParsing(side,v){ window.__parsing=window.__parsing||{}; window.__parsing[side]=v; }
+function isParsing(side){ return !!(window.__parsing && window.__parsing[side]); }
+function setParseErr(side,msg){ window.__parseErr=window.__parseErr||{}; if(msg) window.__parseErr[side]=msg; else delete window.__parseErr[side]; }
+function parseErr(side){ return window.__parseErr && window.__parseErr[side]; }
 async function tryParse(side){
+  setParseErr(side,'');                             // clear any prior error for this side
   try{
     const src=srcState(side); const f=window.__stmtFiles&&window.__stmtFiles[side];
     let res;
     if(f){ const fd=new FormData(); fd.append('file',f); fd.append('side',side); res=await fetch('/api/parse',{method:'POST',body:fd}); }
     else { res=await fetch('/api/parse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({side,link:src.url})}); }
-    if(!res||!res.ok) return;                       // no backend/key -> attachment + Mode still applied
-    const j=await res.json();
-    if(j && Array.isArray(j.lines) && j.lines.length){
-      D[side].lines=j.lines; if(j.meta) Object.assign(D[side], j.meta);
-      OV._src[side].parsed=true; OV['_data_'+side]={lines:D[side].lines, meta:j.meta||null};
-      saveOV(); render(side==='buySide'?'buy':'sell');
+    if(res && res.ok){
+      const j=await res.json();
+      if(j && Array.isArray(j.lines) && j.lines.length){
+        if(!D[side]) D[side]={lines:[]};
+        D[side].lines=j.lines; if(j.meta) Object.assign(D[side], j.meta);
+        if(OV._src && OV._src[side]) OV._src[side].parsed=true;
+        OV['_data_'+side]={lines:D[side].lines, meta:j.meta||null};
+        saveOV();
+      } else { setParseErr(side,'No lines found in that document. Check the file or paste the text.'); }
+    } else if(res){                                  // backend reachable but returned an error
+      let m=''; try{ m=(await res.json()).error||''; }catch(e){}
+      setParseErr(side, res.status===503 ? 'AI parsing is off (no API key) — the file is attached; map lines manually.' : (m||('Could not process the file ('+res.status+').')));
     }
-  }catch(e){ /* backend not available; attachment + Mode update remain in effect */ }
+  }catch(e){ setParseErr(side,'Could not reach the parser. The file is attached; map lines manually.'); }
+  finally{ setParsing(side,false); render(tabFor(side)); }   // clear the spinner; show whatever we have
 }
+function processingCard(){
+  return `<div class="section proc-card"><span class="spinner"></span><div><div class="proc-t">Processing…</div><div class="proc-s">Reading and formatting your statement — this takes a few seconds.</div></div></div>`;
+}
+function errCard(side){ const m=parseErr(side); return m ? `<div class="warn warn-err">⚠ ${m}</div>` : ''; }
 function uploadCard(sideKey){
   const label = sideKey==='buySide' ? 'buy-side' : sideKey==='qb' ? 'QuickBooks accounting' : 'sell-side';
   const s = srcState(sideKey);
@@ -582,10 +615,11 @@ function docChip(sideKey){
 
 /* ----- closing tabs ----- */
 function renderClosing(sideKey, tabKey){
+  if(isParsing(sideKey)){ $('#panel').innerHTML = docChip(sideKey) + processingCard(); return; }
   const side = D[sideKey];
   // Empty state: no statement lines yet -> show ONLY the upload dropzone (no header/tables/totals).
   if(!side || !Array.isArray(side.lines) || side.lines.length===0){
-    $('#panel').innerHTML = uploadCard(sideKey) + docChip(sideKey);
+    $('#panel').innerHTML = uploadCard(sideKey) + docChip(sideKey) + errCard(sideKey);
     return;
   }
   // group by section, preserving statement order
@@ -1294,6 +1328,15 @@ function renderIA(){
 /* ----- QB export tab ----- */
 function qbRows(){
   const rows=[];
+  // An uploaded QB document (parsed into D.qb.lines) overwrites the auto-derived ledger below;
+  // manual entries are always kept (see the QB tab warn text).
+  if(D.qb && Array.isArray(D.qb.lines) && D.qb.lines.length){
+    D.qb.lines.forEach((l,i)=>{
+      const s=lineState('qb',i); if(s.amount==null) return;
+      rows.push({Type:'QB', Date:(D.qb.date||''), Name:(D.qb.title||'QuickBooks Accounting'), Memo:s.label,
+                 Category:s.category, Sub:s.sub, Amount:s.amount, side:'qb', idx:i, source:'QB Import', conf:s.confidence});
+    });
+  } else {
   ['buySide','sellSide'].forEach(side=>{
     const source = side==='buySide' ? 'Buy-Side Closing' : 'Sell-Side Closing';
     D[side].lines.forEach((l,i)=>{
@@ -1330,6 +1373,7 @@ function qbRows(){
     rows.push({Type:'IA', Date:'', Name:'Investment Analysis', Memo:x.label,
                Category:x.cat, Sub:x.sub, Amount:x.amt, idx, isIA:true, source:'Investment Analysis', conf:null});
   });
+  }
   // Manual QB-only entries: keyed in the QB tab, never imported. Source = "QB Accounting".
   qbManual().forEach((m,idx)=>{
     if(m.amount==null && !(m.label||'').trim()) return;
@@ -1362,12 +1406,13 @@ function qbSortRows(list){
   });
 }
 function renderQB(){
+  if(isParsing('qb')){ $('#panel').innerHTML = docChip('qb') + processingCard(); return; }
   const all=qbRows();
   const rows=all.filter(r=>!r.isManual);           // imported statement lines + additions
   const man=qbManual();
   // Empty state: no statement-derived or manual ledger data (only IA roll-ups, if any) -> show ONLY the dropzone.
   if(rows.filter(r=>!r.isIA).length===0 && man.length===0){
-    $('#panel').innerHTML = uploadCard('qb') + docChip('qb');
+    $('#panel').innerHTML = uploadCard('qb') + docChip('qb') + errCard('qb');
     return;
   }
   const {redMan,redImp,matched,unmatched}=qbRecon();
