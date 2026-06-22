@@ -220,6 +220,21 @@
   .qb-filterbar{font-size:12.5px;margin:8px 0 4px;color:#334155}
   .qb-filterbar .pill{cursor:pointer;background:#e2e8f0;margin-left:6px}
   .pill-qb{background:#e2e8f0;color:#475569}
+  /* ===== triangulation (source reconciliation) ===== */
+  .tri{font-size:11px;font-weight:700;border-radius:10px;padding:2px 9px;white-space:nowrap;display:inline-block}
+  .tri-ok{background:#dcfce7;color:#166534}
+  .tri-bad{background:#fee2e2;color:#991b1b}
+  .tri-qb{background:#e2e8f0;color:#475569}
+  .tri-single{background:#f1f5f9;color:#64748b;font-weight:600}
+  .tritab{display:block;overflow-x:auto}
+  .tritab td,.tritab th{white-space:nowrap;padding:6px 10px;border-bottom:1px solid var(--line)}
+  .tritab td.num,.tritab th.num{text-align:right}
+  .tritab td.mut{color:#94a3b8}
+  .tritab tr.tri-row-bad>td{background:#fef2f2}
+  .tritab tr.tri-row-bad>td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+  .tritab tr.tri-row-ok>td:first-child{box-shadow:inset 3px 0 0 #16a34a}
+  .tri-legend{font-size:12px;color:#475569;margin:6px 0 10px;display:flex;gap:14px;flex-wrap:wrap}
+  .tri-note{font-size:12.5px;color:#334155;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin:6px 0}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
   .stmt-hd{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
   .stmt-co{font-size:12px;color:var(--muted);font-weight:600}
@@ -1435,8 +1450,10 @@ function derivedRows(){
     {cat:'Misc Costs', sub:'HOA',                 label:'HOA',                 amt:(+_i.hoaMonthly||0)*_ia.months},
   ].forEach((x,idx)=>{
     if(!x.amt) return;
+    // Rehab/utilities/misc live ONLY in QuickBooks — they never hit a closing statement, so they
+    // are labelled "QB" (a QB item in the triangulation), not "Investment Analysis".
     rows.push({Type:'IA', Date:'', Name:'Investment Analysis', Memo:x.label,
-               Category:x.cat, Sub:x.sub, Amount:x.amt, idx, isIA:true, source:'Investment Analysis', conf:null});
+               Category:x.cat, Sub:x.sub, Amount:x.amt, idx, isIA:true, source:'QB', conf:null});
   });
   return rows;
 }
@@ -1532,7 +1549,7 @@ function qbSortRows(list){
       case 'Num':return r.Num||'';
       case 'Name':return r.Name||'';
       case 'Memo':return r.Memo||'';
-      case 'Source':return r.source||'';
+      case 'Source':{ const b=triMap()[(r.Category||'')+'|'+(r.Sub||'')]; const ord={mismatch:0,single:1,ok:2,qbitem:3}; return String(b?(ord[b.status]==null?9:ord[b.status]):9); }
       case 'Category':return r.Category||'';
       case 'Sub':return r.Sub||'';
       case 'Amount':return +r.Amount||0;
@@ -1545,7 +1562,185 @@ function qbSortRows(list){
     return cmp*qbSort.dir;
   });
 }
+
+/* ===== Triangulation engine =====
+   For each Category|Sub cost bucket, total the amount each SOURCE carries — IA (the raw
+   master ESTIMATE, never the closing-actual overlay, so it stays an independent number),
+   Buy-Side closing, Sell-Side closing, and the QB ledger — then assign a reconciliation
+   status. Mirrors iaActuals(): costs take debits, ARV takes the credit, loan principal /
+   payoff is excluded, and several closing lines sharing a Category|Sub aggregate into one
+   bucket. Comparison is EXACT to the cent — no tolerance; near-misses surface as mismatches.
+   Mode-staged via hasActualStmt(): Estimated -> nothing to reconcile (IA only); Acquired ->
+   + Buy-Side (Purchase + Loan); Sold -> + Sell-Side (full triangulation). */
+const IA_QB_ONLY_CATS=['Rehabilitation Costs','Misc Costs'];   // repairs/utilities/holding etc. live ONLY in QuickBooks — never on a closing statement
+const TRI_EPS=0.005;                                           // half-a-cent: exact-match guard against float noise
+function isPrincipalLine(s){ return /Lender Cost/.test(s.category||'') && /(payoff|principal|trust deed|loan proceeds)/i.test(s.label||'') && !/interest/i.test(s.label||''); }
+// The IA model's own dollar value for a Category|Sub bucket (computed from D.ia.inputs WITHOUT
+// the actuals overlay), so IA can disagree with the closing actuals and be reconciled.
+function iaBucketValue(cat, sub, i, r){
+  const key=SUB2IA[(cat||'')+'|'+(sub||'')]; if(!key) return null;
+  if(key==='arv') return +i.arv||0;
+  const bare=key.replace(/^ov_/,'');
+  if(r[bare]!=null) return +r[bare]||0;     // computed line (already honours any ov_ override)
+  if(i[bare]!=null) return +i[bare]||0;     // direct IA input
+  if(i[key]!=null)  return +i[key]||0;
+  return 0;
+}
+// Closing-statement total a side carries for a Category|Sub bucket + the contributing line
+// indices (for ↗ link-backs). null when the side isn't in scope for the current deal mode.
+function closingBucket(side, cat, sub){
+  if(!hasActualStmt(side)) return null;
+  const isArv = SUB2IA[(cat||'')+'|'+(sub||'')]==='arv';
+  let total=0, n=0; const idxs=[];
+  (D[side].lines||[]).forEach((l,idx)=>{
+    const s=lineState(side,idx);
+    if((s.category||'')!==cat || (s.sub||'')!==sub) return;
+    if(isArv){ const v=s.credit!=null?s.credit:s.debit; if(v!=null){ total+=+v||0; n++; idxs.push(idx); } return; }
+    if(isPrincipalLine(s)) return;            // loan principal/payoff is a financing flow, not a cost
+    if(s.debit!=null){ total+=+s.debit||0; n++; idxs.push(idx); }   // costs book as debits; credits (deposits/refunds) ignored
+  });
+  // additions contribute to the bucket total but aren't statement rows, so no ↗ index (mirrors srcLinesFor)
+  additions(side).forEach(a=>{
+    if((a.category||'')!==cat || (a.sub||'')!==sub) return;
+    if(isArv){ const v=a.credit!=null?a.credit:a.debit; if(v!=null){ total+=+v||0; n++; } return; }
+    if(a.debit!=null){ total+=+a.debit||0; n++; }
+  });
+  return n? {total, n, idxs} : null;
+}
+// QB-native total for a Category|Sub bucket: uploaded QB lines, manual QB entries, and the
+// IA-only rehab/misc roll-ups (which represent QuickBooks items). The derived buy/sell mirror
+// rows (present only when no QB doc is uploaded) are NOT counted — they aren't independent data.
+function qbBucket(cat, sub){
+  let total=0, n=0; const idxs=[];
+  qbRows().forEach(r=>{
+    if((r.Category||'')!==cat || (r.Sub||'')!==sub) return;
+    if(!(r.isManual || r.isIA || r.side==='qb')) return;
+    total += (+r.Amount||0); n++;
+    if(r.side==='qb' && r.idx!=null) idxs.push(r.idx);
+  });
+  return n? {total, n, idxs} : null;
+}
+// Build the full per-bucket triangulation: amounts from each source + a status, gated by mode.
+//   ok      = 2+ reconcilable sources present and ALL agree to the cent
+//   mismatch= 2+ reconcilable sources present but totals differ (must be fixed manually)
+//   qbitem  = a QB-only rehab/misc bucket (never on closing) — normal, never a mismatch
+//   single  = present in exactly one source (informational)
+// Which sources reconcile against each other for a given bucket in the current deal mode:
+//   Estimated -> nothing (IA is still just the master estimate)
+//   Acquired  -> IA <-> Buy-Side, but ONLY for the Purchase Cost + Lender/Loan sections
+//   Sold      -> full triangulation (IA / Buy / Sell / QB) across every bucket
+function isAcquiredScopeCat(cat){ return /^Purchase Cost$/.test(cat||'') || /^Lender Cost/.test(cat||''); }
+function triScope(mode, cat){
+  if(mode==='Sold')     return {ia:true,  buy:true,  sell:true,  qb:true };
+  if(mode==='Acquired') return isAcquiredScopeCat(cat) ? {ia:true, buy:true, sell:false, qb:false} : {ia:false,buy:false,sell:false,qb:false};
+  return {ia:false, buy:false, sell:false, qb:false};   // Estimated: nothing to reconcile yet
+}
+function triangulate(){
+  const i=D.ia.inputs, r=computeIA(i);       // raw IA estimate — NOT effIA() (no actuals overlay)
+  const mode=(i&&i.mode)||'Estimated';
+  const buckets=[], seen=new Set();
+  const addBucket=(cat,sub)=>{ const k=(cat||'')+'|'+(sub||''); if(!cat||seen.has(k)) return; seen.add(k); buckets.push({cat,sub}); };
+  Object.keys(SUB2IA).forEach(k=>{ const p=k.split('|'); addBucket(p[0],p[1]); });          // mappable closing buckets
+  qbRows().forEach(row=>{ if(row.isManual||row.isIA||row.side==='qb') addBucket(row.Category||'', row.Sub||''); });   // QB-native buckets
+  ['buySide','sellSide'].forEach(side=>{ (D[side].lines||[]).forEach((l,idx)=>{ const s=lineState(side,idx); addBucket(s.category, s.sub||''); }); });  // any closing bucket not in SUB2IA
+  const out=[];
+  buckets.forEach(({cat,sub})=>{
+    const qbOnly=IA_QB_ONLY_CATS.includes(cat);
+    const ia=iaBucketValue(cat,sub,i,r);
+    const buy=closingBucket('buySide',cat,sub);
+    const sell=closingBucket('sellSide',cat,sub);
+    const qb=qbBucket(cat,sub);
+    let status;
+    if(qbOnly){
+      status='qbitem';                          // rehab/misc live ONLY in QB — a classification, not a reconciliation; mode-independent
+    } else {
+      // only sources in scope for the current mode reconcile; a mapped IA bucket counts even at
+      // $0.00 so an empty IA estimate vs a real closing amount still surfaces as a discrepancy
+      const sc=triScope(mode, cat);
+      const parts=[];
+      if(sc.ia   && ia!=null) parts.push({src:'ia',   v:ia});
+      if(sc.buy  && buy)      parts.push({src:'buy',  v:buy.total});
+      if(sc.sell && sell)     parts.push({src:'sell', v:sell.total});
+      if(sc.qb   && qb)       parts.push({src:'qb',   v:qb.total});
+      if(parts.length>=2){
+        const v0=parts[0].v; status=parts.every(p=>Math.abs(p.v-v0)<TRI_EPS)?'ok':'mismatch';
+      } else if(parts.length===1){
+        // a lone, empty IA estimate ($0.00) is an unfilled line — not worth surfacing as a source
+        status=(parts[0].src==='ia' && Math.abs(parts[0].v)<TRI_EPS) ? 'none' : 'single';
+      } else status='none';
+    }
+    out.push({cat,sub,qbOnly,ia,buy,sell,qb,status});
+  });
+  return out;
+}
+// Cache one triangulation per render pass so the ledger column + the view share one computation.
+let TRI_CACHE=null;
+function triRows(){ if(!TRI_CACHE) TRI_CACHE=triangulate(); return TRI_CACHE; }
+function triMap(){ const m={}; triRows().forEach(b=>{ m[(b.cat||'')+'|'+(b.sub||'')]=b; }); return m; }
+function triBadge(status){
+  switch(status){
+    case 'ok':       return '<span class="tri tri-ok">✓ Triangulated</span>';
+    case 'mismatch': return '<span class="tri tri-bad">⚠ Discrepancy</span>';
+    case 'qbitem':   return '<span class="tri tri-qb">QB item</span>';
+    case 'single':   return '<span class="tri tri-single">Single-source</span>';
+    default:         return '';
+  }
+}
+// The amount-aware "Match / Source" cell for a ledger row: the triangulation status badge for
+// the row's bucket (✓ amounts agree / ⚠ discrepancy / QB item / single-source) + the source
+// pills for context. QB items show the badge alone (their only source IS QuickBooks).
+function matchCell(r){
+  const b=triMap()[(r.Category||'')+'|'+(r.Sub||'')];
+  const status=b?b.status:'';
+  const badge=triBadge(status);
+  if(status==='qbitem') return badge;
+  const pills=srcPills(r.source);
+  return badge ? (badge+' '+pills) : pills;
+}
+// ↗ link-backs to every closing/QB row feeding a bucket (reuses the IA-tab highlight pattern).
+function triSrcLinks(b){
+  let out='';
+  if(b.buy && b.buy.idxs.length){ const n=b.buy.idxs.length; out+=` <a class="srclink" title="${n} Buy-side line${n>1?'s':''} feeding this bucket — click to highlight" onclick='gotoSourceMulti("buySide",${JSON.stringify(b.buy.idxs)})'>↗</a>`; }
+  if(b.sell && b.sell.idxs.length){ const n=b.sell.idxs.length; out+=` <a class="srclink" title="${n} Sell-side line${n>1?'s':''} feeding this bucket — click to highlight" onclick='gotoSourceMulti("sellSide",${JSON.stringify(b.sell.idxs)})'>↗</a>`; }
+  if(b.qb && b.qb.idxs.length){ const n=b.qb.idxs.length; out+=` <a class="srclink" title="${n} QB ledger line${n>1?'s':''} feeding this bucket — click to highlight" onclick='gotoSourceMulti("qb",${JSON.stringify(b.qb.idxs)})'>↗</a>`; }
+  return out;
+}
+// The triangulation section for the QB tab: every reconcilable bucket, IA/Buy/Sell/QB side by
+// side, with discrepancies highlighted. Buckets with no actual closing/QB data are hidden.
+function triSection(){
+  const mode=(D.ia.inputs&&D.ia.inputs.mode)||'Estimated';
+  const all=triRows();
+  // show only buckets the current mode actually statuses (qbitem / ok / mismatch / single);
+  // 'none' buckets are out of scope for this mode (e.g. everything in Estimated) and stay hidden
+  const rows=all.filter(b=> b.status!=='none');
+  const cell=(src,b)=>{ if(src==null) return '<td class="num mut">—</td>'; const v=src.total!=null?src.total:src; return `<td class="num">${money(v)}</td>`; };
+  let body='';
+  // canonical order: taxonomy category, then sub
+  const co=qbCatOrder(); const ci=c=>{const x=co.indexOf(c);return x<0?999:x;};
+  const si=(c,s)=>{const a=(D.taxonomy.categories[c]||[]);const x=a.indexOf(s);return x<0?999:x;};
+  rows.slice().sort((a,b)=> ci(a.cat)-ci(b.cat) || si(a.cat,a.sub)-si(b.cat,b.sub) || String(a.sub).localeCompare(String(b.sub)))
+    .forEach(b=>{
+      const rc = b.status==='mismatch'?' class="tri-row-bad"':(b.status==='ok'?' class="tri-row-ok"':'');
+      body+=`<tr${rc}><td>${esc(b.cat)}</td><td>${esc(b.sub)}${triSrcLinks(b)}</td>`+
+        cell(b.qbOnly?null:b.ia, b)+cell(b.buy, b)+cell(b.sell, b)+cell(b.qb, b)+
+        `<td>${triBadge(b.status)}</td></tr>`;
+    });
+  const counts=all.reduce((a,b)=>{a[b.status]=(a[b.status]||0)+1;return a;},{});
+  const summary=`<span class="pill">${counts.ok||0} triangulated</span> <span class="pill${(counts.mismatch||0)?' pill-qb':''}" style="${(counts.mismatch||0)?'background:#fee2e2;color:#991b1b':''}">${counts.mismatch||0} discrepancies</span> <span class="pill pill-qb">${counts.qbitem||0} QB items</span>`;
+  const legend=`<div class="tri-legend"><span>${triBadge('ok')} amounts agree exactly</span><span>${triBadge('mismatch')} totals differ — fix one side</span><span>${triBadge('qbitem')} QuickBooks-only cost</span><span>${triBadge('single')} only one source so far</span></div>`;
+  const modeNote = mode==='Estimated'
+    ? `<div class="tri-note">Mode is <b>Estimated</b> — the IA is your master estimate and there are no closing actuals to reconcile yet. Set the deal to <b>Acquired</b> (buy-side) or <b>Sold</b> (full) to triangulate.</div>`
+    : (mode==='Acquired' ? `<div class="tri-note">Mode is <b>Acquired</b> — reconciling <b>Purchase</b> and <b>Lender/Loan</b> costs between the IA and the Buy-Side closing. Sell-side joins once the deal is <b>Sold</b>.</div>` : '');
+  const table = rows.length
+    ? `<table class="tritab"><thead><tr><th>Category</th><th>Sub-category</th><th class="num">IA (est.)</th><th class="num">Buy-Side</th><th class="num">Sell-Side</th><th class="num">QB</th><th>Status</th></tr></thead><tbody>${body}</tbody></table>`
+    : `<div class="help">No cross-source amounts to triangulate yet.</div>`;
+  return `<div class="section"><h2>Triangulation <span class="pill">source reconciliation</span> ${summary}</h2>
+    <div class="help">Compares each cost bucket across the IA estimate, Buy-Side &amp; Sell-Side closings, and the QB ledger. Matches are exact (to the cent); anything that doesn't agree is flagged <b style="color:var(--red)">⚠ Discrepancy</b> for you to fix manually. Repairs &amp; utilities are normal <b>QB items</b>, never mismatches.</div>
+    ${modeNote}${legend}${table}</div>`;
+}
+
 function renderQB(){
+  TRI_CACHE=null;   // recompute triangulation once per QB render
   if(isParsing('qb')){ $('#panel').innerHTML = docChip('qb') + processingCard(); return; }
   const all=qbRows();
   const rows=all.filter(r=>!r.isManual);           // imported statement lines + additions
@@ -1580,7 +1775,7 @@ function renderQB(){
   if(qbView.filter) ledger = ledger.filter(r=>r.Category===qbView.filter);
   const filterBar = qbView.filter
     ? `<div class="qb-filterbar">Showing only <b>${qbView.filter}</b><span class="pill" onclick="qbClearView()">show all ✕</span></div>` : '';
-  let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}
+  let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}${triSection()}
    <div class="section"><h2>Ledger <span class="pill">${ledger.length} lines</span></h2>${filterBar}
    <table class="qbledger"><thead><tr>${['Type','Date','Num','Name','Memo','Source','Category','Sub','Amount'].map(c=>`<th class="sortable${c==='Amount'?' num':''}" onclick="sortQb('${c}')">${c==='Source'?'Match / Source':c}${qbSort.col===c?(qbSort.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`;
   ledger.forEach(r=>{
@@ -1597,7 +1792,7 @@ function renderQB(){
     const ident = `<td>${esc(r.Type||'')}</td><td>${esc(r.Date||'')}</td><td>${esc(r.Num||'')}</td><td>${esc(r.Name||'')}</td><td>${esc(r.Memo||'')}${r.isAdd?' <span class="pill">addition</span>':''}</td>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
       html+=`${trHead}${ident}
-        <td>${srcPills(r.source)}</td>
+        <td>${matchCell(r)}</td>
         <td>${r.Category}</td><td>${r.Sub}</td>
         <td class="num${r.Amount<0?' neg':''}">${money(r.Amount)}</td></tr>`;
       return;
@@ -1610,7 +1805,7 @@ function renderQB(){
     const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+(''+this.value).replace(/[$,\\s]/g,'')||0))`
                           : `setOV('${k}','amount',this.value);render('qb')`;
     html+=`${trHead}${ident}
-      <td>${srcPills(r.source)}</td>
+      <td>${matchCell(r)}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
       <td class="num"><input class="num${r.Amount<0?' neg':''}" value="${fmt2(r.Amount)}" onchange="${amtCh}"></td></tr>`;
