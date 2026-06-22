@@ -213,6 +213,8 @@
   .act-delta{margin-top:3px;font-size:12px}
   .act-old{color:var(--muted);text-decoration:line-through}
   .act-new{color:var(--accent);font-weight:700}
+  .act-revert{margin-left:auto;color:var(--accent);cursor:pointer;font-weight:700;font-size:11px}
+  .act-revert:hover{text-decoration:underline}
   .escrow-recon{border:1.5px dashed #4472c4;border-radius:6px;padding:10px 14px;margin:6px 0 0 auto;max-width:340px}
   .escrow-recon .er{display:flex;justify-content:space-between;gap:18px;font-size:13px;padding:2px 0}
   .escrow-recon .erl{color:#374151}
@@ -497,7 +499,7 @@ function lineState(side, idx){
   };
 }
 function setOV(k,field,val,originTab,navId){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,'');
-  try{ const ci=k.indexOf(':'); if(ci>0){ const side=k.slice(0,ci); const idx=+k.slice(ci+1); const dtab=side==='buySide'?'buy':side==='sellSide'?'sell':(side==='qb'?'qb':null); const tab=originTab||dtab; if(tab){ const ls=lineState(side,idx); const nav=originTab?{type:'el',tab:originTab,id:navId}:{type:'line',side:side,idx:idx}; pushActivity({tab:tab, what:`${ls.label||('Line '+idx)} — ${field}`, old:ls[field], new:val, nav:nav}); } } }catch(_){}
+  try{ const ci=k.indexOf(':'); if(ci>0){ const side=k.slice(0,ci); const idx=+k.slice(ci+1); const dtab=side==='buySide'?'buy':side==='sellSide'?'sell':(side==='qb'?'qb':null); const tab=originTab||dtab; if(tab){ const ls=lineState(side,idx); const nav=originTab?{type:'el',tab:originTab,id:navId}:{type:'line',side:side,idx:idx}; pushActivity({tab:tab, what:`${ls.label||('Line '+idx)} — ${field}`, old:ls[field], new:val, nav:nav, revert:{kind:'ov',k:k,field:field,originTab:originTab,navId:navId}}); } } }catch(_){}
   OV[k][field]=val; saveOV(); }
 
 // A PURE subtotal / grand-total SUMMARY row from a statement (label is exactly "Subtotal(s)",
@@ -660,8 +662,8 @@ function clearStmt(side){
 /* ----- "Additions" : user items NOT on the closing statement. Stored in OV._add per
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
-function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=catList(side)[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); const tab=side==='buySide'?'buy':'sell'; const idx=OV._add[side].length-1; pushActivity({tab:tab, what:`Added a new ${tab==='buy'?'buy-side':'sell-side'} line`, nav:{type:'el',tab:tab,id:'add-'+side+'-'+idx}}); saveOV(); renderActive(); }
-function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); const tab=side==='buySide'?'buy':'sell'; pushActivity({tab:tab, what:`Added line: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'el',tab:tab,id:'add-'+side+'-'+idx}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=catList(side)[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat),id:uid()}); const tab=side==='buySide'?'buy':'sell'; const idx=OV._add[side].length-1; pushActivity({tab:tab, what:`Added a new ${tab==='buy'?'buy-side':'sell-side'} line`, nav:{type:'el',tab:tab,id:'add-'+side+'-'+idx}}); saveOV(); renderActive(); }
+function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(!a[idx].id) a[idx].id=uid(); if(field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); const tab=side==='buySide'?'buy':'sell'; pushActivity({tab:tab, what:`Added line: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'el',tab:tab,id:'add-'+side+'-'+idx}, revert:{kind:'add',side:side,idx:idx,rowId:a[idx].id,field:field}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delAddition(side,idx){ const a=additions(side); if(a[idx]){ const tab=side==='buySide'?'buy':'sell'; pushActivity({tab:tab, what:`Removed ${tab==='buy'?'buy-side':'sell-side'} line: ${a[idx].label||('#'+idx)}`, nav:{type:'tab',tab:tab}}); a.splice(idx,1); saveOV(); renderActive(); } }
 /* ----- QB-only manual ledger entries -----
    Live in OV._qbManual (localStorage), separate from the imported/auto lines, so a
@@ -669,8 +671,8 @@ function delAddition(side,idx){ const a=additions(side); if(a[idx]){ const tab=s
    Source is chosen per entry ("QB" default, or "manual"). Reconciled against the
    imported ledger by Category + Sub + Amount; unmatched entries flag red (see qbRecon). */
 function qbManual(){ return OV._qbManual || []; }
-function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',source:'QB',category:cat,sub:firstSub(cat),amount:null}); const idx=OV._qbManual.length-1; pushActivity({tab:'qb', what:'Added a manual QB entry', nav:{type:'el',tab:'qb',id:'qbman-'+idx}}); saveOV(); renderActive(); }
-function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); pushActivity({tab:'qb', what:`Manual QB entry: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'el',tab:'qb',id:'qbman-'+idx}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',source:'QB',category:cat,sub:firstSub(cat),amount:null,id:uid()}); const idx=OV._qbManual.length-1; pushActivity({tab:'qb', what:'Added a manual QB entry', nav:{type:'el',tab:'qb',id:'qbman-'+idx}}); saveOV(); renderActive(); }
+function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(!a[idx].id) a[idx].id=uid(); if(field==='amount') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); pushActivity({tab:'qb', what:`Manual QB entry: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'el',tab:'qb',id:'qbman-'+idx}, revert:{kind:'qbman',idx:idx,rowId:a[idx].id,field:field}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delQbManual(idx){ const a=qbManual(); if(a[idx]){ pushActivity({tab:'qb', what:`Removed manual QB entry: ${a[idx].label||('#'+idx)}`, nav:{type:'tab',tab:'qb'}}); a.splice(idx,1); saveOV(); renderActive(); } }
 // Reconcile manual entries against the imported ledger (statement lines + additions).
 // A manual entry matches when an imported line shares Category + Sub AND Amount (±0.01).
@@ -1042,7 +1044,7 @@ function setIA(key,val){
   // so effIA() keeps the user's number instead of re-applying the statement actual.
   const wasActual=isActualKey(key);
   if(wasActual){ OV._iaOvr=OV._iaOvr||{}; OV._iaOvr[key]=true; }
-  if(old!==v) pushActivity({tab:'ia', what:`${iaLabelFor(key)}${wasActual?' (override)':''}`, old:old, new:v, nav:{type:'ia',key:key}});
+  if(old!==v) pushActivity({tab:'ia', what:`${iaLabelFor(key)}${wasActual?' (override)':''}`, old:old, new:v, nav:{type:'ia',key:key}, revert:{kind:'ia',key:key}});
   saveOV(); renderActive();
   if(key==='mode' && (v==='Acquired'||v==='Sold')) maybeModePrompt(v);
 }
@@ -1302,11 +1304,28 @@ function activityBody(){
     body='<div class="ai-empty">No changes yet — every edit you make is recorded here with a timestamp. Click an entry to jump straight to what changed.</div>';
   } else {
     body=log.map(e=>{
-      const delta=(('old' in e)||('new' in e))?`<div class="act-delta"><span class="act-old">${esc(fmtActVal(e.old))}</span> → <span class="act-new">${esc(fmtActVal(e.new))}</span></div>`:'';
-      return `<div class="ai-entry act-entry" onclick="gotoActivity('${e.id||e.ts}')" title="Click to jump to this change"><div class="ai-meta">✏️ Change${e.tab?` <span class="ai-tab">${esc(TAB_LABEL[e.tab]||e.tab)}</span>`:''} <span>${stamp(e.ts)}</span></div><div class="ai-text">${esc(e.what||'')}${delta}</div></div>`;
+      const hasDelta=('old' in e)||('new' in e);
+      const delta=hasDelta?`<div class="act-delta">Changed from <span class="act-old">${esc(fmtActVal(e.old))}</span> to <span class="act-new">${esc(fmtActVal(e.new))}</span></div>`:'';
+      const rev=(e.revert&&('old' in e))?`<a class="act-revert" title="Undo this change — set it back to the previous value" onclick="event.stopPropagation();revertActivity('${e.id||e.ts}')">↩ Revert</a>`:'';
+      return `<div class="ai-entry act-entry" onclick="gotoActivity('${e.id||e.ts}')" title="Click to jump to this change"><div class="ai-meta">✏️ Change${e.tab?` <span class="ai-tab">${esc(TAB_LABEL[e.tab]||e.tab)}</span>`:''} <span>${stamp(e.ts)}</span>${rev}</div><div class="ai-text">${esc(e.what||'')}${delta}</div></div>`;
     }).join('');
   }
   return `<div class="ai-wrap"><div class="ai-log" id="actLog">${body}</div></div>`;
+}
+// Undo a single recorded change by re-applying its "old" value through the same
+// setter that produced it. The revert itself is logged as a new activity entry.
+function revertActivity(id){
+  const e=(OV._activity||[]).find(x=>String(x.id)===String(id)||String(x.ts)===String(id));
+  if(!e||!e.revert||!('old' in e)) return;
+  const r=e.revert, old=e.old;
+  switch(r.kind){
+    case 'ia':        setIA(r.key, old); break;
+    case 'ov':        setOV(r.k, r.field, old, r.originTab, r.navId); renderActive(); break;
+    case 'add':       setAddition(r.side, r.idx, r.field, old); break;
+    case 'qbman':     setQbManual(r.idx, r.field, old); break;
+    case 'custom':    setCustom(r.sec, r.idx, old); break;
+    case 'rencustom': renCustom(r.sec, r.idx, old); break;
+  }
 }
 function gotoActivity(ts){
   const e=(OV._activity||[]).find(x=>String(x.id)===String(ts)||String(x.ts)===String(ts)); if(!e) return; const nav=e.nav||{};
@@ -1341,9 +1360,9 @@ function pctFacSet(key,v){ if(v===''||isNaN(parseFloat(v))){ render('ia'); retur
 
 /* ----- user-added custom cost lines ----- */
 function ensureCustom(){ if(!D.ia.inputs.customLines) D.ia.inputs.customLines={}; }
-function addCost(sec){ ensureCustom(); const label=prompt('New cost line name:'); if(!label)return; (D.ia.inputs.customLines[sec]=D.ia.inputs.customLines[sec]||[]).push({label:label.trim(),amount:0}); const idx=D.ia.inputs.customLines[sec].length-1; pushActivity({tab:'ia', what:`Added custom ${sec} line: ${label.trim()}`, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}}); persistIA(); }
-function setCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(!arr||!arr[idx])return; const n=(''+val).replace(/[$,\s]/g,''); const nv=(n===''||isNaN(+n))?0:+n; pushActivity({tab:'ia', what:`Custom ${sec} line: ${arr[idx].label||('#'+idx)}`, old:arr[idx].amount, new:nv, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}}); arr[idx].amount=nv; persistIA(); }
-function renCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(arr&&arr[idx]){ pushActivity({tab:'ia', what:`Renamed custom ${sec} line`, old:arr[idx].label, new:val, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}}); arr[idx].label=val; persistIA(); } }
+function addCost(sec){ ensureCustom(); const label=prompt('New cost line name:'); if(!label)return; (D.ia.inputs.customLines[sec]=D.ia.inputs.customLines[sec]||[]).push({label:label.trim(),amount:0,id:uid()}); const idx=D.ia.inputs.customLines[sec].length-1; pushActivity({tab:'ia', what:`Added custom ${sec} line: ${label.trim()}`, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}}); persistIA(); }
+function setCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(!arr||!arr[idx])return; if(!arr[idx].id) arr[idx].id=uid(); const n=(''+val).replace(/[$,\s]/g,''); const nv=(n===''||isNaN(+n))?0:+n; pushActivity({tab:'ia', what:`Custom ${sec} line: ${arr[idx].label||('#'+idx)}`, old:arr[idx].amount, new:nv, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}, revert:{kind:'custom',sec:sec,idx:idx,rowId:arr[idx].id}}); arr[idx].amount=nv; persistIA(); }
+function renCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(arr&&arr[idx]){ if(!arr[idx].id) arr[idx].id=uid(); pushActivity({tab:'ia', what:`Renamed custom ${sec} line`, old:arr[idx].label, new:val, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}, revert:{kind:'rencustom',sec:sec,idx:idx,rowId:arr[idx].id}}); arr[idx].label=val; persistIA(); } }
 function delCustom(sec,idx){ const arr=D.ia.inputs.customLines&&D.ia.inputs.customLines[sec]; if(arr){ if(arr[idx]) pushActivity({tab:'ia', what:`Removed custom ${sec} line: ${arr[idx].label||('#'+idx)}`, nav:{type:'tab',tab:'ia'}}); arr.splice(idx,1); persistIA(); } }
 function add2nd(){ D.ia.inputs.show2nd=true; pushActivity({tab:'ia', what:'Added a 2nd loan', nav:{type:'tab',tab:'ia'}}); persistIA(); }
 function hide2nd(){
