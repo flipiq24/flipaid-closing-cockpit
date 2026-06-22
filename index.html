@@ -116,10 +116,10 @@
   .rm2{cursor:pointer;color:#c00000;font-size:10px;font-weight:600;margin-left:8px;text-transform:none;letter-spacing:0}
   .rm2:hover{text-decoration:underline}
   .band{background:#808080;color:#fff;text-align:center;font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px}
-  .panel-tabs{display:flex;gap:0;padding:0}
-  .panel-tabs .pview{flex:1;cursor:pointer;padding:6px 4px;color:#e5e7eb;user-select:none}
-  .panel-tabs .pview:hover{color:#fff}
-  .panel-tabs .pview.on{background:#fff;color:var(--accent)}
+  .panel-tabs{display:flex;gap:18px;padding:9px 16px 0;border-bottom:1px solid var(--line)}
+  .panel-tabs .pview{cursor:pointer;font-size:12px;font-weight:600;color:#94a3b8;padding:4px 2px;border-bottom:2px solid transparent;user-select:none}
+  .panel-tabs .pview:hover{color:var(--accent)}
+  .panel-tabs .pview.on{color:var(--accent);border-bottom-color:var(--accent)}
   .subband{text-align:center;font-weight:700;font-size:11.5px;padding:4px 0 0}
   .cols{display:flex;gap:28px;padding:5px 16px}
   .cols .col{flex:1;min-width:0}
@@ -600,7 +600,7 @@ function render(tab){
 // timestamped change feed (OV._activity). PANEL_VIEW remembers the choice.
 let PANEL_VIEW='post';
 function bottomPanel(){
-  return `<div class="band panel-tabs">
+  return `<div class="panel-tabs">
       <span class="pview${PANEL_VIEW==='post'?' on':''}" data-pview="post" onclick="setPanelView('post')">📝 Post</span>
       <span class="pview${PANEL_VIEW==='activity'?' on':''}" data-pview="activity" onclick="setPanelView('activity')">✏️ Activity</span>
     </div>
