@@ -493,8 +493,8 @@ function lineState(side, idx){
     overridden: !!Object.keys(o).length
   };
 }
-function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,'');
-  try{ const ci=k.indexOf(':'); if(ci>0){ const side=k.slice(0,ci); const idx=+k.slice(ci+1); const tab=side==='buySide'?'buy':side==='sellSide'?'sell':(side==='qb'?'qb':null); if(tab){ const ls=lineState(side,idx); pushActivity({tab:tab, what:`${ls.label||('Line '+idx)} — ${field}`, old:ls[field], new:val, nav:{type:'line',side:side,idx:idx}}); } } }catch(_){}
+function setOV(k,field,val,originTab,navId){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,'');
+  try{ const ci=k.indexOf(':'); if(ci>0){ const side=k.slice(0,ci); const idx=+k.slice(ci+1); const dtab=side==='buySide'?'buy':side==='sellSide'?'sell':(side==='qb'?'qb':null); const tab=originTab||dtab; if(tab){ const ls=lineState(side,idx); const nav=originTab?{type:'el',tab:originTab,id:navId}:{type:'line',side:side,idx:idx}; pushActivity({tab:tab, what:`${ls.label||('Line '+idx)} — ${field}`, old:ls[field], new:val, nav:nav}); } } }catch(_){}
   OV[k][field]=val; saveOV(); }
 
 // A PURE subtotal / grand-total SUMMARY row from a statement (label is exactly "Subtotal(s)",
@@ -1019,7 +1019,7 @@ function setIA(key,val){
     const cleaned=val.replace(/[$,\s]/g,'');
     v=(cleaned!=='' && !/[a-zA-Z]/.test(val) && !isNaN(+cleaned)) ? +cleaned : val;
   } else { v=val; }
-  const old=D.ia.inputs[key];
+  const old=effIA()[key];   // the value the user actually sees (statement overlay/override), not the raw stored estimate
   D.ia.inputs[key]=v; OV._ia=D.ia.inputs;
   // Editing a value that is currently pulled from a closing statement marks it a manual override
   // so effIA() keeps the user's number instead of re-applying the statement actual.
@@ -1921,8 +1921,9 @@ function renderQB(){
     const cls = ((bad?'qb-bad':'') + (hi?' qb-hi':'')).trim();
     const st = (!bad && !hi) ? ` style="background:${dim?'#fff':col.bg}"` : '';
     // Uploaded QB lines are link targets for the IA Rehab ↗ (gotoSourceMulti 'qb'). See Phase 2.1.
-    const anchor = (r.side==='qb' && r.idx!=null) ? ` id="src-qb-${r.idx}"` : '';
-    const trHead = `<tr${anchor} class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
+    // Every editable row also gets a stable id so Activity entries can jump back to the exact QB row.
+    const rowId = (r.side==='qb' && r.idx!=null) ? `src-qb-${r.idx}` : `qbrow-${r.side}-${r.idx}`;
+    const trHead = `<tr id="${rowId}" class="${cls}"${st}${bad?` title="${esc(bad)}"`:''}>`;
     // 5 independent columns (Phase 1.1): Type | Date | Num | Name | Memo — never one merged blob.
     const ident = `<td>${esc(r.Type||'')}</td><td>${esc(r.Date||'')}</td><td>${esc(r.Num||'')}</td><td>${esc(r.Name||'')}</td><td>${esc(r.Memo||'')}${r.isAdd?' <span class="pill">addition</span>':''}</td>`;
     if(r.isIA){   // computed IA roll-up — read-only here, edited on the IA tab
@@ -1934,11 +1935,11 @@ function renderQB(){
     }
     const k=r.side+':'+r.idx;
     const catCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'category',this.value)`
-                          : `setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('qb')`;
+                          : `setOV('${k}','category',this.value,'qb','${rowId}');setOV('${k}','sub',firstSub(this.value),'qb','${rowId}');render('qb')`;
     const subCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'sub',this.value)`
-                          : `setOV('${k}','sub',this.value);render('qb')`;
+                          : `setOV('${k}','sub',this.value,'qb','${rowId}');render('qb')`;
     const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+(''+this.value).replace(/[$,\\s]/g,'')||0))`
-                          : `setOV('${k}','amount',this.value);render('qb')`;
+                          : `setOV('${k}','amount',this.value,'qb','${rowId}');render('qb')`;
     html+=`${trHead}${ident}
       <td>${matchCell(r)}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
