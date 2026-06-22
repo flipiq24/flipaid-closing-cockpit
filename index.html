@@ -116,10 +116,11 @@
   .rm2{cursor:pointer;color:#c00000;font-size:10px;font-weight:600;margin-left:8px;text-transform:none;letter-spacing:0}
   .rm2:hover{text-decoration:underline}
   .band{background:#808080;color:#fff;text-align:center;font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px}
-  .panel-tabs{display:flex;gap:18px;padding:9px 16px 0;border-bottom:1px solid var(--line)}
-  .panel-tabs .pview{cursor:pointer;font-size:12px;font-weight:600;color:#94a3b8;padding:4px 2px;border-bottom:2px solid transparent;user-select:none}
+  .panel-tabs{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .panel-tabs .pview{cursor:pointer;font-size:12px;font-weight:600;color:#94a3b8;padding:6px 11px;user-select:none}
+  .panel-tabs .pview+.pview{border-left:1px solid var(--line)}
   .panel-tabs .pview:hover{color:var(--accent)}
-  .panel-tabs .pview.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .panel-tabs .pview.on{color:#fff;background:var(--accent)}
   .subband{text-align:center;font-weight:700;font-size:11.5px;padding:4px 0 0}
   .cols{display:flex;gap:28px;padding:5px 16px}
   .cols .col{flex:1;min-width:0}
@@ -169,9 +170,10 @@
   .summary .s .sum-in:focus{outline:none;border-color:var(--accent)}
   .ai-wrap{padding:8px 16px}
   .ia-notes{width:100%;min-height:60px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;resize:vertical}
-  .ai-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
-  .btn2{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .ai-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin-top:6px}
+  .btn2{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
   .btn2.ghost2{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .ic{width:13px;height:13px;flex:none}
   .btn2:hover{filter:brightness(.96)}
   .btn2:disabled{opacity:.6;cursor:default}
   .ai-draft{display:none;margin-top:8px;border:1px solid #cfe0f6;background:#f5f9ff;border-radius:6px;padding:8px 10px}
@@ -601,25 +603,33 @@ function render(tab){
 // switches between the AI Assistant & Notes conversation (OV._log) and the
 // timestamped change feed (OV._activity). PANEL_VIEW remembers the choice.
 let PANEL_VIEW='post';
+// Minimalist line icons (currentColor) used on the note action buttons.
+const IC_AI='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 4.8L18.5 9.5 13.7 11.2 12 16l-1.7-4.8L5.5 9.5 10.3 7.8z"/><path d="M18 15.5l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></svg>';
+const IC_FIND='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.4-3.4"/></svg>';
+const IC_PLUS='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
 function bottomPanel(){
+  return `<div id="bottomBody">${PANEL_VIEW==='activity'?activityBody():notesBody()}</div>`;
+}
+// The Post / Activity switch — a minimalist segmented control, rendered inline with
+// the note actions so it sits right next to "Post note" (and as a header in Activity).
+function panelToggle(){
   return `<div class="panel-tabs">
-      <span class="pview${PANEL_VIEW==='post'?' on':''}" data-pview="post" onclick="setPanelView('post')">📝 Post</span>
-      <span class="pview${PANEL_VIEW==='activity'?' on':''}" data-pview="activity" onclick="setPanelView('activity')">✏️ Activity</span>
-    </div>
-    <div id="bottomBody">${PANEL_VIEW==='activity'?activityBody():notesBody()}</div>`;
+      <span class="pview${PANEL_VIEW==='post'?' on':''}" data-pview="post" onclick="setPanelView('post')">Post</span>
+      <span class="pview${PANEL_VIEW==='activity'?' on':''}" data-pview="activity" onclick="setPanelView('activity')">Activity</span>
+    </div>`;
 }
 function setPanelView(v){
   PANEL_VIEW=(v==='activity')?'activity':'post';
   const b=document.getElementById('bottomBody'); if(b) b.innerHTML=PANEL_VIEW==='activity'?activityBody():notesBody();
-  document.querySelectorAll('.panel-tabs .pview').forEach(el=>el.classList.toggle('on', el.dataset.pview===PANEL_VIEW));
 }
 function notesBody(){
   return `<div class="ai-wrap">
     <textarea class="ia-notes" id="aiInput" placeholder="Write a note, or ask the AI to calculate / answer something (e.g. &quot;split the profit 50/50&quot;). The AI never changes the form — you apply any changes yourself."></textarea>
     <div class="ai-actions">
-      <button class="btn2" id="askBtn" onclick="askAI()">🤖 Ask AI</button>
-      <button class="btn2" id="discBtn" onclick="findDiscrepancies()">🔎 Find discrepancies</button>
-      <button class="btn2 ghost2" onclick="postNote()">＋ Post note</button>
+      <button class="btn2" id="askBtn" onclick="askAI()">${IC_AI}Ask AI</button>
+      <button class="btn2" id="discBtn" onclick="findDiscrepancies()">${IC_FIND}Find discrepancies</button>
+      <button class="btn2 ghost2" onclick="postNote()">${IC_PLUS}Post note</button>
+      ${panelToggle()}
     </div>
     <div class="ai-draft" id="aiDraft"></div>
     <div class="ai-log" id="aiLog">${renderLog()}</div>
@@ -1310,7 +1320,7 @@ function activityBody(){
       return `<div class="ai-entry act-entry" onclick="gotoActivity('${e.id||e.ts}')" title="Click to jump to this change"><div class="ai-meta">✏️ Change${e.tab?` <span class="ai-tab">${esc(TAB_LABEL[e.tab]||e.tab)}</span>`:''} <span>${stamp(e.ts)}</span>${rev}</div><div class="ai-text">${esc(e.what||'')}${delta}</div></div>`;
     }).join('');
   }
-  return `<div class="ai-wrap"><div class="ai-log" id="actLog">${body}</div></div>`;
+  return `<div class="ai-wrap"><div class="ai-actions">${panelToggle()}</div><div class="ai-log" id="actLog">${body}</div></div>`;
 }
 // Short unique id for mutable rows (additions / manual-QB / custom lines) so an
 // activity entry can find the SAME row later even after rows are added/removed.
