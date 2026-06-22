@@ -1566,8 +1566,7 @@ function qbRows(){
   return rows;
 }
 let qbSort={col:'',dir:1};
-let qbView={hi:'',filter:''};   // hi = click-to-highlight category; filter = dbl-click-to-show-only category
-let qbClickT=null;
+let qbView={hi:'',filter:''};   // filter = category to show only (click a totals row to toggle); hi kept for compatibility
 // Light row tint + dot colour per category (key must match the taxonomy names exactly).
 const QBCOLORS={
   'Purchase Cost':              {bg:'#e0f2fe',dot:'#0ea5e9'},
@@ -1590,10 +1589,8 @@ function qbSortByCatSub(list){
     String(a.Memo||'').localeCompare(String(b.Memo||'')));
 }
 function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
-// Single click clears any active filter and highlights the category's lines; double click filters to just that category.
-// The 180ms timer lets a double click cancel the pending single-click highlight.
-function qbCatClick(c){ clearTimeout(qbClickT); qbClickT=setTimeout(()=>{ qbView.filter=''; qbView.hi=(qbView.hi===c?'':c); render('qb'); },180); }
-function qbCatDbl(c){ clearTimeout(qbClickT); qbView.filter=(qbView.filter===c?'':c); qbView.hi=''; render('qb'); }
+// Excel-style filtering: click a category in the totals to show ONLY its lines; click it again to show all.
+function qbCatClick(c){ qbView.filter=(qbView.filter===c?'':c); qbView.hi=''; render('qb'); }
 function qbClearView(){ qbView.hi=''; qbView.filter=''; render('qb'); }
 function sortQb(c){ if(qbSort.col===c){ qbSort.dir*=-1; } else { qbSort.col=c; qbSort.dir=1; } render('qb'); }
 function qbSortRows(list){
@@ -1819,18 +1816,20 @@ function renderQB(){
   const catsOrdered = qbCatOrder().filter(c=>tot[c]!=null)
     .concat(Object.keys(tot).filter(c=>!qbCatOrder().includes(c)));   // any non-taxonomy cats last
   const totalsHtml=`<div class="section"><h2>Totals by category${hasSummary?' <span class="pill">from QB report summary</span>':''}</h2>
-    <div class="help">Click a category to highlight its lines in the ledger · double-click to filter to just that category.</div>
+    <div class="help">Click a category to filter the ledger to just its lines · click again to show all.</div>
     <table class="qbtot"><tbody>`+
     catsOrdered.map(c=>{const col=qbCatColor(c);
-      const act=(qbView.filter===c)?' qb-tot-filter':((qbView.hi===c)?' qb-tot-hi':'');
-      const dim=qbView.hi && qbView.hi!==c;   // another category is highlighted → fade this row to white
-      return `<tr class="${act}" style="background:${dim?'#fff':col.bg}" onclick="qbCatClick('${jsq(c)}')" ondblclick="qbCatDbl('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num${tot[c]<0?' neg':''}">${money(tot[c])}</td></tr>`;
+      const act=(qbView.filter===c)?' qb-tot-filter':'';
+      const dim=qbView.filter && qbView.filter!==c;   // a category filter is active → fade the non-selected rows
+      return `<tr class="${act}" style="background:${dim?'#fff':col.bg}" onclick="qbCatClick('${jsq(c)}')"><td><span class="qbcat-cell"><span class="qbcat-dot" style="background:${col.dot}"></span>${c}</span></td><td class="num${tot[c]<0?' neg':''}">${money(tot[c])}</td></tr>`;
     }).join('')+
     `<tr class="qbtot-grand"><td><b>Total Development Cost</b></td><td class="num"><b>${money(grandTotal)}</b></td></tr>`+
     `</tbody></table></div>`;
-  // ledger rows: default order = category then sub (canonical); a column-header click overrides it.
-  let ledger = qbSort.col ? qbSortRows(rows) : qbSortByCatSub(rows);
-  if(qbView.filter) ledger = ledger.filter(r=>r.Category===qbView.filter);
+  // Excel logic: apply the category filter FIRST so only the filtered rows get sorted, then sort that subset.
+  // Default order = category then sub (canonical); a column-header click overrides it. Sort and filter are
+  // independent state, so each one stays applied when the other changes.
+  let ledger = qbView.filter ? rows.filter(r=>r.Category===qbView.filter) : rows.slice();
+  ledger = qbSort.col ? qbSortRows(ledger) : qbSortByCatSub(ledger);
   const filterBar = qbView.filter
     ? `<div class="qb-filterbar">Showing only <b>${qbView.filter}</b><span class="pill" onclick="qbClearView()">show all ✕</span></div>` : '';
   let html=uploadCard('qb') + docChip('qb') + `<div class="warn">QuickBooks export ledger. Every line carries the same dropdowns — change Category/Sub/Amount here if a mapping isn't 100%, and it stays consistent with the closing tabs. Uploading a new statement overwrites the auto lines below; manual entries are kept. Download writes all four tabs to one .xlsx.</div>${totalsHtml}${triSection()}
