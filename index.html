@@ -436,7 +436,7 @@ function lineState(side, idx){
     overridden: !!Object.keys(o).length
   };
 }
-function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+val; OV[k][field]=val; saveOV(); }
+function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); OV[k][field]=val; saveOV(); }
 
 function badge(c){
   const cls = c>=100?'b100':c>=90?'b90':c>=80?'b80':'blo';
@@ -573,7 +573,7 @@ function clearStmt(side){
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
 function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=catList(side)[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); renderActive(); }
-function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 /* ----- QB-only manual ledger entries -----
    Live in OV._qbManual (localStorage), separate from the imported/auto lines, so a
@@ -582,7 +582,7 @@ function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(id
    imported ledger by Category + Sub + Amount; unmatched entries flag red (see qbRecon). */
 function qbManual(){ return OV._qbManual || []; }
 function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',source:'QB',category:cat,sub:firstSub(cat),amount:null}); saveOV(); renderActive(); }
-function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+val; a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delQbManual(idx){ const a=qbManual(); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 // Reconcile manual entries against the imported ledger (statement lines + additions).
 // A manual entry matches when an imported line shares Category + Sub AND Amount (±0.01).
@@ -717,9 +717,9 @@ function renderClosing(sideKey, tabKey){
       const isCredit = s.credit!=null || (s.debit==null && /deposit|proceeds|trust deed|sale price|credit/i.test(s.label));
       tDeb += s.debit||0; tCred += s.credit||0;
       const debCell = isCredit ? '<span class="dash">—</span>'
-        : `<input class="num${(+s.debit<0)?' neg':''}" value="${s.debit==null?'':s.debit}" placeholder="—" onchange="setOV('${k}','debit',this.value);render('${tabKey}')">`;
+        : `<input class="num${(+s.debit<0)?' neg':''}" value="${s.debit==null?'':fmt2(s.debit)}" placeholder="—" onchange="setOV('${k}','debit',this.value);render('${tabKey}')">`;
       const credCell = isCredit
-        ? `<input class="num${(+s.credit<0)?' neg':''}" value="${s.credit==null?'':s.credit}" placeholder="—" onchange="setOV('${k}','credit',this.value);render('${tabKey}')">`
+        ? `<input class="num${(+s.credit<0)?' neg':''}" value="${s.credit==null?'':fmt2(s.credit)}" placeholder="—" onchange="setOV('${k}','credit',this.value);render('${tabKey}')">`
         : '<span class="dash">—</span>';
       html += `<tr id="src-${sideKey}-${i}">
         <td class="desc">${s.label}${s.overridden?' <span class="pill">edited</span>':''}</td>
@@ -765,8 +765,8 @@ function renderClosing(sideKey, tabKey){
   const adds = additions(sideKey);
   const addRows = adds.map((a,idx)=>`<tr>
      <td class="desc"><input class="add-desc" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="Description" onchange="setAddition('${sideKey}',${idx},'label',this.value)"></td>
-     <td class="num deb"><input class="num" value="${a.debit==null?'':a.debit}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'debit',this.value)"></td>
-     <td class="num cred"><input class="num" value="${a.credit==null?'':a.credit}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'credit',this.value)"></td>
+     <td class="num deb"><input class="num" value="${a.debit==null?'':fmt2(a.debit)}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'debit',this.value)"></td>
+     <td class="num cred"><input class="num" value="${a.credit==null?'':fmt2(a.credit)}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'credit',this.value)"></td>
      <td><select onchange="setAddition('${sideKey}',${idx},'category',this.value)">${catOptions(a.category,sideKey)}</select></td>
      <td><select onchange="setAddition('${sideKey}',${idx},'sub',this.value)">${subOptions(a.category,a.sub)}</select></td>
      <td class="cf"><a class="delx" title="Remove line" onclick="delAddition('${sideKey}',${idx})">✕</a></td>
@@ -927,7 +927,7 @@ function computeIA(i){
 
 const pct=(n)=> (n==null||isNaN(n))?'' : (n*100).toFixed(2)+'%';
 // two-decimal display for editable $ inputs; leaves non-numeric strings (dates/text) untouched
-const fmt2=(v)=>{ if(v==null||v==='')return''; const n=+(''+v).replace(/[$,\s]/g,''); return isNaN(n)?v:n.toFixed(2); };
+const fmt2=(v)=>{ if(v==null||v==='')return''; const n=+(''+v).replace(/[$,\s]/g,''); return isNaN(n)?v:n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 function setIA(key,val){
   // Can't change the deal Mode while there is no closing data — it must stay "Estimated".
   if(key==='mode' && !hasClosingData()) return;
@@ -1607,13 +1607,13 @@ function renderQB(){
                           : `setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('qb')`;
     const subCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'sub',this.value)`
                           : `setOV('${k}','sub',this.value);render('qb')`;
-    const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+this.value||0))`
+    const amtCh = r.isAdd ? `setAddition('${r.side}',${r.idx},'${r.amtField}',Math.abs(+(''+this.value).replace(/[$,\\s]/g,'')||0))`
                           : `setOV('${k}','amount',this.value);render('qb')`;
     html+=`${trHead}${ident}
       <td>${srcPills(r.source)}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
       <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
-      <td class="num"><input class="num${r.Amount<0?' neg':''}" value="${r.Amount}" onchange="${amtCh}"></td></tr>`;
+      <td class="num"><input class="num${r.Amount<0?' neg':''}" value="${fmt2(r.Amount)}" onchange="${amtCh}"></td></tr>`;
   });
   html+=`</tbody></table></div>`;
   // manual QB-only entries: add new lines, reconcile against the imported ledger
@@ -1629,7 +1629,7 @@ function renderQB(){
       <td><select onchange="setQbManual(${idx},'source',this.value)"><option value="QB"${(m.source||'QB')==='QB'?' selected':''}>QB</option><option value="manual"${m.source==='manual'?' selected':''}>manual</option></select></td>
       <td><select onchange="setQbManual(${idx},'category',this.value)">${catOptions(m.category)}</select></td>
       <td><select onchange="setQbManual(${idx},'sub',this.value)">${subOptions(m.category,m.sub)}</select></td>
-      <td class="num"><input class="num" value="${m.amount==null?'':m.amount}" placeholder="0" onchange="setQbManual(${idx},'amount',this.value)"></td>
+      <td class="num"><input class="num" value="${m.amount==null?'':fmt2(m.amount)}" placeholder="0" onchange="setQbManual(${idx},'amount',this.value)"></td>
       <td><a class="delx" title="Remove entry" onclick="delQbManual(${idx})">✕</a></td></tr>`;
   });
   html+=`</tbody></table><button class="btn2" onclick="addQbManual()">＋ Add line</button></div>`;
