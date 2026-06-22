@@ -200,6 +200,7 @@
   tr.flash{background:#fff3bf;transition:background .4s}
   tr.hilite, tr.hilite td{background:#fff3bf}   /* persistent source highlight (stays until you jump elsewhere) */
   .lr.hilite{background:#fff3bf;border-radius:6px}
+  .s.hilite{background:#fff3bf;border-radius:6px}
   .iaovr{cursor:pointer;color:var(--accent);font-size:11px;font-weight:600;margin-left:6px;text-decoration:underline}
   .lr input.m.ovr{border-color:var(--accent);background:#fffbeb}
   .act-entry{cursor:pointer;transition:border-color .12s}
@@ -642,7 +643,7 @@ function clearStmt(side){
    side; they map to QB + the IA but do NOT affect the statement balance check. ----- */
 function additions(side){ return (OV._add && OV._add[side]) || []; }
 function addAddition(side){ OV._add=OV._add||{}; OV._add[side]=OV._add[side]||[]; const cat=catList(side)[0]; OV._add[side].push({label:'',debit:null,credit:null,category:cat,sub:firstSub(cat)}); saveOV(); renderActive(); }
-function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); const tab=side==='buySide'?'buy':'sell'; pushActivity({tab:tab, what:`Added line: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'tab',tab:tab}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function setAddition(side,idx,field,val){ const a=additions(side); if(!a[idx]) return; if(field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); const tab=side==='buySide'?'buy':'sell'; pushActivity({tab:tab, what:`Added line: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'el',tab:tab,id:'add-'+side+'-'+idx}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 /* ----- QB-only manual ledger entries -----
    Live in OV._qbManual (localStorage), separate from the imported/auto lines, so a
@@ -651,7 +652,7 @@ function delAddition(side,idx){ const a=additions(side); if(a[idx]){ a.splice(id
    imported ledger by Category + Sub + Amount; unmatched entries flag red (see qbRecon). */
 function qbManual(){ return OV._qbManual || []; }
 function addQbManual(){ OV._qbManual=OV._qbManual||[]; const cat=Object.keys(taxCats())[0]; OV._qbManual.push({label:'',source:'QB',category:cat,sub:firstSub(cat),amount:null}); saveOV(); renderActive(); }
-function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); pushActivity({tab:'qb', what:`Manual QB entry: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'tab',tab:'qb'}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
+function setQbManual(idx,field,val){ const a=qbManual(); if(!a[idx]) return; if(field==='amount') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); pushActivity({tab:'qb', what:`Manual QB entry: ${a[idx].label||('#'+idx)} — ${field}`, old:a[idx][field], new:val, nav:{type:'el',tab:'qb',id:'qbman-'+idx}}); a[idx][field]=val; if(field==='category') a[idx].sub=firstSub(val); saveOV(); renderActive(); }
 function delQbManual(idx){ const a=qbManual(); if(a[idx]){ a.splice(idx,1); saveOV(); renderActive(); } }
 // Reconcile manual entries against the imported ledger (statement lines + additions).
 // A manual entry matches when an imported line shares Category + Sub AND Amount (±0.01).
@@ -843,7 +844,7 @@ function renderClosing(sideKey, tabKey){
 
   // ADDITIONS — user items not on the closing statement. Do NOT affect the balance above.
   const adds = additions(sideKey);
-  const addRows = adds.map((a,idx)=>`<tr>
+  const addRows = adds.map((a,idx)=>`<tr id="add-${sideKey}-${idx}">
      <td class="desc"><input class="add-desc" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="Description" onchange="setAddition('${sideKey}',${idx},'label',this.value)"></td>
      <td class="num deb"><input class="num" value="${a.debit==null?'':fmt2(a.debit)}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'debit',this.value)"></td>
      <td class="num cred"><input class="num" value="${a.credit==null?'':fmt2(a.credit)}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'credit',this.value)"></td>
@@ -1291,10 +1292,11 @@ function renderActivity(){
 function gotoActivity(ts){
   const e=(OV._activity||[]).find(x=>x.ts===ts); if(!e) return; const nav=e.nav||{};
   if(nav.type==='line'){ gotoSource(nav.side, nav.idx); return; }
-  const tab=nav.type==='ia'?'ia':(nav.tab||e.tab||'ia');
+  const elId = nav.type==='ia' ? ('ia-'+nav.key) : (nav.type==='el' ? nav.id : null);
+  const tab = nav.type==='ia' ? 'ia' : (nav.tab||e.tab||'ia');
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
   render(tab);
-  if(nav.type==='ia'){ setTimeout(()=>{ document.querySelectorAll('.hilite').forEach(el=>el.classList.remove('hilite')); const el=document.getElementById('ia-'+nav.key); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('hilite'); } },60); }
+  if(elId){ setTimeout(()=>{ document.querySelectorAll('.hilite').forEach(el=>el.classList.remove('hilite')); const el=document.getElementById(elId); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.add('hilite'); } },60); }
 }
 // Revert a manually-overridden IA field back to the statement-derived actual value.
 function revertIA(key){
@@ -1316,7 +1318,7 @@ function pctFacSet(key,v){ if(v===''||isNaN(parseFloat(v))){ render('ia'); retur
 /* ----- user-added custom cost lines ----- */
 function ensureCustom(){ if(!D.ia.inputs.customLines) D.ia.inputs.customLines={}; }
 function addCost(sec){ ensureCustom(); const label=prompt('New cost line name:'); if(!label)return; (D.ia.inputs.customLines[sec]=D.ia.inputs.customLines[sec]||[]).push({label:label.trim(),amount:0}); persistIA(); }
-function setCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(!arr||!arr[idx])return; const n=(''+val).replace(/[$,\s]/g,''); const nv=(n===''||isNaN(+n))?0:+n; pushActivity({tab:'ia', what:`Custom ${sec} line: ${arr[idx].label||('#'+idx)}`, old:arr[idx].amount, new:nv, nav:{type:'tab',tab:'ia'}}); arr[idx].amount=nv; persistIA(); }
+function setCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(!arr||!arr[idx])return; const n=(''+val).replace(/[$,\s]/g,''); const nv=(n===''||isNaN(+n))?0:+n; pushActivity({tab:'ia', what:`Custom ${sec} line: ${arr[idx].label||('#'+idx)}`, old:arr[idx].amount, new:nv, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}}); arr[idx].amount=nv; persistIA(); }
 function renCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(arr&&arr[idx]){ arr[idx].label=val; persistIA(); } }
 function delCustom(sec,idx){ const arr=D.ia.inputs.customLines&&D.ia.inputs.customLines[sec]; if(arr){ arr.splice(idx,1); persistIA(); } }
 function add2nd(){ D.ia.inputs.show2nd=true; persistIA(); }
@@ -1334,10 +1336,10 @@ function addLink(sec){ return `<div class="addrow"><a class="addcost" onclick="a
 // (label | amount | delete), so values stay vertically aligned. Feeds totalCashAndReserves.
 function sumCustomRows(sec){
   const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[];
-  return arr.map((l,idx)=>`<div class="s"><input class="clab2" value="${(l.label||'').replace(/"/g,'&quot;')}" placeholder="Cost name" onchange="renCustom('${sec}',${idx},this.value)"><input class="sum-in" value="${fmt2(l.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></div>`).join('');
+  return arr.map((l,idx)=>`<div class="s" id="custom-${sec}-${idx}"><input class="clab2" value="${(l.label||'').replace(/"/g,'&quot;')}" placeholder="Cost name" onchange="renCustom('${sec}',${idx},this.value)"><input class="sum-in" value="${fmt2(l.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></div>`).join('');
 }
 function Lc(sec,idx,line){
-  return `<div class="lr"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEditC(this,'${sec}',${idx})">${Ppct(line.amount)}</span>`+
+  return `<div class="lr" id="custom-${sec}-${idx}"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEditC(this,'${sec}',${idx})">${Ppct(line.amount)}</span>`+
     `<input class="m${(+line.amount<0)?' neg':''}" value="${fmt2(line.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)">`+
     `<span class="ll"><input class="clab" value="${(line.label||'').replace(/"/g,'&quot;')}" onchange="renCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></span></div>`;
 }
@@ -1945,7 +1947,7 @@ function renderQB(){
   if(!man.length) html+=`<tr><td class="muted" colspan="6">No manual entries yet.</td></tr>`;
   man.forEach((m,idx)=>{
     const bad=redMan[idx];
-    html+=`<tr class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}>
+    html+=`<tr id="qbman-${idx}" class="${bad?'qb-bad':''}"${bad?` title="${esc(bad)}"`:''}>
       <td><input value="${esc(m.label||'')}" placeholder="Description" onchange="setQbManual(${idx},'label',this.value)"></td>
       <td><select onchange="setQbManual(${idx},'source',this.value)"><option value="QB"${(m.source||'QB')==='QB'?' selected':''}>QB</option><option value="manual"${m.source==='manual'?' selected':''}>manual</option></select></td>
       <td><select onchange="setQbManual(${idx},'category',this.value)">${catOptions(m.category)}</select></td>
