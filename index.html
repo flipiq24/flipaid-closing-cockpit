@@ -259,6 +259,10 @@
   table.stmt td.num input:focus{border-color:var(--accent);outline:none}
   table.stmt select{width:100%;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font:inherit;background:#fff}
   table.stmt .dash{color:#cbd0d6}
+  /* Summary (subtotal/total) rows: shown for fidelity but never counted — muted + struck */
+  table.stmt tr.summary-row td{background:#f8fafc;color:#94a3b8;font-style:italic}
+  table.stmt tr.summary-row td.desc{font-style:normal}
+  .pill-sum{background:#f1f5f9;color:#64748b}
   /* Debit / Credit "lanes" — tinted columns so the eye tracks money-out vs money-in */
   table.stmt th.deb,table.stmt td.deb{background:#fdf3ef;border-left:1px solid #efddd2}
   table.stmt th.cred,table.stmt td.cred{background:#eef7f1;border-right:1px solid #d8ebdf}
@@ -452,6 +456,17 @@ function lineState(side, idx){
   };
 }
 function setOV(k,field,val){ OV[k]=OV[k]||{}; if(field==='amount'||field==='debit'||field==='credit') val=val===''?null:+(''+val).replace(/[$,\s]/g,''); OV[k][field]=val; saveOV(); }
+
+// A PURE subtotal / grand-total SUMMARY row from a statement (label is exactly "Subtotal(s)",
+// "Total(s)", or "Grand Total(s)") is a recomputed roll-up of the lines above it — NOT a real
+// charge. It must be excluded from every footing, the QB ledger, and the IA actuals, or its
+// amount double-counts the individual lines. Genuine balancing lines ("Due To Buyer",
+// "Net proceeds", "Funds to close") carry more than the bare word, so they are NOT summary rows
+// and pass through unchanged. ONE shared rule so display, QB, and IA always agree.
+function isSummaryRow(s){
+  const lbl=((s&&s.label)||'').trim();
+  return /^(sub-?totals?|grand\s+totals?|totals?)\s*:?\s*$/i.test(lbl);
+}
 
 function badge(c){
   const cls = c>=100?'b100':c>=90?'b90':c>=80?'b80':'blo';
@@ -729,6 +744,17 @@ function renderClosing(sideKey, tabKey){
       <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup><thead><tr><th>Description</th><th class="num deb">Debits</th><th class="num cred">Credits</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead><tbody>`;
     groups[g].forEach(i=>{
       const s=lineState(sideKey,i); const k=sideKey+':'+i;
+      // Pure subtotal/total summary rows are shown for fidelity but NEVER counted in the footing
+      // and never mapped — they're roll-ups of the lines above, not real charges.
+      if(isSummaryRow(s)){
+        html += `<tr id="src-${sideKey}-${i}" class="summary-row">
+          <td class="desc">${s.label} <span class="pill pill-sum" title="Statement summary row — not counted in the totals, the QuickBooks ledger, or the Investment Analysis.">summary · not counted</span></td>
+          <td class="num deb">${s.debit==null?'<span class="dash">—</span>':money(s.debit)}</td>
+          <td class="num cred">${s.credit==null?'<span class="dash">—</span>':money(s.credit)}</td>
+          <td colspan="3" class="muted">—</td>
+        </tr>`;
+        return;
+      }
       const isCredit = s.credit!=null || (s.debit==null && /deposit|proceeds|trust deed|sale price|credit/i.test(s.label));
       tDeb += s.debit||0; tCred += s.credit||0;
       const debCell = isCredit ? '<span class="dash">—</span>'
@@ -1085,6 +1111,7 @@ function iaActuals(){
   // amount and never into an interest/cost field, or it would dwarf the real interest.
   const isPrincipal=(s)=> /Lender Cost/.test(s.category||'') && /(payoff|principal|trust deed|loan proceeds)/i.test(s.label||'') && !/interest/i.test(s.label||'');
   const take=(s)=>{
+    if(isSummaryRow(s)) return;   // statement subtotal/total roll-ups would double-count the lines above
     const key=SUB2IA[(s.category||'')+'|'+(s.sub||'')];
     if(!key) return;
     if(key==='arv'){ addv('arv', s.credit!=null?s.credit:s.debit); return; }   // sale price books as a credit
@@ -1112,6 +1139,7 @@ function srcLinesFor(key, mode){
     if(!hasActualStmt(side)) return;
     (D[side].lines||[]).forEach((l,idx)=>{
       const s=lineState(side,idx);
+      if(isSummaryRow(s)) return;   // summary roll-ups don't feed the IA (mirrors iaActuals)
       if(SUB2IA[(s.category||'')+'|'+(s.sub||'')]!==key) return;
       const contributes = key==='arv' ? (s.credit!=null||s.debit!=null) : (isPrincipal(s)?false:(s.debit!=null));
       if(contributes) hits.push({side, idx});
@@ -1383,7 +1411,7 @@ function renderIA(){
   // NET PROFITS  (+ escrow reconciliation when Mode = Sold)
   let reconBox='';
   if((i.mode||'')==='Sold'){
-    const ss=(D.sellSide&&D.sellSide.lines)||[];
+    const ss=((D.sellSide&&D.sellSide.lines)||[]).filter(l=>!isSummaryRow(l));   // drop subtotal/total roll-ups
     let _c=0,_d=0; ss.forEach(l=>{_c+=(+l.credit||0);_d+=(+l.debit||0);});
     const sellNet=_c-_d;                                                   // sell-side statement net proceeds
     const holdback=ss.filter(l=>/holdback/i.test(l.label||l.desc||'')).reduce((a,l)=>a+(+l.credit||0),0);
@@ -1421,6 +1449,7 @@ function derivedRows(){
     const source = side==='buySide' ? 'Buy-Side Closing' : 'Sell-Side Closing';
     D[side].lines.forEach((l,i)=>{
       const s=lineState(side,i); if(s.amount==null) return;
+      if(isSummaryRow(s)) return;   // statement subtotal/total roll-ups aren't real ledger entries
       rows.push({Type:D[side].role, Date:D[side].date, Name:D[side].title, Memo:s.label,
                  Category:s.category, Sub:s.sub, Amount:s.amount, side, idx:i, source, conf:s.confidence});
     });
@@ -1489,6 +1518,7 @@ function qbRows(){
     D.qb.lines.forEach((l,i)=>{
       try{
         const s=lineState('qb',i); if(s.amount==null) return;
+        if(isSummaryRow(s)) return;   // QB subtotal/total roll-ups are not real ledger entries
         // Transaction-register lines carry 5 independent fields (Type/Date/Num/Name/Memo); a
         // category-level (AI-parsed) line falls back to the label. See Phase 1.1.
         rows.push({Type:(l.type||'QB'), Date:(l.date||D.qb.date||''), Num:(l.num||''),
@@ -1594,6 +1624,7 @@ function closingBucket(side, cat, sub){
   let total=0, n=0; const idxs=[];
   (D[side].lines||[]).forEach((l,idx)=>{
     const s=lineState(side,idx);
+    if(isSummaryRow(s)) return;               // statement subtotal/total roll-up, not a real cost line
     if((s.category||'')!==cat || (s.sub||'')!==sub) return;
     if(isArv){ const v=s.credit!=null?s.credit:s.debit; if(v!=null){ total+=+v||0; n++; idxs.push(idx); } return; }
     if(isPrincipalLine(s)) return;            // loan principal/payoff is a financing flow, not a cost
@@ -1642,7 +1673,7 @@ function triangulate(){
   const addBucket=(cat,sub)=>{ const k=(cat||'')+'|'+(sub||''); if(!cat||seen.has(k)) return; seen.add(k); buckets.push({cat,sub}); };
   Object.keys(SUB2IA).forEach(k=>{ const p=k.split('|'); addBucket(p[0],p[1]); });          // mappable closing buckets
   qbRows().forEach(row=>{ if(row.isManual||row.isIA||row.side==='qb') addBucket(row.Category||'', row.Sub||''); });   // QB-native buckets
-  ['buySide','sellSide'].forEach(side=>{ (D[side].lines||[]).forEach((l,idx)=>{ const s=lineState(side,idx); addBucket(s.category, s.sub||''); }); });  // any closing bucket not in SUB2IA
+  ['buySide','sellSide'].forEach(side=>{ (D[side].lines||[]).forEach((l,idx)=>{ const s=lineState(side,idx); if(isSummaryRow(s)) return; addBucket(s.category, s.sub||''); }); });  // any closing bucket not in SUB2IA (summary roll-ups excluded)
   const out=[];
   buckets.forEach(({cat,sub})=>{
     const qbOnly=IA_QB_ONLY_CATS.includes(cat);
@@ -1843,7 +1874,7 @@ function exportXlsx(){
   // closings
   ['buySide','sellSide'].forEach((side,n)=>{
     const aoa=[['Line','Amount','Category','Sub','Confidence','Why']];
-    D[side].lines.forEach((l,i)=>{const s=lineState(side,i);aoa.push([s.label,s.amount,s.category,s.sub,s.confidence+'%',s.why]);});
+    D[side].lines.forEach((l,i)=>{const s=lineState(side,i);if(isSummaryRow(s)) return;aoa.push([s.label,s.amount,s.category,s.sub,s.confidence+'%',s.why]);});
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), n? 'Sell-Side':'Buy-Side');
   });
   // QB
@@ -1908,13 +1939,13 @@ async function findDiscrepancies(){
   try{
     const r=computeIA(effIA()); const issues=[];
     // 1) escrow: IA "cash out of escrow" vs sell-side statement net proceeds
-    let sd=0, sc=0; ((D.sellSide&&D.sellSide.lines)||[]).forEach((l,idx)=>{const s=lineState('sellSide',idx); sd+=(+s.debit||0); sc+=(+s.credit||0);});
+    let sd=0, sc=0; ((D.sellSide&&D.sellSide.lines)||[]).forEach((l,idx)=>{const s=lineState('sellSide',idx); if(isSummaryRow(s)) return; sd+=(+s.debit||0); sc+=(+s.credit||0);});
     const stmtNet=sc-sd, cd=stmtNet-r.cashOutEscrow;
     if(Math.abs(cd)>=1) issues.push(`Escrow off by ${moneyT(cd)} — statement net proceeds ${moneyT(stmtNet)} vs IA cash-out ${moneyT(r.cashOutEscrow)}.`);
     // 2) QB manual vs imported ledger
     try{ const rec=qbRecon(); Object.values(rec.redMan||{}).forEach(m=>issues.push('QB: '+m)); }catch(e){}
     // 3) unmapped / low-confidence closing lines
-    ['buySide','sellSide'].forEach(side=>{((D[side]&&D[side].lines)||[]).forEach((l,idx)=>{const s=lineState(side,idx); const tag=side==='buySide'?'Buy':'Sell'; const amt=moneyT(s.debit!=null?s.debit:(s.credit!=null?s.credit:(s.amount||0)));
+    ['buySide','sellSide'].forEach(side=>{((D[side]&&D[side].lines)||[]).forEach((l,idx)=>{const s=lineState(side,idx); if(isSummaryRow(s)) return; const tag=side==='buySide'?'Buy':'Sell'; const amt=moneyT(s.debit!=null?s.debit:(s.credit!=null?s.credit:(s.amount||0)));
       if(!s.category||/don.?t ?map/i.test(s.category)) issues.push(`${tag}-side "${s.label}" (${amt}) is unmapped.`);
       else if((s.confidence!=null?s.confidence:100)<80) issues.push(`${tag}-side "${s.label}" mapped ${s.category}/${s.sub} at only ${s.confidence}% confidence.`);});});
     const q = issues.length
