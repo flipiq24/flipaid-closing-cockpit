@@ -5,11 +5,14 @@ import * as XLSX from 'xlsx';
 // SINGLE source of truth for QB computed / non-cost SUMMARY rows that must never enter the
 // ledger. These are recomputed roll-ups or profit-distribution waterfall rows — emitting them
 // would double-count the real cost categories. MUST stay in lockstep with the labels the
-// QB_INSTRUCTIONS prompt asks the AI to skip (server/index.js): Total, Grand Total, Sales Price,
-// Profit, Holdback distributions, "Amount to be Dist(ributed)", "Previously Dist", "Remaining Dist".
+// QB_INSTRUCTIONS prompt asks the AI to skip (server/index.js): Total(s)/Subtotal/Grand Total
+// (incl. "Total Costs/Expenses/Income/Profit"), Sales/Selling Price, Profit (incl. Net/Gross),
+// Net/Gross Income, Holdback distributions, partner/owner Distributions, "Amount to be
+// Dist(ributed)", "Previously Dist", "Remaining Dist".
 // Anchored so genuine cost categories (Acquisition, Holding, Construction Holdback, Loan Proceeds,
-// Interest Charges, Settlement Charges, …) are preserved untouched.
-export const QB_SUMMARY_ROW_RE = /^(grand\s+totals?|totals?|sales\s+price|profits?|holdback(\s+distributions?)?|(amount\s+to\s+be|previously|remaining)\s+dist(ributed|ribution)?s?)\s*:?\s*$/i;
+// Interest Charges, Settlement Charges, …) are preserved untouched — the leading qualifier (e.g.
+// "Construction" Holdback) prevents a match because the whole label must match start-to-end.
+export const QB_SUMMARY_ROW_RE = /^(?:(?:grand\s+|sub\s*)?totals?(?:\s+(?:costs?|expenses?|income|profits?|distributions?|proceeds))?|(?:net\s+|gross\s+|total\s+)?profits?|(?:net|gross)\s+income|(?:sales?|selling)\s+price|holdbacks?(?:\s+distributions?)?|(?:partner|partners|partnership)\s+distributions?|distributions?(?:\s+to\s+(?:partners?|members?|owners?))?|(?:amount\s+to\s+be|previously|remaining)\s+dist(?:ributed|ribution)?s?)\s*:?\s*$/i;
 export function isQbSummaryLabel(label) {
   return QB_SUMMARY_ROW_RE.test(String(label == null ? '' : label).trim());
 }
