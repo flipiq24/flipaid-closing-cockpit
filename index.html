@@ -1312,19 +1312,31 @@ function activityBody(){
   }
   return `<div class="ai-wrap"><div class="ai-log" id="actLog">${body}</div></div>`;
 }
+// Short unique id for mutable rows (additions / manual-QB / custom lines) so an
+// activity entry can find the SAME row later even after rows are added/removed.
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+// Resolve the current index of a mutable row by its stable rowId. We deliberately
+// do NOT fall back to a positional index: after inserts/deletes the recorded index
+// can point at a different row, so a missing rowId returns -1 (guarded) rather than
+// risk a silent wrong-row revert. Every array-kind revert entry carries a rowId.
+function resolveIdx(arr, rowId){
+  if(!Array.isArray(arr) || !rowId) return -1;
+  return arr.findIndex(x=>x&&x.id===rowId);
+}
 // Undo a single recorded change by re-applying its "old" value through the same
 // setter that produced it. The revert itself is logged as a new activity entry.
 function revertActivity(id){
   const e=(OV._activity||[]).find(x=>String(x.id)===String(id)||String(x.ts)===String(id));
   if(!e||!e.revert||!('old' in e)) return;
   const r=e.revert, old=e.old;
+  const gone=()=>alert('That line no longer exists, so this change can’t be reverted.');
   switch(r.kind){
     case 'ia':        setIA(r.key, old); break;
     case 'ov':        setOV(r.k, r.field, old, r.originTab, r.navId); renderActive(); break;
-    case 'add':       setAddition(r.side, r.idx, r.field, old); break;
-    case 'qbman':     setQbManual(r.idx, r.field, old); break;
-    case 'custom':    setCustom(r.sec, r.idx, old); break;
-    case 'rencustom': renCustom(r.sec, r.idx, old); break;
+    case 'add':       { const i=resolveIdx(additions(r.side), r.rowId); if(i<0) return gone(); setAddition(r.side, i, r.field, old); break; }
+    case 'qbman':     { const i=resolveIdx(qbManual(), r.rowId); if(i<0) return gone(); setQbManual(i, r.field, old); break; }
+    case 'custom':    { const arr=D.ia.inputs.customLines&&D.ia.inputs.customLines[r.sec]; const i=resolveIdx(arr, r.rowId); if(i<0) return gone(); setCustom(r.sec, i, old); break; }
+    case 'rencustom': { const arr=D.ia.inputs.customLines&&D.ia.inputs.customLines[r.sec]; const i=resolveIdx(arr, r.rowId); if(i<0) return gone(); renCustom(r.sec, i, old); break; }
   }
 }
 function gotoActivity(ts){
