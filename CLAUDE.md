@@ -3,7 +3,7 @@
 You are the **single** implementer for this app. Do all work **in this Replit workspace**, commit, and push to `origin/master`. **One source of truth — never let another agent edit in parallel.** If the Replit Agent is on, stop it.
 
 ## What this app is
-A four-tab fix-and-flip "Closing Cockpit", one deal at a time:
+A multi-user fix-and-flip platform: a per-user **portfolio** of deals (grouped properties), each opened in a four-tab **"Closing Cockpit"** — one deal at a time in the cockpit view:
 1. **Investment Analysis (IA)** — the underwriting model; a faithful port of the client's MASTER IA Excel.
 2. **Buy-Side Closing** — purchase settlement statement → normalized line table (Category/Sub + confidence).
 3. **Sell-Side Closing** — resale settlement statement, same structure, any escrow company.
@@ -12,9 +12,13 @@ A four-tab fix-and-flip "Closing Cockpit", one deal at a time:
 Core idea: IA starts as an **estimate**; actual closing/QB data flows in and reconciles. Mode drives it: **Estimated → Acquired → Sold** (exactly 3 modes).
 
 ## Stack
-- `index.html` — entire frontend (vanilla JS, no build). UI + state + the calc engine `computeIA()`.
-- `server/index.js` — Express; serves the site + `/api/evaluate`, `/api/ask`, `/api/parse` (Claude via `@anthropic-ai/sdk`; needs `ANTHROPIC_API_KEY`).
-- `data/ramona.json` — the current deal (4595 Bronson).
+- `index.html` — the cockpit frontend (vanilla JS, no build). UI + state + the calc engine `computeIA()`. Opens ONE property via `?id=<propertyId>`.
+- `login.html` / `portfolio.html` — auth screen and the post-login landing page (groups + properties, scoped per user).
+- `server/index.js` — Express entry; serves the site + the AI endpoints `/api/evaluate`, `/api/ask`, `/api/parse` (Claude via `@anthropic-ai/sdk`; needs `ANTHROPIC_API_KEY`). The QB branch of `/api/parse` lives in `server/qb-parse.js`.
+- `server/db.js` — Postgres pool, schema, scrypt password hashing, and the 4595 Bronson seed.
+- `server/routes.js` — auth + portfolio + property REST API (`/api/properties/:id`, etc.). All HTML pages and AI endpoints require a session.
+- `data/ramona.json` — the shared deal **TEMPLATE** (4595 Bronson). Per-property edits are stored server-side in Postgres (`properties.data` JSONB = the `OV` overrides blob), overlaid on this template at load.
+- Deps of note: `pg` + `connect-pg-simple` + `express-session` (auth/sessions), `multer` (statement uploads), `xlsx` (export).
 - Run: `npm start` (PORT=5000 on Replit). No bundler. Edit + refresh.
 
 ## 🎯 GOLDEN TEST — the acceptance bar (4595 Bronson, mode Sold). Any change must keep these exact:
@@ -51,7 +55,7 @@ Verify headlessly in console: `computeIA(effIA()).netProfit` → `34367.04`.
 4. **QB "Development Cost" report maps at the CATEGORY level**, NOT line-by-line. The file has a Summary of category totals — use it. Reproducing ~150 transactions truncates the model (`stop_reason: max_tokens`). Closing statements (buy/sell) ARE line-by-line.
 5. **No green "actual" badges.** Fields render uniformly.
 6. **Link-backs (↗) are stage-gated by mode:** Estimated = none; Acquired = Purchase + Lender; Sold = + Sales Cost (+ Rehab when wired to QB).
-7. **Overrides are scoped to `deal.id`** (localStorage). Discard on deal mismatch — never let one deal's edits bleed onto another.
+7. **Overrides (`OV`) persist server-side per property** — debounced PATCH to `/api/properties/:id` (Postgres `properties.data` JSONB), so edits survive logout/login and follow the user across devices. localStorage holds ONLY the per-property undo/history stack. Each property loads `data/ramona.json` as its template and overlays its own saved overrides — never let one property's edits bleed onto another.
 8. Loan cap F16 = `(Purchase + Due Diligence) × 90%` (Excel). Transfer tax booked once (sell-side Sales Cost). Holdback ($27k) = Financing; never call the $590k credits subtotal a "sale price."
 9. Metrics are exactly four: Cash ROI, Cash IRR, Levered ROI, Levered IRR — single % column under the Net Profit value.
 
