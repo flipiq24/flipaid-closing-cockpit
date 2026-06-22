@@ -90,6 +90,17 @@ Question: ${question}`
 
 // POST /api/parse  (multipart: file[+side]  OR  json: {side, link, text})
 // Parses a settlement statement (PDF/image/Google-Doc/pasted text) into the universal line schema.
+// Deterministic safety net: a PURE subtotal / total SUMMARY row (label is exactly
+// "Subtotal(s)", "Total(s)", or "Grand Total(s)", optional trailing colon) is a recomputed
+// roll-up that would double-count the lines above it. We ASK the AI to omit these (below), but
+// if it doesn't, we drop them here so they never enter stored data. MUST stay in lockstep with
+// the frontend `isSummaryRow` rule in index.html. Genuine balancing lines ("Due To Buyer",
+// "Net proceeds", "Funds to close") carry more than the bare word and are NOT dropped.
+const SUMMARY_ROW_RE = /^(sub-?totals?|grand\s+totals?|totals?)\s*:?\s*$/i;
+function isSummaryLabel(label) {
+  return SUMMARY_ROW_RE.test(String((label || '')).trim());
+}
+
 const PARSE_INSTRUCTIONS = `Extract this real-estate settlement / closing statement into JSON for a universal viewer.
 Return ONLY valid JSON (no prose, no markdown fences), shaped EXACTLY as:
 { "meta": { "title": string, "escrowCompany": string, "status": "FINAL" | "ESTIMATED", "date": "YYYY-MM-DD", "closingDate": "YYYY-MM-DD", "property": string, "party": string, "role": "Buyer" | "Seller", "escrowNo": string },
@@ -189,6 +200,11 @@ app.post('/api/parse', upload.single('file'), async (req, res) => {
     catch (e) {
       // stop_reason === 'max_tokens' means the model was truncated mid-JSON — raise max_tokens.
       return res.status(502).json({ error: 'Model did not return valid JSON', stop_reason: msg.stop_reason, raw: text.slice(0, 2000) });
+    }
+    // Deterministic guarantee: drop pure subtotal/total summary rows the AI may have emitted
+    // despite the instruction above. QB workbooks are parsed elsewhere; this guards closing lines.
+    if (side !== 'qb' && parsed && Array.isArray(parsed.lines)) {
+      parsed.lines = parsed.lines.filter(l => !isSummaryLabel(l && l.label));
     }
     res.json(parsed);
   } catch (e) {
