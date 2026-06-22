@@ -2,9 +2,13 @@
 // In Replit: add ANTHROPIC_API_KEY as a Secret, then `npm install && npm start`.
 import express from 'express';
 import multer from 'multer';
+import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
 import Anthropic from '@anthropic-ai/sdk';
 import * as XLSX from 'xlsx';
 import { parseQbWorkbook } from './qb-parse.js';
+import { pool, ensureSchema, getSessionSecret } from './db.js';
+import { buildRouter, requireAuth } from './routes.js';
 
 // Turn a spreadsheet (XLSX/XLS) or CSV buffer into plain CSV text the model can read.
 // QuickBooks and most closing-statement exports are XLSX/CSV, so this is the QB happy path.
@@ -19,9 +23,28 @@ function spreadsheetToText(buf, mt, name) {
 
 
 const app = express();
-app.use(express.json({ limit: '2mb' }));
-app.use(express.static('.'));            // serves index.html + data/
+app.use(express.json({ limit: '8mb' }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// The real session handler is built in start() once the DB-derived secret is ready, but it MUST
+// run before any route that reads req.session. So mount a stable slot here (registration order =
+// execution order in Express); it delegates to the real middleware as soon as start() assigns it.
+let sessionMiddleware = null;
+app.use((req, res, next) => {
+  if (!sessionMiddleware) return res.status(503).json({ error: 'Server is still starting up. Please retry.' });
+  return sessionMiddleware(req, res, next);
+});
+
+// Static assets only — the deal template (data/ramona.json). The HTML pages are served
+// through gated routes below so the cockpit/portfolio require a valid session.
+app.use('/data', express.static('data'));
+
+// requireAuthPage: gate a full HTML page behind a session; redirect to /login if signed out.
+function requireAuthPage(req, res, next) {
+  if (req.session && req.session.userId) return next();
+  res.redirect('/login');
+}
+const sendFile = name => (req, res) => res.sendFile(name, { root: '.' });
 
 // Prefer Replit AI Integrations (no own key needed; billed to Replit credits) when present,
 // otherwise fall back to a plain ANTHROPIC_API_KEY secret. Either path enables the AI mapping
@@ -31,7 +54,7 @@ const client = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL
   : (process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null);
 
 // POST /api/evaluate  { deal, ia, qb }  -> { comment }
-app.post('/api/evaluate', async (req, res) => {
+app.post('/api/evaluate', requireAuth, async (req, res) => {
   if (!client) return res.status(503).json({ error: 'Set ANTHROPIC_API_KEY' });
   const { deal, ia, qb } = req.body;
   try {
@@ -60,7 +83,7 @@ Return 4-6 sentences: profit health, the riskiest assumption, and any mapping yo
 // POST /api/ask  { deal, ia, qb, question }  -> { answer }
 // Smart assistant: answers questions and runs calculations on the deal.
 // It NEVER edits the form — the user reads the answer and changes numbers manually.
-app.post('/api/ask', async (req, res) => {
+app.post('/api/ask', requireAuth, async (req, res) => {
   if (!client) return res.status(503).json({ error: 'Set ANTHROPIC_API_KEY' });
   const { deal, ia, qb, question } = req.body;
   if (!question || !String(question).trim()) return res.status(400).json({ error: 'Empty question' });
@@ -140,7 +163,7 @@ Map every category line to ONE Category + Sub-category from the FULL MASTER taxo
 If a category has no exact sub, pick the closest sub in the most appropriate category. Never invent categories or subs outside this list.
 Rules: emit ONE line per cost category (typically 5-10 lines total), never one per transaction; each line is a debit OR a credit (the other is null); costs / charges are debits, income / proceeds / refunds are credits; copy the subtotal amounts exactly as numbers; "confidence" (0-100) is how sure the category mapping is; "why" is one short sentence naming the source category.`;
 
-app.post('/api/parse', upload.single('file'), async (req, res) => {
+app.post('/api/parse', requireAuth, upload.single('file'), async (req, res) => {
   const side = req.body && req.body.side;
   // QB Development-Cost workbooks (XLSX/XLS) are parsed DETERMINISTICALLY (no AI): the transaction
   // register would truncate the model (rule #4), so we read it in code. Gives the 5-column register
@@ -212,5 +235,32 @@ app.post('/api/parse', upload.single('file'), async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => console.log('Closing Cockpit on :' + port));
+// ---- page routes (gated) + server startup ----
+async function start() {
+  await ensureSchema();
+  const secret = await getSessionSecret();
+  const PgStore = connectPgSimple(session);
+  // Assign into the slot mounted at the top so it runs ahead of every route (incl. the AI endpoints).
+  sessionMiddleware = session({
+    store: new PgStore({ pool, tableName: 'session', createTableIfMissing: false }),
+    secret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 30 } // 30 days
+  });
+
+  // Auth + portfolio + property API (defined in routes.js).
+  app.use(buildRouter());
+
+  // HTML pages.
+  app.get('/login', sendFile('login.html'));
+  app.get(['/', '/portfolio'], requireAuthPage, sendFile('portfolio.html'));
+  app.get('/cockpit', requireAuthPage, sendFile('index.html'));
+  // Prevent the static cockpit HTML from being reachable unauthenticated.
+  app.get('/index.html', requireAuthPage, sendFile('index.html'));
+
+  const port = process.env.PORT || 3000;
+  app.listen(port, '0.0.0.0', () => console.log('FlipAid on :' + port));
+}
+
+start().catch(e => { console.error('Startup failed:', e); process.exit(1); });

@@ -7,12 +7,25 @@ applies California tax logic, and exports a spreadsheet. Pre-loaded with the
 **15620 Ramona Ave** deal.
 
 ## Architecture
-- **Backend:** Minimal Express server (`server/index.js`, ES modules) that serves
-  the static frontend and one AI endpoint (`POST /api/evaluate`).
-- **Frontend:** A single static `index.html` (vanilla JS) that fetches
-  `data/ramona.json` and renders the four tabs. Uses the `xlsx` CDN for export.
-- **Data:** All deal data lives in `data/ramona.json` — line items, amounts,
-  mappings, confidence, tooltips, tax inputs, IA assumptions. Edit data, not code.
+- **Auth & accounts:** Email + password (scrypt-hashed, no bcrypt dep) with a
+  Postgres-backed session cookie. `login.html` handles sign in / sign up.
+- **Portfolio:** `portfolio.html` is the landing page after login — groups and
+  properties scoped per user. Each property stores the full deal-data blob.
+- **Backend:** Express server (`server/index.js`, ES modules). `server/db.js`
+  owns the Postgres pool, schema, password hashing and the Bronson seed;
+  `server/routes.js` owns auth + portfolio + property REST API. AI endpoints
+  (`/api/evaluate`, `/api/ask`, `/api/parse`) and all HTML pages require a session.
+- **Frontend cockpit:** `index.html` (vanilla JS) opens ONE property via
+  `?id=<propertyId>`, loads the deal template from `data/ramona.json`, overlays
+  that property's saved overrides, and renders the four tabs. Edits persist
+  server-side (debounced PATCH); localStorage holds only the per-property undo
+  stack. Uses the `xlsx` CDN for export.
+- **Data model:**
+  - `data/ramona.json` is the shared deal TEMPLATE — line items, amounts,
+    mappings, tooltips, tax inputs, IA assumptions. Edit data, not code.
+  - Per-property edits live in Postgres (`properties.data` JSONB = the `OV`
+    overrides blob). New users are seeded the **4595 Bronson** deal with an empty
+    blob, so it reproduces the golden IA numbers from the template untouched.
 
 ## Replit Setup
 - Workflow **Start application** runs `PORT=5000 npm start`, serving the app on

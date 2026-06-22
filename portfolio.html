@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FlipAid · Portfolio</title>
+<style>
+  :root{
+    --bg:#f3f4f6; --card:#fff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#f97316; --accent-soft:#fff1e6; --green:#16a34a; --blue:#2563eb; --red:#dc2626; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--accent)}
+  .title{font-size:19px;font-weight:800}
+  .title .sub{font-weight:500;color:var(--muted);font-size:14px;margin-left:8px}
+  .spacer{flex:1}
+  .who{color:var(--muted);font-size:13px}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 15px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn:hover{filter:brightness(.97)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.sm{padding:6px 11px;font-size:12px}
+  .wrap{max-width:1080px;margin:24px auto;padding:0 28px}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+  .toolbar h1{font-size:22px;margin:0;flex:1}
+  .group{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:18px;overflow:hidden}
+  .group-hd{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:#fafafa}
+  .group-hd .gname{font-size:15px;font-weight:700}
+  .group-hd .gcount{font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 9px}
+  .group-hd .gactions{margin-left:auto;display:flex;gap:8px}
+  .gact{color:var(--muted);font-size:12px;cursor:pointer;text-decoration:none;font-weight:600}
+  .gact:hover{color:var(--accent);text-decoration:underline}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:11px 18px;border-bottom:1px solid #f1f1f3;font-size:13px;vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
+  tr.prow{cursor:pointer}
+  tr.prow:hover td{background:#fff8f2}
+  td.addr{font-weight:600}
+  .badge{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 10px}
+  .badge.Estimated{background:#fef9c3;color:#854d0e}
+  .badge.Acquired{background:#dbeafe;color:#1e40af}
+  .badge.Sold{background:#dcfce7;color:#166534}
+  td.act{text-align:right;white-space:nowrap}
+  .rowact{color:var(--muted);font-size:12px;cursor:pointer;text-decoration:none;margin-left:12px;font-weight:600}
+  .rowact:hover{color:var(--accent);text-decoration:underline}
+  .rowact.del:hover{color:var(--red)}
+  .muted{color:var(--muted)}
+  .empty{padding:22px 18px;color:var(--muted);font-size:13px;font-style:italic}
+  .pagestate{padding:60px 0;text-align:center;color:var(--muted)}
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .ov.show{display:flex}
+  .modal{background:#fff;border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .modal h3{margin:0 0 16px;font-size:17px}
+  .modal label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:0 0 5px}
+  .modal input,.modal select{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-bottom:14px;background:#fff}
+  .modal input:focus,.modal select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .modal .merr{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:14px;display:none}
+  .modal .merr.show{display:block}
+  .modal-acts{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="dot"></span>
+  <span class="title">FlipAid<span class="sub">Portfolio</span></span>
+  <div class="spacer"></div>
+  <span class="who" id="who"></span>
+  <button class="btn ghost sm" onclick="logout()">Log out</button>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <h1>Your Properties</h1>
+    <button class="btn ghost" onclick="openGroupModal()">＋ New group</button>
+    <button class="btn" onclick="openPropModal()">＋ New property</button>
+  </div>
+  <div id="content"><div class="pagestate">Loading…</div></div>
+</div>
+
+<!-- Group modal -->
+<div class="ov" id="groupOv">
+  <div class="modal">
+    <h3 id="groupModalTitle">New group</h3>
+    <div class="merr" id="groupErr"></div>
+    <label for="groupName">Group name</label>
+    <input id="groupName" placeholder="e.g. 2026 Flips" />
+    <div class="modal-acts">
+      <button class="btn ghost" onclick="closeOv('groupOv')">Cancel</button>
+      <button class="btn" id="groupSave" onclick="saveGroup()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Property modal -->
+<div class="ov" id="propOv">
+  <div class="modal">
+    <h3 id="propModalTitle">New property</h3>
+    <div class="merr" id="propErr"></div>
+    <label for="propAddr">Property address</label>
+    <input id="propAddr" placeholder="123 Main St, City, CA 90000" />
+    <label for="propGroup">Group</label>
+    <select id="propGroup"></select>
+    <div class="modal-acts">
+      <button class="btn ghost" onclick="closeOv('propOv')">Cancel</button>
+      <button class="btn" id="propSave" onclick="saveProp()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let STATE = { groups: [], ungrouped: [], email: '' };
+let editingGroupId = null;       // null = creating
+let movingPropId = null;         // when set, the property modal is in "move" mode
+
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fmtDate(d){ if(!d) return '—'; const t=new Date(d); return isNaN(t)?'—':t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+
+async function load(){
+  try{
+    const res = await fetch('/api/portfolio');
+    if(res.status===401){ location.href='/login'; return; }
+    STATE = await res.json();
+    $('who').textContent = STATE.email || '';
+    render();
+  }catch(e){ $('content').innerHTML = `<div class="pagestate">Could not load your portfolio. Please refresh.</div>`; }
+}
+
+function allGroupsForSelect(selId){
+  const opts = STATE.groups.map(g=>`<option value="${g.id}" ${g.id===selId?'selected':''}>${esc(g.name)}</option>`).join('');
+  return `<option value="" ${selId==null?'selected':''}>— Ungrouped —</option>` + opts;
+}
+
+function propRow(p){
+  return `<tr class="prow" onclick="openProp(${p.id})">
+    <td class="addr">${esc(p.address)||'<span class="muted">Untitled</span>'}</td>
+    <td>${fmtDate(p.created_at)}</td>
+    <td>${p.last_opened_at?fmtDate(p.last_opened_at):'<span class="muted">Never</span>'}</td>
+    <td><span class="badge ${esc(p.status)}">${esc(p.status)}</span></td>
+    <td class="act" onclick="event.stopPropagation()">
+      <a class="rowact" onclick="openMove(${p.id})">Move</a>
+      <a class="rowact del" onclick="delProp(${p.id}, this)">Delete</a>
+    </td>
+  </tr>`;
+}
+
+function table(props){
+  if(!props.length) return `<div class="empty">No properties here yet.</div>`;
+  return `<table>
+    <thead><tr><th>Address</th><th>Created</th><th>Last opened</th><th>Status</th><th></th></tr></thead>
+    <tbody>${props.map(propRow).join('')}</tbody></table>`;
+}
+
+function groupCard(g){
+  return `<div class="group">
+    <div class="group-hd">
+      <span class="gname">${esc(g.name)}</span>
+      <span class="gcount">${g.properties.length}</span>
+      <span class="gactions">
+        <a class="gact" onclick="openGroupModal(${g.id})">Rename</a>
+        <a class="gact" onclick="delGroup(${g.id})">Delete</a>
+      </span>
+    </div>
+    ${table(g.properties)}
+  </div>`;
+}
+
+function render(){
+  let html = STATE.groups.map(groupCard).join('');
+  if(STATE.ungrouped && STATE.ungrouped.length){
+    html += `<div class="group">
+      <div class="group-hd"><span class="gname">Ungrouped</span><span class="gcount">${STATE.ungrouped.length}</span></div>
+      ${table(STATE.ungrouped)}</div>`;
+  }
+  if(!html) html = `<div class="pagestate">No properties yet. Click <b>＋ New property</b> to get started.</div>`;
+  $('content').innerHTML = html;
+}
+
+/* ---------- open a property in the cockpit ---------- */
+function openProp(id){ location.href = '/cockpit?id=' + id; }
+
+/* ---------- modal helpers ---------- */
+function closeOv(id){ $(id).classList.remove('show'); }
+function showMErr(id,msg){ const e=$(id); e.textContent=msg; e.classList.toggle('show', !!msg); }
+
+/* ---------- groups ---------- */
+function openGroupModal(id){
+  editingGroupId = id || null;
+  const g = id ? STATE.groups.find(x=>x.id===id) : null;
+  $('groupModalTitle').textContent = id ? 'Rename group' : 'New group';
+  $('groupName').value = g ? g.name : '';
+  showMErr('groupErr','');
+  $('groupOv').classList.add('show');
+  setTimeout(()=>$('groupName').focus(), 30);
+}
+async function saveGroup(){
+  const name = $('groupName').value.trim();
+  if(!name){ showMErr('groupErr','Please enter a group name.'); return; }
+  const btn=$('groupSave'); btn.disabled=true;
+  try{
+    const url = editingGroupId ? '/api/groups/'+editingGroupId : '/api/groups';
+    const res = await fetch(url, { method: editingGroupId?'PATCH':'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
+    const j = await res.json().catch(()=>({}));
+    if(!res.ok){ showMErr('groupErr', j.error||'Could not save.'); btn.disabled=false; return; }
+    closeOv('groupOv'); await load();
+  }catch(e){ showMErr('groupErr','Network error.'); }
+  btn.disabled=false;
+}
+async function delGroup(id){
+  const g = STATE.groups.find(x=>x.id===id); if(!g) return;
+  if(!confirm(`Delete group "${g.name}"? Its properties will move to Ungrouped (they are not deleted).`)) return;
+  const res = await fetch('/api/groups/'+id, { method:'DELETE' });
+  if(res.ok) load();
+}
+
+/* ---------- properties ---------- */
+function openPropModal(){
+  movingPropId = null;
+  $('propModalTitle').textContent = 'New property';
+  $('propAddr').value=''; $('propAddr').disabled=false;
+  $('propGroup').innerHTML = allGroupsForSelect(STATE.groups[0]?STATE.groups[0].id:null);
+  showMErr('propErr','');
+  $('propOv').classList.add('show');
+  setTimeout(()=>$('propAddr').focus(), 30);
+}
+function findProp(id){
+  for(const g of STATE.groups){ const p=g.properties.find(x=>x.id===id); if(p) return p; }
+  return (STATE.ungrouped||[]).find(x=>x.id===id);
+}
+function openMove(id){
+  const p = findProp(id); if(!p) return;
+  movingPropId = id;
+  $('propModalTitle').textContent = 'Move property';
+  $('propAddr').value = p.address; $('propAddr').disabled = true;
+  $('propGroup').innerHTML = allGroupsForSelect(p.group_id);
+  showMErr('propErr','');
+  $('propOv').classList.add('show');
+}
+async function saveProp(){
+  const groupVal = $('propGroup').value;
+  const groupId = groupVal==='' ? null : Number(groupVal);
+  const btn=$('propSave'); btn.disabled=true;
+  try{
+    let res;
+    if(movingPropId){
+      res = await fetch('/api/properties/'+movingPropId, { method:'PATCH',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({ groupId }) });
+    }else{
+      const address = $('propAddr').value.trim();
+      if(!address){ showMErr('propErr','Please enter an address.'); btn.disabled=false; return; }
+      res = await fetch('/api/properties', { method:'POST',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({ address, groupId }) });
+    }
+    const j = await res.json().catch(()=>({}));
+    if(!res.ok){ showMErr('propErr', j.error||'Could not save.'); btn.disabled=false; return; }
+    closeOv('propOv');
+    if(!movingPropId && j.id){ location.href = '/cockpit?id=' + j.id; return; }
+    await load();
+  }catch(e){ showMErr('propErr','Network error.'); }
+  btn.disabled=false;
+}
+async function delProp(id, el){
+  const p = findProp(id); if(!p) return;
+  if(!confirm(`Delete "${p.address||'this property'}"? This permanently removes its deal data and cannot be undone.`)) return;
+  const res = await fetch('/api/properties/'+id, { method:'DELETE' });
+  if(res.ok) load();
+}
+
+async function logout(){ await fetch('/api/logout',{method:'POST'}); location.href='/login'; }
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeOv('groupOv'); closeOv('propOv'); } });
+load();
+</script>
+</body>
+</html>

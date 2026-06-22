@@ -316,7 +316,8 @@
 <header class="top">
   <span class="dot"></span>
   <div class="hdr-meta">
-    <button class="btn-back" id="backBtn" onclick="undoInput()" title="Undo your last change" disabled>← Back</button>
+    <a class="btn-back" href="/portfolio" title="Back to your portfolio">⌂ Portfolio</a>
+    <button class="btn-back" id="backBtn" onclick="undoInput()" title="Undo your last change" disabled>↶ Undo</button>
     <span class="title">Investment Analysis</span>
     <input class="hdr-addr" id="dealAddr" placeholder="Property address" onchange="setIA('address',this.value)">
     <span class="hdr-controls" id="hdrControls"></span>
@@ -342,8 +343,13 @@ let D=null, OV={};            // OV = user overrides keyed by line id
 const $=s=>document.querySelector(s);
 const moneyT=n=> (n==null||n==='')?'—':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const money=n=>{ const t=moneyT(n); return (n!=null&&n!==''&&Number(n)<0)?`<span class="neg">${t}</span>`:t; };
-const LS='flipaid-ramona-overrides';
-const LS_HIST='flipaid-ramona-history';   // undo stack of prior OV snapshots (survives reloads)
+// Each cockpit session works on ONE server-side property, identified by ?id= in the URL.
+// The deal data blob (OV) is loaded from and saved to that property's row (server-side),
+// so edits persist across logout/login and across devices — not just localStorage.
+const PROP_ID = new URLSearchParams(location.search).get('id');
+const LS_HIST = 'flipaid-history-' + (PROP_ID || 'none');   // client-only undo stack (per property)
+let LAST_SAVED = '{}';     // JSON of the last persisted OV — the baseline pushed onto the undo stack
+let SAVE_TIMER = null;     // debounce handle for persistToServer()
 
 /* ---------- CA TAX MATH (single source of truth) ---------- */
 function transferTax(price, ratePer1000){ return +(price * ratePer1000/1000).toFixed(2); }
@@ -355,21 +361,21 @@ function supplemental(purchase, priorAssessed, annualRatePct, monthsFactor){
 
 /* ---------- load ---------- */
 async function boot(){
+  // No property selected -> go pick one in the portfolio.
+  if(!PROP_ID){ location.replace('/portfolio'); return; }
   D = await (await fetch('./data/ramona.json')).json();
-  try{ OV = JSON.parse(localStorage.getItem(LS)||'{}'); }catch(e){ OV={}; }
-  // Saved overrides are scoped to a deal. If they belong to a different deal (or are legacy/unstamped),
-  // discard them so one deal's edits can never bleed onto another via localStorage.
-  if(OV._dealId !== D.deal.id){ OV={}; localStorage.removeItem(LS); }
-  // One-time wipe of Buy-Side, Sell-Side and QB Accounting data (user requested clearing these tabs).
-  // Guarded by a flag so future uploads/additions/manual entries are NOT wiped on every reload.
-  if(!OV._wipeClosingV1){
-    delete OV._data_buySide; delete OV._data_sellSide; delete OV._data_qb;
-    if(OV._src){ delete OV._src.buySide; delete OV._src.sellSide; delete OV._src.qb; }
-    if(OV._add){ delete OV._add.buySide; delete OV._add.sellSide; }
-    delete OV._qbManual;
-    OV._wipeClosingV1 = true;
-    localStorage.setItem(LS, JSON.stringify(OV));
-  }
+  // Load THIS property's deal-data blob (the OV overrides) from the server.
+  let prop;
+  try{
+    const res = await fetch('/api/properties/'+encodeURIComponent(PROP_ID));
+    if(res.status===401){ location.replace('/login'); return; }
+    if(!res.ok){ location.replace('/portfolio'); return; }
+    prop = await res.json();
+  }catch(e){ location.replace('/portfolio'); return; }
+  OV = (prop && prop.data && typeof prop.data==='object' && !Array.isArray(prop.data)) ? prop.data : {};
+  LAST_SAVED = JSON.stringify(OV);                 // undo baseline = state as loaded from the server
+  // Each property carries its own address; seed it from the property row before applying overrides.
+  if(prop.address){ D.ia.inputs.address = prop.address; D.deal.address = prop.address; }
   migrateTaxonomyNames();                          // bring any stored data onto the renamed categories
   if(OV._status){ D.deal.status=OV._status; }
   if(OV._ia){ Object.assign(D.ia.inputs, OV._ia); }
@@ -378,10 +384,22 @@ async function boot(){
   // restore any parsed statement lines from a prior attach
   ['buySide','sellSide','qb'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)&&dd.lines.length){ D[sd].lines=dd.lines; if(dd.meta) Object.assign(D[sd], dd.meta); } });
   { const dd=OV['_data_qb']; if(dd && Array.isArray(dd.summary) && dd.summary.length) D.qb.summary=dd.summary; }  // restore QB category Summary (the $530,403.30 report)
-  // No closing data -> deal is estimate-only: pin Mode to "Estimated" once here (controlled, not in render).
-  if(!hasClosingData() && D.ia.inputs.mode!=='Estimated'){ D.ia.inputs.mode='Estimated'; OV._ia=D.ia.inputs; localStorage.setItem(LS, JSON.stringify(OV)); }
+  // No closing data -> deal is estimate-only: pin Mode to "Estimated" (recomputed each boot; not persisted here).
+  if(!hasClosingData() && D.ia.inputs.mode!=='Estimated'){ D.ia.inputs.mode='Estimated'; OV._ia=D.ia.inputs; }
   renderHeaderMeta();
   renderTabs(); bindTabs(); render('ia'); updateBackBtn();
+}
+// Debounced PUT of the current deal-data blob to this property's server row.
+// Also keeps the property's address + status (from IA Mode) in sync so the portfolio list is accurate.
+function persistToServer(){
+  if(!PROP_ID) return;
+  if(SAVE_TIMER) clearTimeout(SAVE_TIMER);
+  SAVE_TIMER=setTimeout(()=>{
+    fetch('/api/properties/'+encodeURIComponent(PROP_ID), {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ data: OV, address: D.ia.inputs.address, mode: D.ia.inputs.mode })
+    }).catch(()=>{});
+  }, 500);
 }
 function renderHeaderMeta(){
   $('#dealAddr').value = (D.ia.inputs.address==null?'':D.ia.inputs.address);
@@ -415,24 +433,33 @@ function migrateTaxonomyNames(){
   ['buySide','sellSide','qb'].forEach(sd=>{ const dd=OV['_data_'+sd]; if(dd&&Array.isArray(dd.lines)) dd.lines.forEach(l=>{ if(l&&l.map&&REN[l.map.category]) l.map.category=fix(l.map.category); }); });
   if(Array.isArray(OV._qbManual)) OV._qbManual.forEach(m=>{ if(m&&REN[m.category]) m.category=fix(m.category); });
   if(OV._add) ['buySide','sellSide'].forEach(sd=>{ if(Array.isArray(OV._add[sd])) OV._add[sd].forEach(a=>{ if(a&&REN[a.category]) a.category=fix(a.category); }); });
-  if(changed){ try{ localStorage.setItem(LS, JSON.stringify(OV)); }catch(e){} }
+  if(changed){ persistToServer(); }
 }
 function saveOV(){
-  // push the currently-persisted state onto the undo stack BEFORE overwriting it.
-  // Seed a synthetic '{}' when nothing is stored yet, so the very first edit stays undoable.
-  try{ const prev=localStorage.getItem(LS);
+  // push the LAST-persisted state onto the (client-only) undo stack BEFORE overwriting it,
+  // so "↶ Undo" can step back one edit at a time even though the data lives server-side.
+  try{
     let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){}
-    h.push(prev!=null?prev:'{}'); if(h.length>200) h.shift(); localStorage.setItem(LS_HIST, JSON.stringify(h));
+    h.push(LAST_SAVED); if(h.length>200) h.shift(); localStorage.setItem(LS_HIST, JSON.stringify(h));
   }catch(e){}
-  if(D&&D.deal) OV._dealId=D.deal.id;   // stamp the deal so boot() can discard cross-deal overrides
-  localStorage.setItem(LS, JSON.stringify(OV)); flashSaved(); updateBackBtn();
+  if(D&&D.deal) OV._dealId=D.deal.id;
+  LAST_SAVED = JSON.stringify(OV);
+  persistToServer(); flashSaved(); updateBackBtn();
 }
-// "← Back": revert the last input by restoring the previous saved state, then rebuild from boot.
-function undoInput(){
+// "↶ Undo": revert the last input by restoring the previous state to the server, then reload.
+async function undoInput(){
   let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){}
   if(!h.length) return;
   const prev=h.pop(); localStorage.setItem(LS_HIST, JSON.stringify(h));
-  localStorage.setItem(LS, prev); location.reload();
+  if(SAVE_TIMER) clearTimeout(SAVE_TIMER);   // cancel any pending debounced save so it can't overwrite the undo
+  let o={}; try{ o=JSON.parse(prev||'{}'); }catch(e){ o={}; }
+  try{
+    await fetch('/api/properties/'+encodeURIComponent(PROP_ID), {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ data:o, address:(o._ia&&o._ia.address)!=null?o._ia.address:D.ia.inputs.address, mode:(o._ia&&o._ia.mode)||D.ia.inputs.mode })
+    });
+  }catch(e){}
+  location.reload();
 }
 function updateBackBtn(){ const b=document.getElementById('backBtn'); if(!b) return;
   let h=[]; try{h=JSON.parse(localStorage.getItem(LS_HIST)||'[]');}catch(e){} b.disabled=!h.length; }
@@ -1972,7 +1999,7 @@ async function evaluateDeal(ev){
     alert('AI Evaluate needs the backend running (server/index.js) with ANTHROPIC_API_KEY set.\nIn Replit: add the secret, run the server, then this button calls /api/evaluate.');
   }
 }
-function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ OV={}; localStorage.removeItem(LS); location.reload(); } }  // reload re-fetches the data file (boot's Object.assign mutates D in place, so render() alone won't undo it)
+function resetOverrides(){ if(confirm('Clear all your edits and restore the parsed mappings?')){ if(SAVE_TIMER) clearTimeout(SAVE_TIMER); fetch('/api/properties/'+encodeURIComponent(PROP_ID),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{}})}).then(()=>location.reload()).catch(()=>location.reload()); } }  // wipe this property's server-side blob, then reload to re-fetch the template
 
 boot();
 </script>
