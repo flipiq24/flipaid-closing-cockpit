@@ -116,6 +116,10 @@
   .rm2{cursor:pointer;color:#c00000;font-size:10px;font-weight:600;margin-left:8px;text-transform:none;letter-spacing:0}
   .rm2:hover{text-decoration:underline}
   .band{background:#808080;color:#fff;text-align:center;font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:3px}
+  .panel-tabs{display:flex;gap:0;padding:0}
+  .panel-tabs .pview{flex:1;cursor:pointer;padding:6px 4px;color:#e5e7eb;user-select:none}
+  .panel-tabs .pview:hover{color:#fff}
+  .panel-tabs .pview.on{background:#fff;color:var(--accent)}
   .subband{text-align:center;font-weight:700;font-size:11.5px;padding:4px 0 0}
   .cols{display:flex;gap:28px;padding:5px 16px}
   .cols .col{flex:1;min-width:0}
@@ -424,7 +428,6 @@ const TABS=[
   {key:'buy',  label:'Buy-Side Closing'},
   {key:'sell', label:'Sell-Side Closing'},
   {key:'qb',   label:'QB Accounting'},
-  {key:'activity', label:'Activity'},
 ];
 function renderTabs(){
   $('#tabs').innerHTML = TABS.map((t,n)=>`<div class="tab${n===0?' active':''}" data-tab="${t.key}">${t.label}</div>`).join('');
@@ -590,14 +593,26 @@ function render(tab){
   renderSumBand();
   if(tab==='ia') return renderIA();
   if(tab==='qb') return renderQB();
-  if(tab==='activity') return renderActivity();
   return renderClosing(tab==='buy'?'buySide':'sellSide', tab);
 }
-// The AI Assistant & Notes panel — ONE shared conversation (OV._log) rendered on all four tabs.
-// Each post is tagged with the tab it was written on; the log is identical everywhere.
-function aiNotesBlock(){
-  return `<div class="band">AI Assistant &amp; Notes <span class="pill">shared across all tabs</span></div>
-  <div class="ai-wrap">
+// The shared bottom panel — rendered on EVERY tab. A "Post" / "Activity" toggle
+// switches between the AI Assistant & Notes conversation (OV._log) and the
+// timestamped change feed (OV._activity). PANEL_VIEW remembers the choice.
+let PANEL_VIEW='post';
+function bottomPanel(){
+  return `<div class="band panel-tabs">
+      <span class="pview${PANEL_VIEW==='post'?' on':''}" data-pview="post" onclick="setPanelView('post')">📝 Post</span>
+      <span class="pview${PANEL_VIEW==='activity'?' on':''}" data-pview="activity" onclick="setPanelView('activity')">✏️ Activity</span>
+    </div>
+    <div id="bottomBody">${PANEL_VIEW==='activity'?activityBody():notesBody()}</div>`;
+}
+function setPanelView(v){
+  PANEL_VIEW=(v==='activity')?'activity':'post';
+  const b=document.getElementById('bottomBody'); if(b) b.innerHTML=PANEL_VIEW==='activity'?activityBody():notesBody();
+  document.querySelectorAll('.panel-tabs .pview').forEach(el=>el.classList.toggle('on', el.dataset.pview===PANEL_VIEW));
+}
+function notesBody(){
+  return `<div class="ai-wrap">
     <textarea class="ia-notes" id="aiInput" placeholder="Write a note, or ask the AI to calculate / answer something (e.g. &quot;split the profit 50/50&quot;). The AI never changes the form — you apply any changes yourself."></textarea>
     <div class="ai-actions">
       <button class="btn2" id="askBtn" onclick="askAI()">🤖 Ask AI</button>
@@ -608,6 +623,8 @@ function aiNotesBlock(){
     <div class="ai-log" id="aiLog">${renderLog()}</div>
   </div>`;
 }
+// Back-compat alias: older call sites referenced aiNotesBlock().
+function aiNotesBlock(){ return bottomPanel(); }
 
 /* ----- statement ingest: file / drag-drop / Google Doc link -> auto-sets Mode ----- */
 function srcState(side){ return (OV._src && OV._src[side]) || {}; }
@@ -1277,7 +1294,8 @@ function pushActivity(e){
 function prettyKey(k){ return String(k||'').replace(/^ov_/,'').replace(/([A-Z])/g,' $1').replace(/_/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase()); }
 function iaLabelFor(k){ return (IA_LABELS&&IA_LABELS[k])||prettyKey(k); }
 function fmtActVal(v){ if(v===undefined||v===null||v==='') return '—'; if(typeof v==='number') return money(v); return String(v); }
-function renderActivity(){
+// The change feed shown under the "Activity" toggle of the bottom panel.
+function activityBody(){
   const log=OV._activity||[];
   let body;
   if(!log.length){
@@ -1288,7 +1306,7 @@ function renderActivity(){
       return `<div class="ai-entry act-entry" onclick="gotoActivity('${e.id||e.ts}')" title="Click to jump to this change"><div class="ai-meta">✏️ Change${e.tab?` <span class="ai-tab">${esc(TAB_LABEL[e.tab]||e.tab)}</span>`:''} <span>${stamp(e.ts)}</span></div><div class="ai-text">${esc(e.what||'')}${delta}</div></div>`;
     }).join('');
   }
-  $('#panel').innerHTML=`<div class="band">Activity <span class="pill">every change you make · newest first</span></div><div class="ai-wrap"><div class="ai-log" id="actLog">${body}</div></div>`;
+  return `<div class="ai-wrap"><div class="ai-log" id="actLog">${body}</div></div>`;
 }
 function gotoActivity(ts){
   const e=(OV._activity||[]).find(x=>String(x.id)===String(ts)||String(x.ts)===String(ts)); if(!e) return; const nav=e.nav||{};
