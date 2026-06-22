@@ -6,7 +6,7 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import Anthropic from '@anthropic-ai/sdk';
 import * as XLSX from 'xlsx';
-import { parseQbWorkbook } from './qb-parse.js';
+import { parseQbWorkbook, isQbSummaryLabel } from './qb-parse.js';
 import { pool, ensureSchema, getSessionSecret } from './db.js';
 import { buildRouter, requireAuth } from './routes.js';
 
@@ -224,10 +224,14 @@ app.post('/api/parse', requireAuth, upload.single('file'), async (req, res) => {
       // stop_reason === 'max_tokens' means the model was truncated mid-JSON — raise max_tokens.
       return res.status(502).json({ error: 'Model did not return valid JSON', stop_reason: msg.stop_reason, raw: text.slice(0, 2000) });
     }
-    // Deterministic guarantee: drop pure subtotal/total summary rows the AI may have emitted
-    // despite the instruction above. QB workbooks are parsed elsewhere; this guards closing lines.
-    if (side !== 'qb' && parsed && Array.isArray(parsed.lines)) {
-      parsed.lines = parsed.lines.filter(l => !isSummaryLabel(l && l.label));
+    // Deterministic guarantee: drop the computed / non-cost SUMMARY rows the AI may have emitted
+    // despite the instruction above, so they never enter stored data and double-count amounts.
+    // Closing statements use the bare subtotal/total rule; QB ledgers also drop the computed rows
+    // QB_INSTRUCTIONS lists (Sales Price, Profit, distribution waterfall) via the shared qb-parse
+    // rule — keeping the AI path in lockstep with the deterministic workbook path.
+    if (parsed && Array.isArray(parsed.lines)) {
+      const drop = (side === 'qb') ? isQbSummaryLabel : isSummaryLabel;
+      parsed.lines = parsed.lines.filter(l => !drop(l && l.label));
     }
     res.json(parsed);
   } catch (e) {

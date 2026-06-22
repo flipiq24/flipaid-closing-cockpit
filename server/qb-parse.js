@@ -2,6 +2,18 @@
 // register would truncate the model, per CLAUDE.md rule #4). Pure functions, unit-testable.
 import * as XLSX from 'xlsx';
 
+// SINGLE source of truth for QB computed / non-cost SUMMARY rows that must never enter the
+// ledger. These are recomputed roll-ups or profit-distribution waterfall rows — emitting them
+// would double-count the real cost categories. MUST stay in lockstep with the labels the
+// QB_INSTRUCTIONS prompt asks the AI to skip (server/index.js): Total, Grand Total, Sales Price,
+// Profit, Holdback distributions, "Amount to be Dist(ributed)", "Previously Dist", "Remaining Dist".
+// Anchored so genuine cost categories (Acquisition, Holding, Construction Holdback, Loan Proceeds,
+// Interest Charges, Settlement Charges, …) are preserved untouched.
+export const QB_SUMMARY_ROW_RE = /^(grand\s+totals?|totals?|sales\s+price|profits?|holdback(\s+distributions?)?|(amount\s+to\s+be|previously|remaining)\s+dist(ributed|ribution)?s?)\s*:?\s*$/i;
+export function isQbSummaryLabel(label) {
+  return QB_SUMMARY_ROW_RE.test(String(label == null ? '' : label).trim());
+}
+
 // Excel serial date -> "YYYY-MM-DD" (1900 date system). Strings/ISO pass straight through.
 export function excelDate(v) {
   if (v == null || v === '') return '';
@@ -42,7 +54,6 @@ export function parseQbWorkbook(buf) {
   const wb = XLSX.read(buf, { type: 'buffer' });
   const lines = [];
   const summary = [];
-  const SKIP_SUMMARY = /^(total|grand total|sales price|profit|holdback|amount to be dist|previously dist|remaining dist)$/i;
 
   wb.SheetNames.forEach(name => {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, blankrows: false });
@@ -56,7 +67,7 @@ export function parseQbWorkbook(buf) {
         const label = String(r[0] == null ? '' : r[0]).trim();
         const amt = r.find((c, i) => i > 0 && typeof c === 'number');
         if (!label || typeof amt !== 'number') return;
-        if (SKIP_SUMMARY.test(label)) return;
+        if (isQbSummaryLabel(label)) return;
         summary.push({ label, amount: amt, map: qbCategoryToTaxonomy(label, '') });
       });
       return;
@@ -71,11 +82,12 @@ export function parseQbWorkbook(buf) {
       const type = r[col['type']];
       const amount = r[col['amount']];
       if (typeof amount !== 'number') continue;                          // group-header / blank rows
-      if (/^total\b|^grand total$/i.test(String(type || ''))) continue;  // subtotal rows
+      if (isQbSummaryLabel(type)) continue;                              // subtotal / computed roll-up rows
       // category + sub = the trailing string cells after the Amount column (Balance is numeric, skipped)
       const after = r.slice((col['amount'] || 0) + 1).filter(x => typeof x === 'string' && x.trim());
       const qbCat = after[0] || '';
       const qbSub = after[1] || '';
+      if (isQbSummaryLabel(qbCat)) continue;                            // computed/non-cost category rows
       lines.push({
         type: String(type || ''),
         date: excelDate(r[col['date']]),
