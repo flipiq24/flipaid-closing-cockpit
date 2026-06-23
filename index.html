@@ -627,7 +627,8 @@ function panelToggle(){
 }
 function setPanelView(v){
   PANEL_VIEW=(v==='activity')?'activity':'post';
-  const b=document.getElementById('bottomBody'); if(b) b.innerHTML=PANEL_VIEW==='activity'?activityBody():notesBody();
+  // Full re-render so the IA override highlight + "override ↩" controls (gated on Activity) update too.
+  renderActive();
 }
 function notesBody(){
   return `<div class="ai-wrap">
@@ -1446,8 +1447,10 @@ function L$(label,key,val,metaKey){const m=meta(metaKey||key);const tip=(m.tip||
   IA_LABELS[key]=label;   // register the human label for the Activity log
   // When the value is pulled from a statement AND the user has overridden it, show a revert control.
   const ovr = isActualKey(key) && OV._iaOvr && OV._iaOvr[key];
-  const revert = ovr ? ` <a class="iaovr" title="Manually overridden — click to revert to the statement value" onclick="revertIA('${key}')">override ↩</a>` : '';
-  return `<div class="lr" id="ia-${key}"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m${ovr?' ovr':''}" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val,key)}${revert}</span></div>`;}
+  // The override highlight + revert control are only surfaced while the bottom panel is on "Activity".
+  const showOvr = ovr && PANEL_VIEW==='activity';
+  const revert = showOvr ? ` <a class="iaovr" title="Manually overridden — click to revert to the statement value" onclick="revertIA('${key}')">override ↩</a>` : '';
+  return `<div class="lr" id="ia-${key}"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEdit(this,'${key}')">${Ppct(val)}</span><input class="m${showOvr?' ovr':''}" value="${fmt2(val)}" placeholder="0.00" onchange="setIA('${key}',this.value)"><span class="ll"${tip?` title="${tip}"`:''}>${label}${srcLink(m,val,key)}${revert}</span></div>`;}
 // read-only computed line: percent | amount | label  (opt.tot=subtotal, opt.big=emphasis, opt.pct=override %, opt.blank=no $, opt.valtxt=raw amount text)
 function L_(label,val,opt){opt=opt||{};const cls='lr'+(opt.tot?' tot':'')+(opt.big?' big':'');const p=opt.pct!=null?opt.pct:Ppct(val);const av=opt.valtxt!=null?opt.valtxt:(opt.blank?'':money(val));let links='';if(opt.add2nd)links+=` <a class="addcost" onclick="add2nd()">+ 2nd Loan</a>`;if(opt.add)links+=` <a class="addcost" onclick="addCost('${opt.add}')">+ Add cost</a>`;return `<div class="${cls}"><span class="lp">${p}</span><span class="av">${av}</span><span class="ll">${label}${links}</span></div>`;}
 // param input box + label (kind: pct|money|num)
