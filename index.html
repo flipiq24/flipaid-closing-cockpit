@@ -1212,10 +1212,47 @@ function iaActuals(){
   });
   return ov;
 }
+// QB is its own source of actuals: any line mapped on the QB tab (imported ledger lines +
+// manual "Add to QB" entries) whose Category|Sub has an IA target overlays the IA, so the IA
+// front-end reflects QB-side mappings too. Mirrors iaActuals()'s summary-row / loan-principal
+// exclusions. QB rows carry a single signed Amount (no debit/credit split). NOT mode-gated —
+// these are explicit user entries — but closing stays authoritative in effIA() (see merge).
+function qbActuals(){
+  const ov={};
+  const addv=(key,amt)=>{ if(!key||amt==null) return; ov[key]=(ov[key]||0)+(+amt||0); };
+  const isPrincipal=(cat,label)=> /Lender Cost/.test(cat||'') && /(payoff|principal|trust deed|loan proceeds)/i.test(label||'') && !/interest/i.test(label||'');
+  const take=(cat,sub,label,amount)=>{
+    if(amount==null) return;
+    const key=SUB2IA[(cat||'')+'|'+(sub||'')];
+    if(!key) return;
+    if(key==='arv'){ addv('arv', amount); return; }
+    if(isPrincipal(cat,label)){ ov.overrideLoanAmt=Math.max(+ov.overrideLoanAmt||0, Math.abs(+amount||0)); return; }
+    addv(key, amount);
+  };
+  if(D.qb && Array.isArray(D.qb.lines)){
+    D.qb.lines.forEach((l,i)=>{ try{ const s=lineState('qb',i); if(s.amount==null) return; if(isSummaryRow(s)) return; take(s.category, s.sub, s.label, s.amount); }catch(e){ /* skip malformed parsed line */ } });
+  }
+  qbManual().forEach(m=>{ if(m && m.amount!=null) take(m.category, m.sub, m.label, +m.amount); });
+  return ov;
+}
+// QB rows (ledger indices + manual indices) whose mapped Category|Sub feeds this IA key.
+// Mirrors qbActuals(): summary rows and (for non-arv keys) loan-principal lines are excluded.
+function qbSourcesForKey(key){
+  const ledger=[], manual=[];
+  const isPrincipal=(cat,label)=> /Lender Cost/.test(cat||'') && /(payoff|principal|trust deed|loan proceeds)/i.test(label||'') && !/interest/i.test(label||'');
+  const matches=(cat,sub,label)=>{ if(SUB2IA[(cat||'')+'|'+(sub||'')]!==key) return false; if(key!=='arv' && isPrincipal(cat,label)) return false; return true; };
+  if(D.qb && Array.isArray(D.qb.lines)){
+    D.qb.lines.forEach((l,i)=>{ try{ const s=lineState('qb',i); if(s.amount==null) return; if(isSummaryRow(s)) return; if(matches(s.category,s.sub,s.label)) ledger.push(i); }catch(e){} });
+  }
+  qbManual().forEach((m,idx)=>{ if(m && m.amount!=null && matches(m.category,m.sub,m.label)) manual.push(idx); });
+  return {ledger, manual};
+}
 // IA inputs with ACTUAL closing numbers overlaid (when a statement is attached); otherwise
 // the manual estimate inputs unchanged. Refreshes IA_ACTUAL for L$()'s actual/locked styling.
 function effIA(){
-  IA_ACTUAL=iaActuals(); const ks=Object.keys(IA_ACTUAL);
+  // Closing actuals are authoritative; QB fills only the buckets closing doesn't cover (assigning
+  // closing last lets it win any shared key, so a bucket fed by both is never double-counted).
+  IA_ACTUAL=Object.assign({}, qbActuals(), iaActuals()); const ks=Object.keys(IA_ACTUAL);
   if(!ks.length) return D.ia.inputs;
   const eff=Object.assign({},D.ia.inputs,IA_ACTUAL);
   // A field the user manually overrode wins BACK over the statement-derived actual (per-key),
@@ -1253,13 +1290,12 @@ function qbLinesForCategory(cat){
   return out;
 }
 function srcLink(m,val,key){
-  // Stage-gate link-backs by mode: Estimated -> none; Acquired -> buy-side only
-  // (Purchase Cost + Lender Cost); Sold -> buy-side + sell-side (+ Sales Cost).
+  // Closing link-backs are stage-gated by mode (Estimated -> none; Acquired -> buy-side only;
+  // Sold -> buy + sell). QB link-backs are NOT mode-gated (QB is its own source, not a side).
   const mode=(effIA().mode||'');
-  if(mode!=='Acquired' && mode!=='Sold') return '';
   // Preferred: highlight EVERY closing-statement line feeding this IA total (handles fields
   // like "Escrow and Title" that aggregate several statement lines), not just one row.
-  const hits = key ? srcLinesFor(key, mode) : [];
+  const hits = (key && (mode==='Acquired'||mode==='Sold')) ? srcLinesFor(key, mode) : [];
   if(hits.length){
     // One ↗ per side that contributes (a field can aggregate rows from both statements in Sold mode).
     let out='';
@@ -1270,6 +1306,16 @@ function srcLink(m,val,key){
     });
     return out;
   }
+  // QB-fed IA value: when no closing line drives this key but QB does (a mapped manual entry or
+  // imported ledger line), link ↗ to those QB rows. Not mode-gated — QB is its own source.
+  if(key){
+    const q=qbSourcesForKey(key);
+    const n=q.ledger.length+q.manual.length;
+    if(n){
+      return ` <a class="srclink" title="Source: ${n} QB entr${n>1?'ies':'y'} feeding this total — click to highlight ${n>1?'them all':'it'}" onclick="gotoQbForKey('${key}')">↗</a>`;
+    }
+  }
+  if(mode!=='Acquired' && mode!=='Sold') return '';
   // QB link-back: rehab's actual comes from the QB ledger, not a closing statement. In Sold mode,
   // if an uploaded QB doc carries lines in this field's category, link ↗ to those QB rehab rows.
   if(m.qbsrc && mode==='Sold'){
@@ -1304,6 +1350,21 @@ function gotoSourceMulti(side, idxs){
     (idxs||[]).forEach(idx=>{ const el=document.getElementById('src-'+side+'-'+idx); if(el){ el.classList.add('hilite'); if(!first) first=el; } });
     if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
   },60);  // persistent highlight on all rows; stays until you jump to another source
+}
+// Jump to the QB tab and highlight every QB row (imported ledger lines + manual entries) that
+// feeds this IA key. Ledger rows use id "src-qb-<idx>", manual entries use id "qbman-<idx>".
+function gotoQbForKey(key){
+  const q=qbSourcesForKey(key);
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab==='qb'));
+  render('qb');
+  setTimeout(()=>{
+    document.querySelectorAll('.hilite').forEach(e=>e.classList.remove('hilite'));
+    let first=null;
+    const add=(id)=>{ const el=document.getElementById(id); if(el){ el.classList.add('hilite'); if(!first) first=el; } };
+    q.ledger.forEach(i=> add('src-qb-'+i));
+    q.manual.forEach(i=> add('qbman-'+i));
+    if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
+  },60);
 }
 
 /* ---------- Activity log: every user edit, timestamped, click to jump back to it ----------
