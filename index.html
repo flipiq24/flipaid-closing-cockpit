@@ -244,6 +244,7 @@
   .tri-bad{background:#fee2e2;color:#991b1b}
   .tri-qb{background:#e2e8f0;color:#475569}
   .tri-single{background:#f1f5f9;color:#64748b;font-weight:600}
+  .tri-gap{background:#fffbeb;color:#b45309;border:1px dashed #f59e0b;font-weight:600}
   .tritab{display:block;overflow-x:auto}
   .tritab td,.tritab th{white-space:nowrap;padding:6px 10px;border-bottom:1px solid var(--line)}
   .tritab td.num,.tritab th.num{text-align:right}
@@ -635,7 +636,8 @@ function notesBody(){
     <div class="ai-log" id="aiLog">${renderLog()}</div>
   </div>`;
 }
-// Back-compat alias: older call sites referenced aiNotesBlock().
+// aiNotesBlock(): the name every tab's render uses for the shared bottom panel
+// (Post/Activity). Thin alias kept stable so all call sites read consistently.
 function aiNotesBlock(){ return bottomPanel(); }
 
 /* ----- statement ingest: file / drag-drop / Google Doc link -> auto-sets Mode ----- */
@@ -1396,15 +1398,15 @@ function hide2nd(){
   if(i.customLines) i.customLines.lender2=[];
   persistIA();
 }
-function customRows(sec){ const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[]; return arr.map((l,idx)=>Lc(sec,idx,l)).join(''); }
-function addLink(sec){ return `<div class="addrow"><a class="addcost" onclick="addCost('${sec}')">+ Add cost</a></div>`; }
+function customRows(sec){ const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[]; return arr.map((l,idx)=>customLineRow(sec,idx,l)).join(''); }
 // Custom cost rows for the IA cash summary — same 3-col grid as the other .s rows
 // (label | amount | delete), so values stay vertically aligned. Feeds totalCashAndReserves.
 function sumCustomRows(sec){
   const arr=(D.ia.inputs.customLines&&D.ia.inputs.customLines[sec])||[];
   return arr.map((l,idx)=>`<div class="s" id="custom-${sec}-${idx}"><input class="clab2" value="${(l.label||'').replace(/"/g,'&quot;')}" placeholder="Cost name" onchange="renCustom('${sec}',${idx},this.value)"><input class="sum-in" value="${fmt2(l.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></div>`).join('');
 }
-function Lc(sec,idx,line){
+// One editable custom cost row (% | amount | label+delete), used inside the IA ledger sections.
+function customLineRow(sec,idx,line){
   return `<div class="lr" id="custom-${sec}-${idx}"><span class="lp" title="Double-click to set % of ARV" ondblclick="pctEditC(this,'${sec}',${idx})">${Ppct(line.amount)}</span>`+
     `<input class="m${(+line.amount<0)?' neg':''}" value="${fmt2(line.amount)}" placeholder="0.00" onchange="setCustom('${sec}',${idx},this.value)">`+
     `<span class="ll"><input class="clab" value="${(line.label||'').replace(/"/g,'&quot;')}" onchange="renCustom('${sec}',${idx},this.value)"><a class="delx" title="Remove line" onclick="delCustom('${sec}',${idx})">✕</a></span></div>`;
@@ -1835,6 +1837,12 @@ function triangulate(){
   Object.keys(SUB2IA).forEach(k=>{ const p=k.split('|'); addBucket(p[0],p[1]); });          // mappable closing buckets
   qbRows().forEach(row=>{ if(row.isManual||row.isIA||row.side==='qb') addBucket(row.Category||'', row.Sub||''); });   // QB-native buckets
   ['buySide','sellSide'].forEach(side=>{ (D[side].lines||[]).forEach((l,idx)=>{ const s=lineState(side,idx); if(isSummaryRow(s)) return; addBucket(s.category, s.sub||''); }); });  // any closing bucket not in SUB2IA (summary roll-ups excluded)
+  // full master-taxonomy coverage: every category + sub so unmapped/empty buckets still surface
+  // as a row. Financing (profit-neutral) is intentionally not reconciled and stays out.
+  Object.keys((D.taxonomy&&D.taxonomy.categories)||{}).forEach(cat=>{
+    if(/Financing/.test(cat)) return;
+    (D.taxonomy.categories[cat]||[]).forEach(sub=> addBucket(cat, sub));
+  });
   const out=[];
   buckets.forEach(({cat,sub})=>{
     const qbOnly=IA_QB_ONLY_CATS.includes(cat);
@@ -1897,14 +1905,27 @@ function triSrcLinks(b){
   if(b.qb && b.qb.idxs.length){ const n=b.qb.idxs.length; out+=` <a class="srclink" title="${n} QB ledger line${n>1?'s':''} feeding this bucket — click to highlight" onclick='gotoSourceMulti("qb",${JSON.stringify(b.qb.idxs)})'>↗</a>`; }
   return out;
 }
-// The triangulation section for the QB tab: every reconcilable bucket, IA/Buy/Sell/QB side by
-// side, with discrepancies highlighted. Buckets with no actual closing/QB data are hidden.
+// True when a bucket carries an actual amount in any source (IA estimate counts for non-QB-only
+// buckets). Drives gap detection so a sub with no value anywhere is flagged "Not covered".
+function triHasData(b){
+  return (b.buy && b.buy.total!=null) || (b.sell && b.sell.total!=null) || (b.qb && b.qb.total!=null)
+      || (!b.qbOnly && b.ia!=null && Math.abs(b.ia)>=TRI_EPS);
+}
+// The status cell for a triangulation row: the normal badge when a status applies; otherwise a
+// "Not covered" gap badge when the bucket has no amount in any source (an out-of-scope-for-mode
+// bucket that DOES carry data shows no badge — its amount is informational only).
+function triRowBadge(b){
+  if(b.status!=='none') return triBadge(b.status);
+  return triHasData(b) ? '' : '<span class="tri tri-gap">Not covered</span>';
+}
+// The triangulation section for the QB tab: every taxonomy subcategory, IA/Buy/Sell/QB side by
+// side, with discrepancies highlighted and uncovered buckets flagged. Financing stays excluded.
 function triSection(){
   const mode=(D.ia.inputs&&D.ia.inputs.mode)||'Estimated';
   const all=triRows();
-  // show only buckets the current mode actually statuses (qbitem / ok / mismatch / single);
-  // 'none' buckets are out of scope for this mode (e.g. everything in Estimated) and stay hidden
-  const rows=all.filter(b=> b.status!=='none');
+  // full coverage: show every taxonomy bucket (so missing coverage is visible) except the
+  // profit-neutral Financing group, which is intentionally never reconciled
+  const rows=all.filter(b=> !/Financing/.test(b.cat||''));
   const cell=(src,b)=>{ if(src==null) return '<td class="num mut">—</td>'; const v=src.total!=null?src.total:src; return `<td class="num">${money(v)}</td>`; };
   let body='';
   // canonical order: taxonomy category, then sub
@@ -1915,11 +1936,16 @@ function triSection(){
       const rc = b.status==='mismatch'?' class="tri-row-bad"':(b.status==='ok'?' class="tri-row-ok"':'');
       body+=`<tr${rc}><td>${esc(b.cat)}</td><td>${esc(b.sub)}${triSrcLinks(b)}</td>`+
         cell(b.qbOnly?null:b.ia, b)+cell(b.buy, b)+cell(b.sell, b)+cell(b.qb, b)+
-        `<td>${triBadge(b.status)}</td></tr>`;
+        `<td>${triRowBadge(b)}</td></tr>`;
     });
-  const counts=all.reduce((a,b)=>{a[b.status]=(a[b.status]||0)+1;return a;},{});
-  const summary=`<span class="pill">${counts.ok||0} triangulated</span> <span class="pill${(counts.mismatch||0)?' pill-qb':''}" style="${(counts.mismatch||0)?'background:#fee2e2;color:#991b1b':''}">${counts.mismatch||0} discrepancies</span> <span class="pill pill-qb">${counts.qbitem||0} QB items</span>`;
-  const legend=`<div class="tri-legend"><span>${triBadge('ok')} amounts agree exactly</span><span>${triBadge('mismatch')} totals differ — fix one side</span><span>${triBadge('qbitem')} QuickBooks-only cost</span><span>${triBadge('single')} only one source so far</span></div>`;
+  // counts reflect the displayed buckets: QB items count only those carrying real QB data, and a
+  // gap count surfaces subcategories that don't appear in any source yet
+  const okN=rows.filter(b=>b.status==='ok').length;
+  const misN=rows.filter(b=>b.status==='mismatch').length;
+  const qbN=rows.filter(b=>b.status==='qbitem' && b.qb).length;
+  const gapN=rows.filter(b=>!triHasData(b)).length;
+  const summary=`<span class="pill">${okN} triangulated</span> <span class="pill${misN?' pill-qb':''}" style="${misN?'background:#fee2e2;color:#991b1b':''}">${misN} discrepancies</span> <span class="pill pill-qb">${qbN} QB items</span>${gapN?` <span class="pill" style="background:#fffbeb;color:#b45309">${gapN} not covered</span>`:''}`;
+  const legend=`<div class="tri-legend"><span>${triBadge('ok')} amounts agree exactly</span><span>${triBadge('mismatch')} totals differ — fix one side</span><span>${triBadge('qbitem')} QuickBooks-only cost</span><span>${triBadge('single')} only one source so far</span><span><span class="tri tri-gap">Not covered</span> no amount in any source yet</span></div>`;
   const modeNote = mode==='Estimated'
     ? `<div class="tri-note">Mode is <b>Estimated</b> — the IA is your master estimate and there are no closing actuals to reconcile yet. Set the deal to <b>Acquired</b> (buy-side) or <b>Sold</b> (full) to triangulate.</div>`
     : (mode==='Acquired' ? `<div class="tri-note">Mode is <b>Acquired</b> — reconciling <b>Purchase</b> and <b>Lender/Loan</b> costs between the IA and the Buy-Side closing. Sell-side joins once the deal is <b>Sold</b>.</div>` : '');
