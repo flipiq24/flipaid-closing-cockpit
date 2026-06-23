@@ -253,6 +253,9 @@
   .tritab tr.tri-row-bad>td:first-child{box-shadow:inset 3px 0 0 var(--red)}
   .tritab tr.tri-row-ok>td:first-child{box-shadow:inset 3px 0 0 #16a34a}
   .tri-legend{font-size:12px;color:#475569;margin:6px 0 10px;display:flex;gap:14px;flex-wrap:wrap}
+  .tri-toggle{display:flex;gap:6px;margin:8px 0 10px}
+  .tri-toggle .pill{cursor:pointer;background:#f1f5f9;color:#64748b;user-select:none}
+  .tri-toggle .pill.pill-on{background:var(--accent-soft);color:var(--accent)}
   .tri-note{font-size:12.5px;color:#334155;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin:6px 0}
   /* ===== closing-statement layout (Buy/Sell tabs) ===== */
   .stmt-hd{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
@@ -1798,6 +1801,10 @@ function qbRows(){
 }
 let qbSort={col:'',dir:1};
 let qbView={hi:'',filter:''};   // filter = category to show only (click a totals row to toggle); hi kept for compatibility
+// Triangulation view: 'issues' shows ONLY rows that don't reconcile (⚠ discrepancies); 'all'
+// shows the full per-category/sub breakdown. Default to issues — only what needs attention.
+let triView='issues';
+function setTriView(v){ triView=v; render('qb'); }
 // Light row tint + dot colour per category (key must match the taxonomy names exactly).
 const QBCOLORS={
   'Purchase Cost':              {bg:'#e0f2fe',dot:'#0ea5e9'},
@@ -2019,12 +2026,15 @@ function triSection(){
   // full coverage: show every taxonomy bucket (so missing coverage is visible) except the
   // profit-neutral Financing group, which is intentionally never reconciled
   const rows=all.filter(b=> !/Financing/.test(b.cat||''));
+  // "Discrepancies only" hides everything that already reconciles, leaving just the rows that
+  // need attention; "By category & subcategory" shows the full breakdown.
+  const display = triView==='issues' ? rows.filter(b=> b.status==='mismatch') : rows;
   const cell=(src,b)=>{ if(src==null) return '<td class="num mut">—</td>'; const v=src.total!=null?src.total:src; return `<td class="num">${money(v)}</td>`; };
   let body='';
   // canonical order: taxonomy category, then sub
   const co=qbCatOrder(); const ci=c=>{const x=co.indexOf(c);return x<0?999:x;};
   const si=(c,s)=>{const a=(D.taxonomy.categories[c]||[]);const x=a.indexOf(s);return x<0?999:x;};
-  rows.slice().sort((a,b)=> ci(a.cat)-ci(b.cat) || si(a.cat,a.sub)-si(b.cat,b.sub) || String(a.sub).localeCompare(String(b.sub)))
+  display.slice().sort((a,b)=> ci(a.cat)-ci(b.cat) || si(a.cat,a.sub)-si(b.cat,b.sub) || String(a.sub).localeCompare(String(b.sub)))
     .forEach(b=>{
       const rc = b.status==='mismatch'?' class="tri-row-bad"':(b.status==='ok'?' class="tri-row-ok"':'');
       body+=`<tr${rc}><td>${esc(b.cat)}</td><td>${esc(b.sub)}${triSrcLinks(b)}</td>`+
@@ -2042,12 +2052,22 @@ function triSection(){
   const modeNote = mode==='Estimated'
     ? `<div class="tri-note">Mode is <b>Estimated</b> — the IA is your master estimate and there are no closing actuals to reconcile yet. Set the deal to <b>Acquired</b> (buy-side) or <b>Sold</b> (full) to triangulate.</div>`
     : (mode==='Acquired' ? `<div class="tri-note">Mode is <b>Acquired</b> — reconciling <b>Purchase</b> and <b>Lender/Loan</b> costs between the IA and the Buy-Side closing. Sell-side joins once the deal is <b>Sold</b>.</div>` : '');
-  const table = rows.length
-    ? `<table class="tritab"><thead><tr><th>Category</th><th>Sub-category</th><th class="num">IA (est.)</th><th class="num">Buy-Side</th><th class="num">Sell-Side</th><th class="num">QB</th><th>Status</th></tr></thead><tbody>${body}</tbody></table>`
+  // View toggle: discrepancies-only (default) vs. the full category/subcategory breakdown.
+  const toggle=`<div class="tri-toggle">`+
+    `<span class="pill${triView==='issues'?' pill-on':''}" onclick="setTriView('issues')">⚠ Discrepancies only</span>`+
+    `<span class="pill${triView==='all'?' pill-on':''}" onclick="setTriView('all')">By category &amp; subcategory</span></div>`;
+  const empty = triView==='issues'
+    ? (rows.length ? `<div class="help">✓ Everything reconciles — no discrepancies to show. Switch to <b>By category &amp; subcategory</b> to see the full breakdown.</div>`
+                   : `<div class="help">No cross-source amounts to triangulate yet.</div>`)
     : `<div class="help">No cross-source amounts to triangulate yet.</div>`;
+  const table = display.length
+    ? `<table class="tritab"><thead><tr><th>Category</th><th>Sub-category</th><th class="num">IA (est.)</th><th class="num">Buy-Side</th><th class="num">Sell-Side</th><th class="num">QB</th><th>Status</th></tr></thead><tbody>${body}</tbody></table>`
+    : empty;
+  // The legend only matters for the full breakdown; in discrepancies-only every row is a mismatch.
+  const showLegend = triView==='all' ? legend : '';
   return `<div class="section"><h2>Triangulation <span class="pill">source reconciliation</span> ${summary}</h2>
     <div class="help">Compares each cost bucket across the IA estimate, Buy-Side &amp; Sell-Side closings, and the QB ledger. Matches are exact (to the cent); anything that doesn't agree is flagged <b style="color:var(--red)">⚠ Discrepancy</b> for you to fix manually. Repairs &amp; utilities are normal <b>QB items</b>, never mismatches.</div>
-    ${modeNote}${legend}${table}</div>`;
+    ${toggle}${modeNote}${showLegend}${table}</div>`;
 }
 
 function renderQB(){
