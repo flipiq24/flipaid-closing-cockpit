@@ -38,6 +38,8 @@
   th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
   th.sortable:hover{color:var(--accent)}
   .pill{font-size:11px;font-weight:600;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:2px 9px}
+  .addsub{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap}
+  .addsub:hover{text-decoration:underline}
   .proc-card{display:flex;align-items:center;gap:14px}
   .proc-t{font-weight:700;font-size:15px}
   .proc-s{color:var(--muted);font-size:13px}
@@ -531,6 +533,10 @@ function taxCats(){
       .map(l=>l&&l.label).filter(Boolean);
     cats['Purchase Cost']=cats['Purchase Cost'].concat(custom);
   }
+  // user-created sub-categories (per-property, kept in the OV overrides blob) merge into every
+  // category so they appear in the Buy/Sell/QB mapping dropdowns and triangulate like any other sub
+  const cs=(OV&&OV._customSubs)||{};
+  for(const c in cs){ if(!Array.isArray(cs[c])) continue; if(!cats[c]) cats[c]=[]; cs[c].forEach(s=>{ if(s && !cats[c].includes(s)) cats[c].push(s); }); }
   return cats;
 }
 function firstSub(cat){ const a=taxCats()[cat]; return (a&&a[0])||''; }
@@ -543,20 +549,20 @@ function catList(side,sel){
   return list;
 }
 function catOptions(sel,side){
-  return catList(side,sel).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+  return catList(side,sel).map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');
 }
 function subOptions(cat,sel){
-  return (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
+  return (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');
 }
 // "Don't Map" dropdowns: show EVERY category / sub (not side-filtered), with an explicit
 // "Don't Map" choice (value="") as the default. Used by the auto-calculated resale tax block.
 function dontMapCat(sel){
   return `<option value="" ${sel?'':'selected'}>— Don't Map —</option>`
-    + Object.keys(taxCats()).map(c=>`<option ${c===sel?'selected':''}>${c}</option>`).join('');
+    + Object.keys(taxCats()).map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');
 }
 function dontMapSub(cat,sel){
   return `<option value="" ${sel?'':'selected'}>— Don't Map —</option>`
-    + (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('');
+    + (taxCats()[cat]||[]).map(s=>`<option ${s===sel?'selected':''}>${esc(s)}</option>`).join('');
 }
 
 // True when at least one closing statement has line data (buy or sell side).
@@ -839,7 +845,7 @@ function renderClosing(sideKey, tabKey){
         <td class="num deb">${debCell}</td>
         <td class="num cred">${credCell}</td>
         <td><select onchange="setOV('${k}','category',this.value);setOV('${k}','sub',firstSub(this.value));render('${tabKey}')">${catOptions(s.category,sideKey)}</select></td>
-        <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select></td>
+        <td><select onchange="setOV('${k}','sub',this.value);render('${tabKey}')">${subOptions(s.category,s.sub)}</select><a class="addsub" title="Add a new sub-category under ${esc(s.category||'')}" onclick="newSubLine('${k}','${tabKey}','${jsq(s.category||'')}')">+ sub</a></td>
         <td class="cf"><span class="help" title="${s.why.replace(/"/g,'&quot;')}">${badge(s.confidence)}</span></td>
       </tr>`;
     });
@@ -881,7 +887,7 @@ function renderClosing(sideKey, tabKey){
      <td class="num deb"><input class="num" value="${a.debit==null?'':fmt2(a.debit)}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'debit',this.value)"></td>
      <td class="num cred"><input class="num" value="${a.credit==null?'':fmt2(a.credit)}" placeholder="—" onchange="setAddition('${sideKey}',${idx},'credit',this.value)"></td>
      <td><select onchange="setAddition('${sideKey}',${idx},'category',this.value)">${catOptions(a.category,sideKey)}</select></td>
-     <td><select onchange="setAddition('${sideKey}',${idx},'sub',this.value)">${subOptions(a.category,a.sub)}</select></td>
+     <td><select onchange="setAddition('${sideKey}',${idx},'sub',this.value)">${subOptions(a.category,a.sub)}</select><a class="addsub" title="Add a new sub-category" onclick="newSubAdd('${sideKey}',${idx},'${jsq(a.category||'')}')">+ sub</a></td>
      <td class="cf"><a class="delx" title="Remove line" onclick="delAddition('${sideKey}',${idx})">✕</a></td>
    </tr>`).join('');
   html += `<div class="section"><h2 class="stmt-sec">Additions (not on the closing statement)</h2>
@@ -1384,6 +1390,26 @@ function pctFacSet(key,v){ if(v===''||isNaN(parseFloat(v))){ render('ia'); retur
 
 /* ----- user-added custom cost lines ----- */
 function ensureCustom(){ if(!D.ia.inputs.customLines) D.ia.inputs.customLines={}; }
+/* user-created sub-categories (created while mapping on the Buy/Sell/QB tabs). Stored per-property
+   in OV._customSubs keyed by Category. addCustomSub prompts + records the new sub and returns its
+   name; the caller's setter (setOV/setAddition/setQbManual) applies it as the line's sub and saves.
+   New subs inherit their category's side rules automatically (a buy-only category's subs never show
+   on the Sell-Side because the category itself isn't offered there). */
+function ensureCustomSubs(){ if(!OV._customSubs) OV._customSubs={}; }
+function addCustomSub(cat, tab){
+  if(!cat){ alert('Choose a Category first, then add a new sub-category.'); return ''; }
+  const raw=prompt('New sub-category under "'+cat+'":'); if(raw==null) return '';
+  const nm=raw.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,80); if(!nm) return '';
+  if((taxCats()[cat]||[]).includes(nm)) return nm;   // already a choice — just select it, nothing to create
+  ensureCustomSubs();
+  (OV._customSubs[cat]=OV._customSubs[cat]||[]).push(nm);
+  pushActivity({tab:tab||'qb', what:`Added sub-category "${nm}" under ${cat}`, nav:{type:'tab',tab:tab||'qb'}});
+  return nm;
+}
+function newSubLine(k, tabKey, cat){ const nm=addCustomSub(cat, tabKey); if(!nm) return; setOV(k,'sub',nm); render(tabKey); }
+function newSubAdd(side, idx, cat){ const nm=addCustomSub(cat, side==='buySide'?'buy':'sell'); if(!nm) return; setAddition(side,idx,'sub',nm); }
+function newSubQbMan(idx, cat){ const nm=addCustomSub(cat, 'qb'); if(!nm) return; setQbManual(idx,'sub',nm); }
+function newSubQbLine(isAdd, side, idx, k, rowId, cat){ const nm=addCustomSub(cat, 'qb'); if(!nm) return; if(isAdd){ setAddition(side,idx,'sub',nm); } else { setOV(k,'sub',nm,'qb',rowId); render('qb'); } }
 function addCost(sec){ ensureCustom(); const label=prompt('New cost line name:'); if(!label)return; (D.ia.inputs.customLines[sec]=D.ia.inputs.customLines[sec]||[]).push({label:label.trim(),amount:0,id:uid()}); const idx=D.ia.inputs.customLines[sec].length-1; pushActivity({tab:'ia', what:`Added custom ${sec} line: ${label.trim()}`, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}}); persistIA(); }
 function setCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(!arr||!arr[idx])return; if(!arr[idx].id) arr[idx].id=uid(); const n=(''+val).replace(/[$,\s]/g,''); const nv=(n===''||isNaN(+n))?0:+n; pushActivity({tab:'ia', what:`Custom ${sec} line: ${arr[idx].label||('#'+idx)}`, old:arr[idx].amount, new:nv, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}, revert:{kind:'custom',sec:sec,idx:idx,rowId:arr[idx].id}}); arr[idx].amount=nv; persistIA(); }
 function renCustom(sec,idx,val){ ensureCustom(); const arr=D.ia.inputs.customLines[sec]; if(arr&&arr[idx]){ if(!arr[idx].id) arr[idx].id=uid(); pushActivity({tab:'ia', what:`Renamed custom ${sec} line`, old:arr[idx].label, new:val, nav:{type:'el',tab:'ia',id:'custom-'+sec+'-'+idx}, revert:{kind:'rencustom',sec:sec,idx:idx,rowId:arr[idx].id}}); arr[idx].label=val; persistIA(); } }
@@ -1837,11 +1863,12 @@ function triangulate(){
   Object.keys(SUB2IA).forEach(k=>{ const p=k.split('|'); addBucket(p[0],p[1]); });          // mappable closing buckets
   qbRows().forEach(row=>{ if(row.isManual||row.isIA||row.side==='qb') addBucket(row.Category||'', row.Sub||''); });   // QB-native buckets
   ['buySide','sellSide'].forEach(side=>{ (D[side].lines||[]).forEach((l,idx)=>{ const s=lineState(side,idx); if(isSummaryRow(s)) return; addBucket(s.category, s.sub||''); }); });  // any closing bucket not in SUB2IA (summary roll-ups excluded)
-  // full master-taxonomy coverage: every category + sub so unmapped/empty buckets still surface
-  // as a row. Financing (profit-neutral) is intentionally not reconciled and stays out.
-  Object.keys((D.taxonomy&&D.taxonomy.categories)||{}).forEach(cat=>{
+  // full master-taxonomy coverage: every category + sub (incl. user-created subs via taxCats) so
+  // unmapped/empty buckets still surface as a row. Financing (profit-neutral) stays out.
+  const tc=taxCats();
+  Object.keys(tc).forEach(cat=>{
     if(/Financing/.test(cat)) return;
-    (D.taxonomy.categories[cat]||[]).forEach(sub=> addBucket(cat, sub));
+    (tc[cat]||[]).forEach(sub=> addBucket(cat, sub));
   });
   const out=[];
   buckets.forEach(({cat,sub})=>{
@@ -2028,7 +2055,7 @@ function renderQB(){
     html+=`${trHead}${ident}
       <td>${matchCell(r)}</td>
       <td><select onchange="${catCh}">${catOptions(r.Category,r.side)}</select></td>
-      <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select></td>
+      <td><select onchange="${subCh}">${subOptions(r.Category,r.Sub)}</select><a class="addsub" title="Add a new sub-category" onclick="newSubQbLine(${r.isAdd?1:0},'${r.side}',${r.idx},'${k}','${rowId}','${jsq(r.Category||'')}')">+ sub</a></td>
       <td class="num"><input class="num${r.Amount<0?' neg':''}" value="${fmt2(r.Amount)}" onchange="${amtCh}"></td></tr>`;
   });
   html+=`</tbody></table></div>`;
@@ -2044,7 +2071,7 @@ function renderQB(){
       <td><input value="${esc(m.label||'')}" placeholder="Description" onchange="setQbManual(${idx},'label',this.value)"></td>
       <td><select onchange="setQbManual(${idx},'source',this.value)"><option value="QB"${(m.source||'QB')==='QB'?' selected':''}>QB</option><option value="manual"${m.source==='manual'?' selected':''}>manual</option></select></td>
       <td><select onchange="setQbManual(${idx},'category',this.value)">${catOptions(m.category)}</select></td>
-      <td><select onchange="setQbManual(${idx},'sub',this.value)">${subOptions(m.category,m.sub)}</select></td>
+      <td><select onchange="setQbManual(${idx},'sub',this.value)">${subOptions(m.category,m.sub)}</select><a class="addsub" title="Add a new sub-category" onclick="newSubQbMan(${idx},'${jsq(m.category||'')}')">+ sub</a></td>
       <td class="num"><input class="num" value="${m.amount==null?'':fmt2(m.amount)}" placeholder="0" onchange="setQbManual(${idx},'amount',this.value)"></td>
       <td><a class="delx" title="Remove entry" onclick="delQbManual(${idx})">✕</a></td></tr>`;
   });
