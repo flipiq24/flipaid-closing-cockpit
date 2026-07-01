@@ -1,0 +1,691 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Command Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{--orange:#F97316;--orange-soft:#FFF7ED;--ink:#1F2937;--muted:#6B7280;--faint:#9CA3AF;--line:#EEEDEB;--bg:#FFFFFF;--hover:#F9FAFB;--green:#16A34A;--red:#DC2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--ink);background:var(--bg);display:flex;min-height:100vh;-webkit-font-smoothing:antialiased}
+.sidebar{width:232px;min-width:232px;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 14px 10px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{padding:4px 8px 14px}.brand .logo{display:flex;align-items:center;gap:7px}.brand .logo svg{width:25px;height:25px}
+.brand .name{font-size:21px;font-weight:700;letter-spacing:-.5px}.brand .name b{color:var(--orange)}.brand .tag{font-size:9.5px;color:var(--muted);margin-top:2px}.brand .tag b{color:var(--orange)}
+.sec{font-size:10.5px;font-weight:600;letter-spacing:.7px;color:var(--faint);text-transform:uppercase;padding:14px 10px 6px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;color:#374151;font-size:13.5px;font-weight:500;cursor:pointer;text-decoration:none;line-height:1}
+.nav svg{width:18px;height:18px;flex:none;stroke:currentColor}.nav:hover{background:var(--hover)}.nav .count{margin-left:auto;font-size:11.5px;color:var(--faint)}
+.nav.active{background:var(--orange);color:#fff}.nav.active .count{color:#fff}
+.spacer{flex:1}.footrow{display:flex;align-items:center;gap:10px;padding:8px 10px;color:var(--muted);font-size:13px;cursor:pointer;border-radius:8px}.footrow:hover{background:var(--hover)}.footrow svg{width:16px;height:16px;flex:none;stroke:currentColor}
+.addprop{color:var(--orange);font-weight:600}.divider{height:1px;background:var(--line);margin:8px 4px}
+.profile{display:flex;align-items:center;gap:10px;padding:8px 6px}.avatar{width:28px;height:28px;border-radius:50%;background:#FCE7D5;color:var(--orange);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.profile .pn{font-size:13px;font-weight:600;line-height:1.2}.profile .pe{font-size:11px;color:var(--faint)}
+.main{flex:1;padding:30px 48px 70px;max-width:1080px}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:16px}.head svg{width:25px;height:25px}.head h1{font-size:19px;font-weight:700}.head h1 b{color:var(--orange)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:24px;flex-wrap:wrap}
+.tab{padding:9px 15px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}.tab.on{color:var(--orange);border-bottom-color:var(--orange)}
+.view{display:none}.view.on{display:block}
+.pathbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.pill{font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;background:var(--orange-soft);color:#C2410C}.day{font-size:13px;color:#374151;font-weight:600}
+.passbtn{margin-left:auto;border:1px solid var(--orange);color:var(--orange);background:#fff;font-family:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:20px;cursor:pointer}.passbtn:hover{background:var(--orange-soft)}
+/* welcome block */
+.welcome{display:flex;gap:16px;align-items:center;background:var(--orange-soft);border-radius:14px;padding:20px 22px;margin-bottom:22px}
+.wcap{width:42px;height:42px;flex:none}
+.wtxt h2{font-size:19px;font-weight:700}.wtxt p{font-size:13.5px;color:#4B5563;line-height:1.6;margin:6px 0 12px;max-width:680px}
+.continue{display:inline-flex;align-items:center;gap:7px;background:var(--orange);color:#fff;border:none;font-family:inherit;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:22px;cursor:pointer}.continue svg{width:14px;height:14px}.continue:hover{background:#EA670C}
+.dayhead{display:flex;align-items:center;gap:12px;padding-bottom:10px;border-bottom:2px solid var(--orange-soft);margin-bottom:6px}
+.dnum{font-size:11px;font-weight:700;color:#fff;background:#374151;padding:2px 8px;border-radius:5px}.dnum.big{font-size:13px;padding:4px 11px}
+.dttl{font-size:15px;font-weight:700}.dttl.big{font-size:18px}.dmode{font-size:11.5px;color:var(--faint);font-weight:600;margin-left:auto}
+.cta{display:flex;justify-content:flex-end;margin-top:14px}
+/* item rows */
+.it{display:flex;gap:12px;padding:12px 8px;border-bottom:1px solid #F4F3F1;align-items:center}
+.it:hover{background:var(--hover)}
+.sd{width:17px;height:17px;border-radius:50%;border:2px solid #D8D6D3;flex:none}
+.sd.done{background:var(--green);border-color:var(--green);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.sd.now{background:var(--orange);border-color:var(--orange)}
+.imid{flex:1;min-width:0}
+.iname{font-size:14px;font-weight:700;color:#1F2937}.iname.muted{color:var(--faint);font-weight:500}
+.idesc{font-size:12.5px;color:#4B5563;line-height:1.5;margin-top:3px}
+.inav{font-size:11px;color:var(--faint);margin-top:4px;font-weight:500}
+.iclear{font-size:10.5px;color:#9CA3AF;margin-top:5px}.iclear b{color:#6B7280}
+.trans{display:none;font-size:12.5px;color:#4B5563;background:var(--hover);border-left:3px solid var(--orange);border-radius:6px;padding:9px 11px;margin-top:8px;line-height:1.5}.trans.show{display:block}
+.ctag{font-size:9px;font-weight:700;background:#EEF2FF;color:#4338CA;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle}
+.ntag{font-size:9px;font-weight:700;background:#FEE2E2;color:#DC2626;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px;vertical-align:middle}
+.dtag{font-size:9px;font-weight:700;background:#FEF3C7;color:#B45309;padding:2px 6px;border-radius:4px;text-transform:uppercase;vertical-align:middle}
+/* MINIMAL action group */
+.acts{display:flex;gap:2px;flex:none;align-self:center}
+.act{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;font-family:inherit;font-weight:600;color:#A8AAB0;cursor:pointer;padding:6px 10px;border-radius:9px;min-width:48px}
+.act svg{width:15px;height:15px}.act span{font-size:10px;letter-spacing:.2px}
+.act:hover{color:var(--orange);background:var(--orange-soft)}
+.act.open{color:#6B7280}.act.open:hover{color:var(--orange)}
+.it.hw{background:var(--orange-soft);border-bottom:none;margin-top:8px;border-radius:9px}.it.hw.none{background:#F9FAFB}
+.hwtag{font-size:9.5px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--orange);padding:4px 8px;border-radius:5px;flex:none}.hwtag.grey{background:#9CA3AF}
+.iname.hw{color:#C2410C}
+/* curriculum phase bars */
+.dblock{margin-bottom:18px}
+.dhead{display:flex;align-items:center;gap:10px;padding:8px 0 6px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.phbar{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:26px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--orange)}
+.phnum{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#fff;background:var(--orange);padding:3px 9px;border-radius:6px}
+.phtitle{font-size:17px;font-weight:700}.phmeta{font-size:12px;color:var(--muted);margin-left:auto;font-weight:500}
+.legend{font-size:11.5px;color:var(--muted);margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap}.legend b{color:#374151}
+/* agreement */
+.agree-doc{border:1px solid var(--line);border-radius:12px;padding:26px 30px;max-width:760px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.agree-head{text-align:center;border-bottom:2px solid var(--orange-soft);padding-bottom:14px;margin-bottom:16px}
+.ah1{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--orange)}.ah2{font-size:20px;font-weight:700;margin-top:4px}.ah3{font-size:11px;color:var(--faint);margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
+.agree-intro{font-size:13.5px;color:#374151;line-height:1.65;margin-bottom:18px}
+.agree-sec{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--orange);margin:16px 0 8px;display:flex;align-items:center;gap:10px}
+.checkall{font-size:10.5px;font-weight:700;color:#6B7280;background:var(--hover);border:1px solid var(--line);padding:3px 9px;border-radius:14px;cursor:pointer;text-transform:none;letter-spacing:0}.checkall:hover{color:var(--orange);border-color:var(--orange)}
+.agree-list{list-style:none}.agree-list li{padding:5px 0}
+.agree-list.check li .cl{display:flex;gap:10px;font-size:13px;color:#374151;line-height:1.5;cursor:pointer;align-items:flex-start}
+.ccb{width:16px;height:16px;margin-top:1px;flex:none;accent-color:var(--orange)}
+.agree-list:not(.check) li{display:flex;gap:10px;font-size:13px;color:#374151;line-height:1.5;align-items:flex-start}
+.cmk.ok{width:16px;height:16px;background:var(--green);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;border-radius:3px;flex:none;margin-top:1px}
+.goalbanner{text-align:center;background:var(--orange);color:#fff;font-size:15px;font-weight:700;padding:12px;border-radius:10px;margin:20px 0}
+.agreebox{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+.agreename{flex:1;min-width:220px;font-family:inherit;font-size:14px;padding:11px 14px;border:1px solid #D8D6D3;border-radius:10px}
+.agreebtn{background:var(--orange);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:700;padding:11px 30px;border-radius:10px;cursor:pointer}.agreebtn:hover{background:#EA670C}.agreebtn:disabled{background:var(--green);cursor:default}
+.stamped{font-size:12.5px;color:var(--green);font-weight:600;width:100%}
+.agree-foot{text-align:center;font-size:10px;color:var(--faint);margin-top:18px;text-transform:uppercase;letter-spacing:.4px}
+.subh{font-size:15px;font-weight:700;margin:26px 0 10px}
+.staterow{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:8px}
+.statecard{border:1px solid var(--line);border-left:3px solid var(--faint);border-radius:8px;padding:12px 14px}.statecard.ok{border-left-color:var(--green)}.statecard.bad{border-left-color:var(--red)}
+.sct{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}.cost{font-size:11px;font-weight:700;color:var(--orange);background:var(--orange-soft);padding:2px 7px;border-radius:5px}.scd{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+.actcard{display:flex;gap:16px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:16px}.actleft{flex:1}.actleft b{font-size:14.5px}.actleft p{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+.sched{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.sel,.dt{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid #D8D6D3;border-radius:8px;color:#374151}.sel{min-width:280px}
+.ack{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;margin-top:12px;cursor:pointer}.ack input{width:15px;height:15px}
+.open2{border:1px solid var(--orange);color:var(--orange);background:#fff;font-family:inherit;font-size:13px;font-weight:600;padding:9px 18px;border-radius:22px;cursor:pointer;white-space:nowrap;align-self:center}.open2:hover{background:var(--orange-soft)}
+/* ask iq */
+.chatwrap{display:flex;flex-direction:column;height:calc(100vh - 230px);min-height:420px}
+.chatscroll{flex:1;overflow-y:auto;padding:6px 0 14px}
+.msg{display:flex;gap:10px;margin-bottom:16px;max-width:760px}.msg.user{margin-left:auto;flex-direction:row-reverse}
+.ava{width:28px;height:28px;border-radius:50%;background:var(--orange);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}.msg.user .ava{background:#374151}
+.bub{font-size:14px;line-height:1.6;padding:11px 14px;border-radius:12px;background:var(--hover);color:#374151}.msg.user .bub{background:var(--orange);color:#fff}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.chip{font-family:inherit;font-size:12.5px;color:#374151;background:#fff;border:1px solid #E5E7EB;border-radius:20px;padding:7px 13px;cursor:pointer}.chip:hover{background:var(--hover);border-color:var(--orange);color:var(--orange)}
+.chatbar{display:flex;gap:10px;align-items:flex-end;border:1px solid #D8D6D3;border-radius:14px;padding:8px 8px 8px 14px}.chatbar textarea{flex:1;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;color:var(--ink);max-height:120px;padding:6px 0}
+.send{width:38px;height:38px;border-radius:10px;background:var(--orange);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}.send svg{width:18px;height:18px}.send:hover{background:#EA670C}
+
+/* welcome gate */
+.gatecard{max-width:680px;margin:0 auto 26px;border:1px solid var(--line);border-radius:16px;padding:30px 34px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.gateicon svg{width:40px;height:40px}
+.gatebadge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#C2410C;background:var(--orange-soft);padding:4px 12px;border-radius:20px;margin:10px 0 8px}
+.gatecard h2{font-size:23px;font-weight:700}
+.gatelead{font-size:14px;color:var(--muted);margin:6px 0 18px}
+.gatelist{list-style:none;text-align:left;max-width:560px;margin:0 auto 22px}
+.gatelist li{font-size:13.5px;color:#374151;line-height:1.55;padding:8px 0 8px 26px;position:relative;border-bottom:1px solid #F4F3F1}
+.gatelist li:before{content:'';position:absolute;left:4px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--orange)}
+.gatelist li b{color:var(--ink)}
+.gatebtn{display:inline-flex;align-items:center;gap:8px;background:var(--orange);color:#fff;border:none;font-family:inherit;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:26px;cursor:pointer}.gatebtn svg{width:15px;height:15px}.gatebtn:hover{background:#EA670C}
+.gatenote{font-size:11.5px;color:var(--faint);margin-top:10px}
+/* day1 locked behind gate */
+.day1.locked{opacity:.45;filter:grayscale(.4);pointer-events:none;position:relative}
+.lockpill{font-size:11px;font-weight:600;color:var(--muted);background:var(--hover);border:1px solid var(--line);padding:3px 10px;border-radius:14px;margin-left:auto}
+.planblock{background:var(--orange-soft);border-radius:10px;padding:14px 16px;margin:8px 0 14px}
+.planlabel{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#C2410C;margin-bottom:5px}
+.planblock p{font-size:13px;color:#4B5563;line-height:1.6}.planblock b{color:#374151}
+/* accordion (full curriculum) */
+.acc{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.acc.gate{border-color:#F7C9A6}
+.acchead{width:100%;display:flex;align-items:center;gap:12px;background:#fff;border:none;font-family:inherit;padding:13px 16px;cursor:pointer;text-align:left}
+.acchead:hover{background:var(--hover)}
+.chev{font-size:11px;color:var(--faint);transition:transform .15s;flex:none}
+.acc.open .chev{transform:rotate(90deg)}
+.acchead .dnum{font-size:11px;font-weight:700;color:#fff;background:#374151;padding:3px 9px;border-radius:5px;flex:none}
+.acchead .dnum.gate{background:var(--orange)}
+.acctitle{font-size:14.5px;font-weight:700;color:#1F2937}
+.accmeta{font-size:11.5px;color:var(--faint);font-weight:500;margin-left:auto}
+.accbody{display:none;padding:4px 16px 14px;border-top:1px solid var(--line)}
+.acc.open .accbody{display:block}
+.gateexp p{font-size:13px;color:#4B5563;line-height:1.65;padding:8px 0;border-bottom:1px solid #F4F3F1}.gateexp p:last-child{border-bottom:none}.gateexp b{color:#374151}
+.phbar{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--orange)}
+.phnum{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#fff;background:var(--orange);padding:3px 9px;border-radius:6px}
+.phtitle{font-size:16px;font-weight:700}.phmeta{font-size:12px;color:var(--muted);margin-left:auto;font-weight:500}
+
+/* --- minimal iQ Today's Tasks re-skin --- */
+.it{gap:14px;padding:14px 4px;border-bottom:1px solid #F1F0EE;align-items:flex-start}
+.it:hover{background:transparent}
+.sd{margin-top:3px}
+.iname{font-size:14.5px;font-weight:700;color:#111827}
+.idesc{font-size:13px;color:#4B5563;line-height:1.55;margin-top:4px;max-width:780px}
+.inav{font-size:11.5px;color:var(--faint);margin-top:5px}
+.iclear{font-size:11px;color:#A6A8AD;margin-top:6px}
+/* actions: quieter, single thin pill for Open, text links for Watch/More */
+.acts{display:flex;align-items:center;gap:16px;align-self:center;flex:none}
+.act{flex-direction:row;gap:6px;min-width:0;padding:0;background:none;color:#9CA3AF;font-size:12px}
+.act svg{width:14px;height:14px}.act span{font-size:12px}
+.act:hover{background:none;color:var(--orange)}
+.act.open{border:1px solid #E5E2DE;border-radius:18px;padding:6px 14px;color:var(--orange);font-weight:600}
+.act.open:hover{background:var(--orange-soft);border-color:var(--orange)}
+.planblock{background:transparent;border:none;border-left:3px solid var(--orange);border-radius:0;padding:2px 0 2px 14px;margin:6px 0 16px}
+.planlabel{color:var(--faint)}
+.it.hw{background:var(--orange-soft);border-bottom:none;border-radius:10px;padding:13px 14px;margin-top:10px}
+.dayhead{border-bottom:1px solid var(--line);padding-bottom:10px}
+
+/* ===== LMS harmony re-skin: calm, minimal, orange only where it guides ===== */
+:root{--orange:#F97316;--ink:#1F2937;--muted:#6B7280;--faint:#9CA3AF;--line:#EFEEEC;--hover:#FAFAF9;--green:#16A34A}
+.main{max-width:1000px}
+/* tabs: quieter */
+.tabs{gap:2px;margin-bottom:22px}
+.tab{font-size:13px;color:var(--faint);padding:9px 14px}
+.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+/* path + day head: no orange pill, just calm text */
+.pathbar{margin-bottom:16px}
+.pill{background:transparent;color:var(--muted);padding:0;font-weight:600;font-size:12px}
+.passbtn{border-color:var(--line);color:var(--muted)}
+.passbtn:hover{border-color:var(--faint);background:var(--hover);color:var(--ink)}
+.dayhead,.dhead{border-bottom:1px solid var(--line)}
+.dnum.big{background:var(--ink)}
+.dttl.big{font-size:17px}
+.dmode{color:var(--faint)}
+/* plan block: single thin grey rule, not an orange box */
+.planblock{background:transparent;border-left:2px solid var(--line);padding:2px 0 2px 14px;margin:10px 0 18px}
+.planlabel{color:var(--faint);font-weight:600;letter-spacing:.5px}
+.planblock p{color:#4B5563;font-size:13px;line-height:1.65}
+/* item rows: airy, calm */
+.it{gap:14px;padding:15px 2px;border-bottom:1px solid var(--line);align-items:flex-start}
+.it:hover{background:transparent}
+.sd{width:16px;height:16px;border:2px solid #DCDAD6;margin-top:3px}
+.sd.now{background:var(--orange);border-color:var(--orange)}          /* orange = where you are */
+.sd.done{background:#D1D5DB;border-color:#D1D5DB;color:#fff}          /* done = calm grey, not green */
+.iname{font-size:14px;font-weight:600;color:var(--ink)}
+.idesc{font-size:13px;color:#4B5563;line-height:1.55;margin-top:3px;max-width:760px}
+.inav{font-size:11.5px;color:var(--faint);margin-top:4px}
+.iclear{font-size:11px;color:var(--faint);margin-top:6px}.iclear b{color:var(--muted);font-weight:600}
+/* tags: muted, no loud colors */
+.ctag,.ntag,.dtag{background:var(--hover);color:var(--faint);font-weight:600;border:1px solid var(--line)}
+/* ACTIONS: all grey, equal weight, quiet — a tool, not a CTA */
+.acts{gap:18px;align-self:center}
+.act{flex-direction:row;gap:6px;min-width:0;padding:0;background:none;color:var(--faint);font-size:12px;font-weight:500}
+.act svg{width:14px;height:14px}.act span{font-size:12px}
+.act:hover{background:none;color:var(--ink)}
+.act.open{border:none;border-radius:0;padding:0;color:var(--faint);font-weight:500}
+.act.open:hover{background:none;color:var(--ink)}
+/* homework: the one place orange earns attention */
+.it.hw{background:transparent;border:none;border-top:1px solid var(--line);border-radius:0;margin-top:6px;padding:15px 2px}
+.hwtag{background:var(--orange);color:#fff}
+.iname.hw{color:var(--ink)}
+/* curriculum accordion: flatter, calmer */
+.acc{border-color:var(--line)}
+.acc.gate{border-color:var(--line)}
+.acchead .dnum{background:var(--ink)}
+.acchead .dnum.gate{background:var(--orange)}
+.accmeta{color:var(--faint)}
+.phbar{border-bottom:1px solid var(--line)}
+.phnum{background:var(--ink)}
+.phmeta{color:var(--faint)}
+/* primary actions stay orange (gate continue, agree) — those ARE the CTA */
+.continue,.gatebtn,.agreebtn{background:var(--orange)}
+.cta .continue{background:var(--ink)} /* secondary continue calmer */
+.cta .continue:hover{background:#374151}
+
+/* ===== clean v3: minimal, separated, calm ===== */
+.main{max-width:920px}
+.tabs{gap:0;margin-bottom:26px}
+.tab{font-size:13px;color:var(--faint);padding:10px 16px}
+.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+.pathbar{margin-bottom:20px}
+.pill{background:transparent;color:var(--muted);padding:0;font-weight:600;font-size:12px}
+.passbtn{border:1px solid var(--line);color:var(--muted);font-size:12px;padding:6px 13px;border-radius:18px;background:#fff}
+.passbtn:hover{color:var(--ink);background:var(--hover)}
+.dayhead{display:flex;align-items:center;gap:12px;border:none;padding:0;margin-bottom:10px}
+.dnum.big{background:var(--ink);color:#fff;font-size:12px;font-weight:700;padding:4px 11px;border-radius:6px}
+.dttl.big{font-size:20px;font-weight:700}
+.plan{font-size:13.5px;color:#4B5563;line-height:1.65;margin-bottom:26px;max-width:760px}
+.plan b{color:var(--ink)}
+/* TODAY steps: airy, one short line, two quiet actions */
+.steps{border-top:1px solid var(--line)}
+.it{display:flex;align-items:center;gap:14px;padding:18px 2px;border-bottom:1px solid var(--line)}
+.it:hover{background:transparent}
+.sd{width:9px;height:9px;border-radius:50%;background:#D8D6D3;flex:none;border:none}
+.sd.now{background:var(--orange)}
+.sd.done{background:#D8D6D3}
+.imid{flex:1;min-width:0}
+.iname{font-size:14.5px;font-weight:600;color:var(--ink)}
+.it.done .iname{color:var(--faint)}
+.idesc{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5}
+.tg{font-size:10px;font-weight:600;color:var(--faint);background:var(--hover);border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+.inav,.iclear,     /* kill the noisy sub-lines in Today */
+.acts{display:flex;gap:16px;align-self:center;flex:none}
+.act{display:flex;align-items:center;gap:6px;background:none;border:none;font-family:inherit;color:var(--faint);font-size:12px;font-weight:500;cursor:pointer;padding:0}
+.act svg{width:13px;height:13px}
+.act:hover{color:var(--ink)}
+.act.open{color:var(--faint)}.act.open:hover{color:var(--ink)}
+/* homework row: the one orange accent */
+.hwrow{display:flex;align-items:center;gap:14px;padding:18px 2px;border-top:1px solid var(--line);margin-top:4px}
+.hwtag{font-size:10px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--orange);padding:4px 9px;border-radius:5px;flex:none}
+.hwrow .iname{font-size:14.5px;font-weight:600;color:var(--ink)}
+/* CURRICULUM: clean map, big separation */
+.acc{border:none;border-bottom:1px solid var(--line);border-radius:0;margin:0}
+.acc.gate{border-bottom:1px solid var(--line)}
+.acchead{padding:16px 4px;gap:14px}
+.acchead:hover{background:var(--hover)}
+.chev{color:var(--faint)}
+.acchead .dnum{background:#fff;color:var(--muted);border:1px solid var(--line);font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px}
+.acchead .dnum.gate{background:var(--orange);color:#fff;border:none}
+.acctitle{font-size:14.5px;font-weight:600;color:var(--ink)}
+.accmeta{display:none}
+.accbody.simple{padding:0 4px 18px 44px;border:none}
+.clist{list-style:none;margin:0;padding:0;columns:2;column-gap:40px}
+.clist li{font-size:13px;color:#4B5563;padding:5px 0;break-inside:avoid;border:none}
+.hwline{margin-top:12px;font-size:13px;color:var(--ink);columns:1}
+.hwline span{font-size:10px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--orange);padding:3px 8px;border-radius:5px;margin-right:8px}
+.gx{font-size:13px;color:#4B5563;line-height:1.6;margin-bottom:10px}
+.goto-commit{font-size:13px;font-weight:600;color:var(--orange);cursor:pointer}
+.goto-commit:hover{text-decoration:underline}
+.phbar{display:flex;align-items:baseline;gap:10px;margin:28px 0 6px;padding:0 0 8px;border-bottom:none}
+.phnum{background:transparent;color:var(--ink);padding:0;font-size:13px;font-weight:700;letter-spacing:.3px;text-transform:none}
+.phtitle{font-size:13px;font-weight:700;color:var(--ink)}
+.phmeta{font-size:12px;color:var(--faint);margin-left:auto}
+
+/* ===== v4: full functionality, calm + separated ===== */
+.main{max-width:940px}
+.tab{font-size:13px;color:var(--faint);padding:10px 16px}.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+.pill{background:transparent;color:var(--muted);padding:0;font-weight:600;font-size:12px}
+.passbtn{border:1px solid var(--line);color:var(--muted);font-size:12px;padding:6px 13px;border-radius:18px;background:#fff}.passbtn:hover{color:var(--ink);background:var(--hover)}
+.dayhead{display:flex;align-items:center;gap:12px;border:none;padding:0;margin-bottom:10px}
+.dnum.big{background:var(--ink);color:#fff;font-size:12px;font-weight:700;padding:4px 11px;border-radius:6px}.dttl.big{font-size:20px;font-weight:700}
+.plan{font-size:13.5px;color:#4B5563;line-height:1.65;margin-bottom:22px;max-width:780px}.plan b{color:var(--ink)}
+/* item rows — show explanation + nav, hide only the dev trigger line */
+.steps,.accbody{border-top:1px solid var(--line)}
+.it{display:flex;align-items:flex-start;gap:14px;padding:16px 2px;border-bottom:1px solid var(--line)}
+.it:hover{background:transparent}
+.sd{width:9px;height:9px;border-radius:50%;background:#D8D6D3;flex:none;border:none;margin-top:5px}
+.sd.now{background:var(--orange)}.sd.done{background:#D8D6D3}
+.imid{flex:1;min-width:0}
+.iname{font-size:14.5px;font-weight:600;color:var(--ink)}
+.it.done .iname{color:var(--faint)}
+.idesc{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5;max-width:680px}
+.inav{display:block !important;font-size:11.5px;color:var(--faint);margin-top:5px}
+.iclear{display:none !important}                 /* hide raw trigger line from AA view */
+.trans{display:none;font-size:12.5px;color:#4B5563;background:var(--hover);border-radius:6px;padding:9px 11px;margin-top:8px;line-height:1.5;border:none}
+.trans.show{display:block}
+.tg{font-size:10px;font-weight:600;color:var(--faint);background:var(--hover);border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.acts{display:flex;gap:16px;align-self:flex-start;flex:none;margin-top:2px}
+.act{display:flex;align-items:center;gap:6px;background:none;border:none;font-family:inherit;color:var(--faint);font-size:12px;font-weight:500;cursor:pointer;padding:0}
+.act svg{width:13px;height:13px}.act:hover{color:var(--ink)}.act.open{color:var(--faint)}.act.open:hover{color:var(--ink)}
+.it.hw{border-bottom:none;align-items:center}
+.hwtag{font-size:10px;font-weight:700;letter-spacing:.4px;color:#fff;background:var(--orange);padding:4px 9px;border-radius:5px;flex:none}
+/* curriculum accordion — calm, separated */
+.acc{border:none;border-bottom:1px solid var(--line);border-radius:0;margin:0}
+.acchead{padding:16px 4px;gap:14px;width:100%}.acchead:hover{background:var(--hover)}
+.chev{color:var(--faint)}
+.acchead .dnum{background:#fff;color:var(--muted);border:1px solid var(--line);font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px}
+.acchead .dnum.gate{background:var(--orange);color:#fff;border:none}
+.acctitle{font-size:14.5px;font-weight:600;color:var(--ink)}
+.accmeta{display:block;font-size:11.5px;color:var(--faint);font-weight:500;margin-left:auto}
+.accbody{display:none;padding:0 4px 10px 40px}
+.acc.open .accbody{display:block}
+.gx{font-size:13px;color:#4B5563;line-height:1.6;margin:12px 0 8px}
+.goto-commit{font-size:13px;font-weight:600;color:var(--orange);cursor:pointer;padding-bottom:6px}.goto-commit:hover{text-decoration:underline}
+.phbar{display:flex;align-items:baseline;gap:10px;margin:26px 0 4px;padding:0 0 6px;border-bottom:none}
+.phnum{background:transparent;color:var(--ink);padding:0;font-size:13px;font-weight:700;text-transform:none}
+.phtitle{font-size:13px;font-weight:700;color:var(--ink)}.phmeta{font-size:12px;color:var(--faint);margin-left:auto}
+
+/* ===== Day 1 wizard + FlipiQ Today's Tasks ===== */
+.main{max-width:960px}
+.tab{font-size:13px;color:var(--faint);padding:10px 16px}.tab.on{color:var(--ink);border-bottom-color:var(--ink)}
+/* step rail */
+.wzrail{display:flex;align-items:center;gap:0;margin-bottom:26px}
+.wzstep{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--faint)}
+.wzstep .wsn{width:22px;height:22px;border-radius:50%;border:1.6px solid #DCDAD6;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint)}
+.wzstep.on{color:var(--ink)}.wzstep.on .wsn{background:var(--orange);border-color:var(--orange);color:#fff}
+.wzstep.done .wsn{background:#D8D6D3;border-color:#D8D6D3;color:#fff}
+.wzsep{flex:1;height:1px;background:var(--line);margin:0 14px}
+.greet{font-size:15px;color:#374151;margin-bottom:20px}.greet b{color:var(--ink)}
+/* welcome cards */
+.wcard{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:24px}
+.wrow{display:flex;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line)}.wrow:last-child{border-bottom:none}
+.wn{width:26px;height:26px;border-radius:50%;background:var(--orange-soft);color:#C2410C;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}
+.wrow b{font-size:14.5px;color:var(--ink)}.wrow p{font-size:13px;color:var(--muted);line-height:1.6;margin-top:3px}
+/* nav */
+.wz-nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
+.primary{display:inline-flex;align-items:center;gap:7px;background:var(--orange);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;padding:11px 22px;border-radius:24px;cursor:pointer}.primary svg{width:14px;height:14px}.primary:hover{background:#EA670C}
+.ghost{background:none;border:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}.ghost:hover{color:var(--ink)}
+/* agreement */
+.agree{border:1px solid var(--line);border-radius:12px;padding:24px 28px;max-width:760px}
+.ai{font-size:13.5px;color:#374151;line-height:1.65;margin-bottom:16px}
+.as{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--orange);margin:14px 0 8px;display:flex;align-items:center;gap:10px}
+.callall{font-size:10.5px;font-weight:700;color:#6B7280;background:var(--hover);border:1px solid var(--line);padding:3px 9px;border-radius:14px;cursor:pointer;text-transform:none;letter-spacing:0}.callall:hover{color:var(--orange);border-color:var(--orange)}
+.alist{list-style:none}.alist li{padding:5px 0}
+.alist.check li .cl{display:flex;gap:10px;font-size:13px;color:#374151;line-height:1.5;cursor:pointer;align-items:flex-start}
+.ccb{width:16px;height:16px;margin-top:1px;flex:none;accent-color:var(--orange)}
+.alist:not(.check) li{display:flex;gap:10px;font-size:13px;color:#374151;align-items:flex-start;padding:5px 0}
+.ck{width:16px;height:16px;background:#16A34A;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;border-radius:3px;flex:none;margin-top:1px}
+.goal{text-align:center;background:var(--orange);color:#fff;font-size:14px;font-weight:700;padding:11px;border-radius:10px;margin:18px 0}
+.signrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px}
+.aname{flex:1;min-width:220px;font-family:inherit;font-size:14px;padding:11px 14px;border:1px solid #D8D6D3;border-radius:10px}
+.stamp{font-size:12.5px;color:#16A34A;font-weight:600;margin-top:10px}
+/* progress (Today's Tasks) */
+.prog{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.ptrack{flex:1;height:6px;background:#EFEDEA;border-radius:6px;overflow:hidden}.pfill{height:100%;background:var(--orange);border-radius:6px}
+.pl{font-size:12.5px;color:var(--faint);white-space:nowrap}
+.daytag{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.dnum.big{background:var(--ink);color:#fff;font-size:12px;font-weight:700;padding:4px 11px;border-radius:6px}.dttl.big{font-size:18px;font-weight:700}.dmode{font-size:11.5px;color:var(--faint);margin-left:auto}
+.tklabel{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--faint);margin:6px 0 8px}
+/* task rows = FlipiQ style */
+.tk{display:flex;gap:12px;padding:16px 2px;border-bottom:1px solid var(--line);align-items:flex-start}
+.tk-num{font-size:12px;color:var(--faint);width:14px;text-align:right;margin-top:3px;flex:none}
+.tk-dot{width:9px;height:9px;border-radius:50%;background:#D8D6D3;flex:none;margin-top:5px}
+.tk-dot.on{background:var(--orange)}
+.tk-mid{flex:1;min-width:0}
+.tk-title{font-size:14.5px;font-weight:600;color:var(--ink)}
+.tk-desc{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5;max-width:680px}
+.tk-sub{font-size:12.5px;color:var(--muted);margin-top:4px}.cnt{color:var(--orange);font-weight:700}
+.tg{font-size:10px;font-weight:600;color:var(--faint);background:var(--hover);border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.tk-acts{display:flex;align-items:center;gap:14px;flex:none;align-self:center}
+.lnk{display:inline-flex;align-items:center;gap:5px;background:none;border:none;font-family:inherit;color:var(--faint);font-size:12px;font-weight:500;cursor:pointer;padding:0}.lnk svg{width:13px;height:13px}.lnk:hover{color:var(--ink)}
+.openpill{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--orange);color:var(--orange);background:#fff;font-family:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:18px;cursor:pointer}.openpill svg{width:13px;height:13px}.openpill:hover{background:var(--orange-soft)}
+.tk.hw .hwtag{font-size:10px;font-weight:700;letter-spacing:.3px;color:#fff;background:var(--orange);padding:3px 8px;border-radius:5px;margin-right:6px}
+.trans{display:none;font-size:12.5px;color:#4B5563;background:var(--hover);border-radius:6px;padding:9px 11px;margin-top:8px;line-height:1.5}.trans.show{display:block}
+
+/* curriculum = same FlipiQ task UI as Today */
+.acc{border:none;border-bottom:1px solid var(--line);border-radius:0;margin:0}
+.acchead{display:flex;align-items:center;gap:14px;width:100%;background:#fff;border:none;font-family:inherit;padding:16px 4px;cursor:pointer;text-align:left}
+.acchead:hover{background:var(--hover)}
+.chev{font-size:11px;color:var(--faint);transition:transform .15s;flex:none}
+.acc.open .chev{transform:rotate(90deg)}
+.dpill{font-size:11px;font-weight:700;color:var(--muted);background:#fff;border:1px solid var(--line);padding:3px 10px;border-radius:6px;flex:none}
+.dpill.start{background:var(--orange);color:#fff;border:none}
+.acctitle{font-size:14.5px;font-weight:600;color:var(--ink)}
+.accmeta{font-size:11.5px;color:var(--faint);font-weight:500;margin-left:auto}
+.accbody{display:none;padding:0 4px 14px 42px}
+.acc.open .accbody{display:block}
+.accbody.tasks{border-top:1px solid var(--line);padding-top:2px}
+.gx{font-size:13px;color:#4B5563;line-height:1.6;margin:12px 0 8px}
+.goto-commit{font-size:13px;font-weight:600;color:var(--orange);cursor:pointer;padding-bottom:6px}.goto-commit:hover{text-decoration:underline}
+.phbar{display:flex;align-items:baseline;gap:10px;margin:26px 0 4px;padding:0 0 6px}
+.phnum{background:transparent;color:var(--ink);padding:0;font-size:13px;font-weight:700;text-transform:none}
+.phtitle{font-size:13px;font-weight:700;color:var(--ink)}.phmeta{font-size:12px;color:var(--faint);margin-left:auto}
+
+/* ===== curriculum: clear day boundaries, one open at a time ===== */
+.acc{border:1px solid transparent;border-bottom:1px solid var(--line);border-radius:0;margin:0;transition:none}
+.acc.open{border:1px solid var(--line);border-radius:12px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.05);overflow:hidden}
+.acc.open .acchead{background:var(--hover);border-bottom:1px solid var(--line)}
+.acchead{display:flex;align-items:center;gap:14px;width:100%;background:#fff;border:none;font-family:inherit;padding:16px 18px;cursor:pointer;text-align:left}
+.acchead:hover{background:var(--hover)}
+.accbody{display:none;padding:6px 18px 10px}
+.acc.open .accbody{display:block}
+.accbody.tasks{border-top:none}
+/* kill any orange open pill leftovers */
+.openpill{display:none !important}
+/* open link styled exactly like Watch/More */
+.lnk{display:inline-flex;align-items:center;gap:5px;background:none;border:none;font-family:inherit;color:var(--faint);font-size:12px;font-weight:500;cursor:pointer;padding:0}
+.lnk svg{width:13px;height:13px}.lnk:hover{color:var(--ink)}
+
+.passcard{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:22px 0 0;background:var(--orange-soft)}
+.pc-h{font-size:15px;font-weight:700;color:var(--ink)}
+.pc-sub{font-size:13px;color:#4B5563;line-height:1.6;margin:6px 0 12px}
+.pc-row{display:flex;gap:12px;padding:10px 0;border-top:1px solid #F3E4D4}
+.pc-row:first-of-type{border-top:none}
+.pc-n{width:22px;height:22px;border-radius:50%;background:#fff;color:#C2410C;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid #F3D9C2}
+.pc-row b{font-size:13.5px;color:var(--ink)}.pc-row p{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:2px}
+.pc-btns{display:flex;gap:10px;margin-top:14px}
+.passbtn2{border:1px solid var(--orange);color:var(--orange);background:#fff;font-family:inherit;font-size:12.5px;font-weight:600;padding:8px 16px;border-radius:20px;cursor:pointer}
+.passbtn2:hover{background:#fff;border-color:#EA670C;color:#EA670C}
+
+.head{display:flex;align-items:center;gap:10px}
+.headlinks{margin-left:auto;display:flex;align-items:center;gap:10px}
+.hlink{background:none;border:none;font-family:inherit;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;padding:0}
+.hlink:hover{color:var(--ink)}
+.hsep{color:#D8D6D3;font-size:12px}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:50;align-items:flex-start;justify-content:center;padding:60px 20px;overflow:auto}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:14px;max-width:560px;width:100%;padding:26px 28px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+.mx{position:absolute;top:14px;right:16px;background:none;border:none;font-size:24px;line-height:1;color:var(--faint);cursor:pointer}.mx:hover{color:var(--ink)}
+.m-h{font-size:17px;font-weight:700;color:var(--ink)}
+.m-sub{font-size:13px;color:#4B5563;line-height:1.6;margin:6px 0 14px}
+.m-row{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line)}.m-row:first-of-type{border-top:none}
+.m-n{width:23px;height:23px;border-radius:50%;background:var(--orange-soft);color:#C2410C;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.m-row b{font-size:13.5px;color:var(--ink)}.m-row p{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:2px}
+
+.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.opt:hover{border-color:#D8D6D3}.opt input{margin-top:3px;accent-color:var(--orange)}
+.opt b{font-size:13.5px;color:var(--ink)}.opt p{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.opt-c{float:right;font-size:11px;font-weight:700;color:#C2410C;background:var(--orange-soft);padding:2px 8px;border-radius:10px;margin-left:8px}
+.opt-c.free{color:#15803D;background:#DCFCE7}.opt-c.strike{color:#B91C1C;background:#FEE2E2}
+.opt.warn{border-color:#FCA5A5}
+.m-note{width:100%;font-family:inherit;font-size:13px;padding:10px;border:1px solid #D8D6D3;border-radius:8px;margin:6px 0 10px;resize:vertical;min-height:54px}
+.ack{display:flex;gap:8px;font-size:12.5px;color:#374151;align-items:flex-start;margin-bottom:12px}.ack input{margin-top:2px;accent-color:var(--orange)}
+.primary.full{width:100%;justify-content:center}
+.m-done{font-size:13px;color:#16A34A;font-weight:600;margin-top:10px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px}
+.cday{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#374151;cursor:pointer;background:#fff}
+.cday.dim{color:#C7C5C2;cursor:default;border-color:transparent}
+.cday.sel{background:var(--orange);color:#fff;border-color:var(--orange)}
+.cday:not(.dim):hover{border-color:var(--orange)}
+.cdow{font-size:10px;font-weight:700;color:var(--faint);text-align:center}
+.slots{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.slot{border:1px solid var(--line);border-radius:18px;padding:6px 14px;font-size:12.5px;color:#374151;cursor:pointer;background:#fff}
+.slot.sel{background:var(--orange);color:#fff;border-color:var(--orange)}.slot:hover{border-color:var(--orange)}
+
+.accclose{display:none;margin-left:auto;font-size:24px;line-height:1;color:var(--faint);cursor:pointer;font-weight:400;padding:2px 6px}
+.accclose:hover{color:var(--ink)}
+.acc.open .accclose{display:inline-block}
+.acc.open .accmeta{display:none}
+.warn-note{font-size:12px;color:#B91C1C;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:9px 11px;line-height:1.5;margin-bottom:10px}
+.trans{display:none}
+.trans.show{display:block !important}
+
+.introlead{font-size:14px;color:#374151;line-height:1.7;margin-bottom:18px;max-width:740px}.introlead b{color:var(--ink)}
+.introfoot{font-size:11.5px;color:var(--faint);margin-top:12px}
+.navmap{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.navrow{display:flex;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);align-items:flex-start}.navrow:last-child{border-bottom:none}
+.navdot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:7px;flex:none}
+.navrow b{font-size:14px;color:var(--ink)}.navrow p{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+
+.coachpick{display:flex;gap:10px;margin-bottom:14px}
+.coachbtn{flex:1;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:13px;font-weight:600;color:#374151;padding:9px 0;border-radius:10px;cursor:pointer}
+.coachbtn.sel{background:var(--orange);color:#fff;border-color:var(--orange)}
+.coachbtn:hover{border-color:var(--orange)}
+
+.subacc{border-bottom:1px solid var(--line)}
+.subhead{display:flex;align-items:center;gap:10px;padding:12px 2px;cursor:pointer;font-size:13.5px;color:var(--ink)}
+.subhead:hover{color:var(--orange)}
+.subchev{font-size:10px;color:var(--faint);transition:transform .15s}
+.subacc.open .subchev{transform:rotate(90deg)}
+.subbody{display:none;padding:0 2px 12px 22px}
+.subacc.open .subbody{display:block}
+
+.tsrail{display:flex;align-items:center;gap:0;margin:6px 0 26px}
+.tstep-nav{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--faint);cursor:pointer}
+.tstep-nav .wsn{width:22px;height:22px;border-radius:50%;border:1.6px solid #DCDAD6;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint)}
+.tstep-nav.on{color:var(--ink)}.tstep-nav.on .wsn{background:var(--orange);border-color:var(--orange);color:#fff}
+.tstep-nav.done .wsn{background:#D8D6D3;border-color:#D8D6D3;color:#fff}
+
+.calendly-link{display:inline-flex;align-items:center;gap:7px;background:var(--orange);color:#fff;border:none;font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 18px;border-radius:22px;cursor:pointer;text-decoration:none}
+.calendly-link:hover{background:#EA670C}
+#m-sched .m-sub{margin-bottom:12px}
+
+.coach2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.coachcard{border:1px solid var(--line);border-radius:12px;padding:16px 16px 18px;text-align:left}
+.cc-av{width:38px;height:38px;border-radius:50%;background:var(--orange-soft);color:#C2410C;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.cc-name{font-size:15px;font-weight:700;color:var(--ink)}
+.cc-title{font-size:12px;color:var(--orange);font-weight:600;margin-bottom:10px}
+.cc-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:5px 0}
+.cc-row svg{width:14px;height:14px;flex:none}
+.cc-book{display:inline-flex;align-items:center;gap:6px;background:var(--orange);color:#fff;border:none;font-family:inherit;font-size:12.5px;font-weight:600;padding:9px 14px;border-radius:20px;cursor:pointer;text-decoration:none;margin-top:12px}
+.cc-book:hover{background:#EA670C}
+
+.d1lead{font-size:13.5px;color:#374151;line-height:1.7;margin:6px 0 16px;max-width:760px}.d1lead b{color:var(--ink)}
+.d1sec{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--orange);margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+
+.navgroup{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--faint);margin:18px 0 2px;padding-top:8px}
+.navgroup:first-child{margin-top:6px}
+
+.tk.sub{padding-left:26px;position:relative}
+.tk.sub .tk-title{font-weight:500;font-size:13px}
+.tk.sub:before{content:"";position:absolute;left:12px;top:18px;width:9px;height:1px;background:var(--line)}
+.subhead{font-size:11px;font-weight:600;letter-spacing:.4px;color:var(--faint);text-transform:uppercase;padding:10px 0 2px 26px}
+</style></head><body>
+<aside class="sidebar">
+    <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.4c.7.6 1 1.2 1 2.1h6c0-.9.3-1.5 1-2.1A6 6 0 0 0 12 3Z"/></svg><div class="name">Flip<b>iQ</b></div></div><div class="tag">Together, We Flip <b>Smarter</b></div></div>
+    <div class="sec">Today's Plan</div>
+    <a class="nav active"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10v6"/><path d="M6 12.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-3.5"/></svg>Command Academy</a>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="m3 6 1.4 1.4L6.5 4.5"/><path d="m3 12 1.4 1.4L6.5 10.5"/><path d="m3 18 1.4 1.4L6.5 16.5"/></svg>Today's Tasks</a>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>My Deals</a>
+    <div class="sec">Communications</div>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l1.4 2.2h5L16 13h4"/><path d="M4.5 13 6.7 5.6A2 2 0 0 1 8.6 4.2h6.8a2 2 0 0 1 1.9 1.4L19.5 13v4.5a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2Z"/></svg>Inbox</a>
+    <div class="sec">Find Deals</div>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>MLS Search</a>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.5-3 2.8-4.6 5.5-4.6S14 16 14.5 19"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16 14.6c2.3.2 3.8 1.6 4.2 4.4"/></svg>Agent Search</a>
+    <div class="sec">Tools</div>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg>DispoPro</a>
+    <a class="nav"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4"/><path d="M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/></svg>My Stats</a>
+    <div class="spacer"></div>
+    <div class="footrow addprop"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add a Property</div>
+    <div class="divider"></div>
+    <div class="footrow"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Collapse sidebar</div>
+    <div class="footrow"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="8" r="3.2"/><path d="M4 19c.5-3 2.8-4.6 5.5-4.6"/><circle cx="17.5" cy="15.5" r="2.4"/><path d="m19.2 17.2 1.6 1.6"/></svg>Log in as&hellip;</div>
+    <div class="profile"><div class="avatar">JS</div><div><div class="pn">Josh Santos</div><div class="pe">joshs@fair-close.com</div></div><div style="margin-left:auto;display:flex;gap:12px;color:var(--faint)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.2V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4.2 15H4a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4.2V4a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 19.8 11H20a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.4.9Z"/></svg><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></div></div>
+  </aside>
+<main class="main">
+<div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0Z"/><path d="M22 10v6"/><path d="M6 12.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-3.5"/></svg><h1>Command <b>Academy</b></h1><div class="headlinks"><button class="hlink" onclick="openPass()">Request a Pass</button><span class="hsep">&middot;</span><button class="hlink" onclick="openSched()">Schedule a meeting</button></div></div>
+<div class="tabs"><div class="tab on" onclick="sw(1)">Full Curriculum</div><div class="tab" onclick="sw(2)">Ask iQ</div></div>
+<section class="view" id="v0" style="display:none"></section>
+<section class="view on" id="v1"><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="acctitle">Welcome, Commitment &amp; Expectations</span><span class="accmeta">3 steps</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><div class="tsrail"><div class="tstep-nav on" id="tn1" onclick="tstep(1)"><span class="wsn">1</span> Welcome</div><div class="wzsep"></div><div class="tstep-nav" id="tn2" onclick="tstep(2)"><span class="wsn">2</span> Commitment</div><div class="wzsep"></div><div class="tstep-nav" id="tn3" onclick="tstep(3)"><span class="wsn">3</span> Expectations</div></div><div class="tstep" data-t="1">
+  <div class="greet">Welcome, <b>Tony</b>. Here’s what the next 15 days look like.</div>
+  <div class="wcard">
+    <div class="wrow"><span class="wn">1</span><div><b>We train you to close a minimum of 2 closed deals a month.</b><p>Command Academy is a 15-day coached path. FlipIQ trains, supports, and coaches you the whole way — you’re never doing this alone.</p></div></div>
+    <div class="wrow"><span class="wn">2</span><div><b>How each day works.</b><p>You log in, see today’s plan, and do the work. There are Daily Reps every day, and you have a daily session with your coach.</p></div></div>
+    <div class="wrow"><span class="wn">3</span><div><b>What to expect.</b><p>Week 1 — learn where everything lives. Week 2 — run the process on live deals. Week 3 — production with real daily numbers. Week 4 — your AM takes over daily management.</p></div></div>
+    <div class="wrow"><span class="wn">4</span><div><b>Who coaches you.</b><p>Week 1: Ramy. Week 2: Sergio. Week 3: your AM with Sergio. Daily accountability throughout: your AM and Ramy.</p></div></div>
+  </div>
+  <div class="passcard">
+    <div class="pc-h">If you can’t make it — we get it. Here’s what to do.</div>
+    <p class="pc-sub">Life happens. You’re never punished for that — only for going silent. This is one strike and you’re out, so tell us 24 hours before (or as soon as a real emergency allows). You can make up one class per week.</p>
+    <div class="pc-row"><span class="pc-n">1</span><div><b>Request a Pass</b><p>Tell your coach before the session. A Pass keeps you off the strike path — it doesn’t skip the work.</p></div></div>
+    <div class="pc-row"><span class="pc-n">2</span><div><b>Schedule the make-up</b><p>On-time reschedule (no charge), an excused 1-on-1 ($125/hr), or an async make-up — watch the recording, do your Daily Reps, then a 15-min check with your coach ($50).</p></div></div>
+    <div class="pc-row"><span class="pc-n">3</span><div><b>What happens if you ghost</b><p>A no-show with no notice and you’re out. We’re looking for people committed to success.</p></div></div>
+    <div class="pc-btns"><button class="passbtn2" onclick="openPass()">Request a Pass</button><button class="passbtn2" onclick="openSched()">Schedule a meeting</button></div>
+  </div>
+  <div class="wz-nav"><span></span><button class="primary" onclick="tstep(2)">Next: your commitment <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
+</div><div class="tstep" data-t="2" style="display:none">
+  <div class="greet">Your commitment. Read it, agree, and we begin.</div>
+  <div class="agree">
+    <p class="ai">You are entering a partnership. FlipIQ commits to train, support, and coach you to <b>2 closed deals per month</b>. In return, you commit to showing up, following the process, and engaging honestly. <b>We don’t get paid unless you get paid.</b></p>
+    <div class="as">Your commitments <span class="callall" onclick="checkAll2()">Check all</span></div>
+    <ul class="alist check"><li><label class="cl"><input type="checkbox" class="ccb2"><span>I am a full-time user. Part-time users <b>NEVER MAKE IT</b> — I am not here to fail.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I will follow the FlipIQ process exactly, because it works and I trust it before I judge it.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I will show up every single day and do my <b>Daily Reps</b> — reps are how the process becomes muscle memory.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I understand no one closes my deals for me. The system makes me fast; the work is mine.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I will keep an active pipeline of ~100 properties and follow up every day, no excuses.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I will make my calls. Relationships — not luck — close deals.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I will attend every training session and act on every follow-up my coach gives me.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I know the system is not perfect — I am an early adopter and I will give honest feedback through the orange help button.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I'm here to make at least <b>$120K per year</b>.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>My one measure of success is a minimum of <b>2 closed deals a month</b>. Everything I do points there.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I understand FlipIQ is a tool, not a magic wand. My effort makes the magic happen.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>I will be coachable — I will take direction and run the process before I argue with it.</span></label></li><li><label class="cl"><input type="checkbox" class="ccb2"><span>During training, missing sessions or not responding to Customer Success Manager training or emails is a strike. After I graduate, <b>2 consecutive zero-activity days</b> will suspend my account until I meet to re-engage.</span></label></li></ul>
+    <div class="as">FlipIQ commits to</div>
+    <ul class="alist"><li><span class="ck">&#10003;</span>Full structured onboarding: Phase 1, Phase 2, and Phase 3 training.</li><li><span class="ck">&#10003;</span>Group training sessions Monday–Friday, 1 hour, 5 days per week.</li><li><span class="ck">&#10003;</span>Daily personalized email and short-video coaching based on your actual usage.</li><li><span class="ck">&#10003;</span>Bug fixes and critical improvements that directly affect deal flow.</li><li><span class="ck">&#10003;</span>Reviewing all feedback and incorporating aligned suggestions.</li></ul>
+    <div class="goal">My goal: 2 closed deals per month</div>
+    <div class="signrow"><input id="agname2" class="aname" placeholder="Type your full name to agree"><button class="primary" onclick="agree2()">Agree &amp; start <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
+    <div class="stamp" id="stamp2"></div>
+  </div>
+  <div class="wz-nav"><button class="ghost" onclick="tstep(1)">Back</button><span></span></div>
+</div><div class="tstep" data-t="3" style="display:none">
+  <div class="greet">What to expect.</div>
+  <div class="introlead">You're not buying a course. You're joining a <b>mastermind built around one thing: you succeeding.</b></div>
+  <p class="gx" style="max-width:740px;font-size:13.5px;line-height:1.7;margin-bottom:12px">Let's be honest about the odds. Out of every ten people who walk through this door, maybe two make it. We're not here to sell you a dream — we're here to find the two. We're betting that's you, because you showed up, you'll do the work, and you understand what this actually is.</p>
+  <p class="gx" style="max-width:740px;font-size:13.5px;line-height:1.7;margin-bottom:16px">Here's what makes us different, and it's the whole game: <b>we only make money when you make money.</b> Sit with that. If we charged you to coach you, our alignment with you would end the second you cut the check — we'd already be paid whether you closed a deal or not. We refuse to build it that way. We tied our success completely to yours. Your win is the only way we win.</p>
+  <div class="wcard">
+    <div class="wrow"><span class="wn">1</span><div><b>You'll be trained by masters of the trade.</b><p>Operators with literally thousands of real transactions — not theorists, not motivational speakers. Every coach, script, and process came from deals that actually closed.</p></div></div>
+    <div class="wrow"><span class="wn">2</span><div><b>You get systems and information second to none.</b><p>Data no one else has, tools built for one purpose — getting you to closed deals — and experts who've already made every mistake so you don't have to.</p></div></div>
+    <div class="wrow"><span class="wn">3</span><div><b>You'll be surrounded by people who earned their place.</b><p>A room of proven operators who show up, do their job, and get it. Iron sharpens iron.</p></div></div>
+  </div>
+  <p class="gx" style="max-width:740px;font-size:13.5px;line-height:1.7;margin-top:14px">This is servant leadership. We're not above you handing down a program — we're beside you, and our job is to make you win. This whole system was built by focusing on empowering the person walking in the door, because <b>you are what makes us successful.</b> That's the deal. That's why we built it. Now let's go to work.</p>
+  <div class="wz-nav"><button class="ghost" onclick="tstep(2)">Back</button><button class="primary" onclick="startTraining()">Start training <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div>
+</div></div></div><div class="phbar"><span class="phnum">Week 1</span><span class="phtitle">Basic Navigation — Ramy</span><span class="phmeta">the what, when & how</span></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 1</span><span class="acctitle">System Intro &amp; Navigation</span><span class="accmeta">3 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><div class="tsrail"><div class="tstep-nav on" id="dn1" onclick="d1step(1)"><span class="wsn">1</span> Intro to COMMAND</div><div class="wzsep"></div><div class="tstep-nav" id="dn2" onclick="d1step(2)"><span class="wsn">2</span> System Navigation</div><div class="wzsep"></div><div class="tstep-nav" id="dn3" onclick="d1step(3)"><span class="wsn">3</span> Daily Reps</div></div><div class="d1s" data-d="1"><div class="greet">Intro to COMMAND</div><div class="introlead">COMMAND is <b>not a magic wand.</b> It’s a tool that does three things better than any other system — and your job is to run all three, every day.</div><div class="wcard"><div class="wrow"><span class="wn">1</span><div><b>Makes you 3× more efficient.</b><p>Everything you need lives in one place — finding deals, comping, agent data, offers, follow-up. No jumping between the MLS, spreadsheets, a dialer, and a CRM. That’s how you push at least 100 offers a month, three times what you’d do stitching separate tools together. Volume is the game, and efficiency is how you win it.</p></div></div><div class="wrow"><span class="wn">2</span><div><b>Builds the agent relationships that feed you.</b><p>Deals don’t come from luck — they come from relationships. COMMAND helps you build and work 100 agent relationships around how they make money, not by begging them for deals. Nurture those 100 all year and they start bringing the deals to you, over and over, without you chasing.</p></div></div><div class="wrow"><span class="wn">3</span><div><b>Chases deals based on seller propensity.</b><p>You don’t chase what everyone else is chasing. COMMAND ranks deals by the seller’s propensity to sell — who’s actually motivated — so your calls land on the deals most likely to move. It’s data no one else has, and you can’t get it off the MLS.</p></div></div></div><div class="wz-nav"><span></span><button class="primary" onclick="d1step(2)">Next: system navigation <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div></div><div class="d1s" data-d="2" style="display:none"><div class="greet">System Navigation</div><div class="introlead">Where everything lives. This is your map for Week 1 so you never hunt for a tool.</div><div class="tasks"><div class="navgroup">Today's Plan</div><div class="tk"><div class="tk-mid"><div class="tk-title">Today's Tasks</div><div class="tk-desc">The day's work list pulled straight from your plan.</div><div class="trans">Today’s Tasks breaks your plan into the individual actions to complete today — calls to make, campaigns to send, responses to work, deals to follow up. Each task ties back to a deal or an agent so you can act on it in one click. Finishing your tasks every single day is where the discipline shows up.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk"><div class="tk-mid"><div class="tk-title">My Deals</div><div class="tk-desc">Your full list of every deal you're working.</div><div class="trans">My Deals opens your complete pipeline — every deal you’re working, in one place. Filter, sort, and triage from here; it’s the home base for follow-up and Deal Review.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="navgroup">Communications</div><div class="tk"><div class="tk-mid"><div class="tk-title">Inbox</div><div class="tk-desc">Replies from your text and email campaigns land here.</div><div class="trans">The Inbox is the unified stream of every reply from your outreach — texts and emails from agents across all your campaigns in one place. Sort by sentiment and always call the negatives back; respond fast and log the next step.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="navgroup">Find Deals</div><div class="tk"><div class="tk-mid"><div class="tk-title">MLS Search</div><div class="tk-desc">Advanced MLS search where you build and save filters to find deals.</div><div class="trans">MLS Search is your engine for pulling deals off the market on your terms. Build filters by area, price, days on market, status, and type — then save them so your daily search is one click. High Propensity and Hot Deals live here too.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">MLS Search › High Propensity</div><div class="tk-desc">Pre-selected properties ranked by the seller's propensity to sell — work the highest first.</div><div class="trans">High Propensity surfaces now-or-aged actives, pendings, and backups where the seller is most likely to move. Open on the seller’s pain point, use Property Intelligence, tax data, and skip tracing to gauge feasibility, and build your agent pipeline. Work the highest propensity-to-sell first.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">MLS Search › Hot Deals</div><div class="tk-desc">The highest-signal new MLS listings worth chasing.</div><div class="trans">Hot Deals surfaces the strongest new listings on the MLS right now — the highest-signal deals worth your time so you’re not scrolling the whole market every morning.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">MLS Search › My Favorites</div><div class="tk-desc">The listings you've starred to come back to.</div><div class="trans">My Favorites collects every listing you’ve starred so you can jump straight back to the deals you’re tracking without re-running a search.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk"><div class="tk-mid"><div class="tk-title">Agent Search</div><div class="tk-desc">Find and filter investor-friendly agents to target.</div><div class="trans">Agent Search is how you build your 100 relationships. Find and filter agents by production, transaction history, and how they do business, then work them into Hot / Warm / Cold / Unknown. Prioritize the high producers and track every touch.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">Agent Search › Send Agent Campaign</div><div class="tk-desc">Blast text or email out to your agent list.</div><div class="trans">Send Agent Campaign lets you run bulk outreach to the agents you’ve filtered — pick a template, choose your audience, and send text or email to stay top of mind at scale.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">Agent Search › My Priority Agents</div><div class="tk-desc">Your top agents — the relationships you work first.</div><div class="trans">My Priority Agents is your short list of the highest-value agents — the ones you call and nurture first because each one can feed you deals all year.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">Agent Search › Campaign Tracking</div><div class="tk-desc">Track responses and performance on your agent campaigns.</div><div class="trans">Campaign Tracking shows how your agent outreach is landing — who opened, who replied, and where each agent stands — so you can work the warmest responses first.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="navgroup">Tools</div><div class="tk"><div class="tk-mid"><div class="tk-title">DispoPro</div><div class="tk-desc">Where you sell a property you have under contract.</div><div class="trans">DispoPro is the disposition side — once a deal is under contract, this is where you sell or assign it. Find buyers and investor-friendly agents, blast the deal out, manage offers, and move to assignment or double-close. Acquisition gets it under contract; DispoPro gets it closed.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk sub"><div class="tk-mid"><div class="tk-title">DispoPro › Sell a Property</div><div class="tk-desc">Push a deal under contract out to buyers and investors to sell it.</div><div class="trans">Sell a Property runs the disposition flow — search your investor and buyer database, filter by strategy and purchase range, and market the deal to the buyers most likely to close it fast.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="tk"><div class="tk-mid"><div class="tk-title">My Stats</div><div class="tk-desc">Your performance dashboard — your KPIs vs. targets.</div><div class="trans">My Stats is your scoreboard. It shows your real numbers against target — logins, outreach, offers, calls, deals worked, and closes. Review it at end of day; the north star is 2 closed deals a month.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="navgroup">Help & Support</div><div class="tk"><div class="tk-mid"><div class="tk-title">Help button / Support chat</div><div class="tk-desc">The orange help button — get help or send feedback.</div><div class="trans">The round support bubble (bottom-right) and the orange help button open help and support — ask a question or send feedback without leaving your work.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="navgroup">Add</div><div class="tk"><div class="tk-mid"><div class="tk-title">Add a Property</div><div class="tk-desc">Manually add a deal you found off-system.</div><div class="trans">Add a Property lets you drop any deal into COMMAND that didn’t come through MLS Search — a referral, a driving-for-dollars find, a deal an agent sent you. Once it’s in, it flows through the same pipeline. If it’s not in COMMAND, it doesn’t get worked.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div><div class="navgroup">Account</div><div class="tk"><div class="tk-mid"><div class="tk-title">Collapse sidebar</div><div class="tk-desc">Collapse the menu to icons for more workspace.</div><div class="trans">Collapse sidebar shrinks the left menu to icons to give you more room; click again to expand it back.</div></div><div class="tk-acts"><button class="lnk"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Watch</button><button class="lnk" onclick="tog(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>More</button><button class="lnk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>Open</button></div></div></div><p class="introfoot">Need help anytime — the orange help button in COMMAND, or Ask iQ.</p><div class="wz-nav"><button class="ghost" onclick="d1step(1)">Back</button><button class="primary" onclick="d1step(3)">Next: daily reps <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button></div></div><div class="d1s" data-d="3" style="display:none"><div class="greet">Daily Reps</div><div class="introlead">Your daily plan — the five sections you run every single day, top to bottom, in priority order. Today you learn them by doing them.</div><div class="wcard"><div class="wrow"><span class="wn">1</span><div><b>Deals in Working.</b><p>On Process, Infraction, Automated, Resurfaced. Work the Infractions first (past contact threshold), then re-engage Resurfaced, then check Automated runs.</p></div></div><div class="wrow"><span class="wn">2</span><div><b>Agents › Text and Email Campaigns.</b><p>Send today’s outreach across Hot, Warm, Cold, and Unknown — stay top of mind with the agents where you’ve planted the seed.</p></div></div><div class="wrow"><span class="wn">3</span><div><b>Agents › Campaign Responses.</b><p>Work the agents who replied — Positive first, then Neutral, then Negative. Always call the negatives back; you’ll be surprised what you get.</p></div></div><div class="wrow"><span class="wn">4</span><div><b>Agents › Priority Calls.</b><p>Your 100 highest-value agents — the ones who each feed you four deals a year. Call to stay relevant and present. Nothing matters more.</p></div></div><div class="wrow"><span class="wn">5</span><div><b>New Deals › New High Propensity to Sell Deals.</b><p>30 queued. Call agents on pre-selected actives, pending, or backup deals; open on the seller’s pain point and use Property Intelligence.</p></div></div></div><div class="hwline"><span style="background:#374151">Mastery Check</span>Name the five daily sections and where each lives in the sidebar. [test — to set]</div><div class="wz-nav"><button class="ghost" onclick="d1step(2)">Back</button><span></span></div></div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 2</span><span class="acctitle">Find Deals</span><span class="accmeta">10 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>MLS Search › High Propensity</li><li>MLS Hot Deals</li><li>MLS Search</li><li>Favorites</li><li>Add a Property</li><li>Initial property evaluation</li><li>Seller’s pain point — iQ Property Intelligence</li><li>The agents and how they make money — Agent Profile</li><li>The listing and status</li><li>Do I chase the deal or the agent</li></ul><div class="hwline"><span>Daily Reps</span>Find 20 deals worth chasing.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 3</span><span class="acctitle">Evaluating & Approach</span><span class="accmeta">11 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Deal Evaluation Waterfall</li><li>Buybox — does this deal fit what we buy</li><li>Deal iQ — iQ Property Intelligence</li><li>High-level comping — Comps</li><li>Investment Analysis</li><li>Agent Profile</li><li>Getting a hold of the agent — call first</li><li>Dialer, call logging, SMS / Email, notes</li><li>Making an offer — Offer Terms</li><li>Scripting</li><li>Communications & Inbox</li></ul><div class="hwline"><span>Daily Reps</span>Evaluate 20 deals and determine intent.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 4</span><span class="acctitle">Following up on My Deals</span><span class="accmeta">8 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>My Deals — Deal Review</li><li>Triage: Criticals, High, Medium, Low, New</li><li>Focus Here / Fix Today / Working</li><li>Filters, segments & My Saved Filters</li><li>Next steps & progress bar</li><li>Notes & communication tags</li><li>Automated Campaigns — content, tracking</li><li>Bulk Call / Text / Email</li></ul><div class="hwline"><span>Daily Reps</span>Get a hold of 20 agents and update relationship status.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 5</span><span class="acctitle">Comping, Agents & Agent Search</span><span class="accmeta">8 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Comps — Map, Matrix, List</li><li>Finding deals in the comps</li><li>AM Support — prioritizing & cleaning comps</li><li>Agent Profile & 100 Priority Agents</li><li>5 Hot / Warm / Cold per day</li><li>Campaigns</li><li>Agent iQ — status, follow up, next steps, notes</li><li>DispoPro — finding agents</li></ul><div class="hwline"><span>Daily Reps</span>Find and comp 20 properties; pick 5 to review with coach.</div></div></div><div class="phbar"><span class="phnum">Week 2</span><span class="phtitle">Process & Mastery — Sergio</span><span class="phmeta">same outline, the why</span></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 6</span><span class="acctitle">Find Deals — the why</span><span class="accmeta">same outline — process</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><p class="gx">Same sections as Week 1, run live on screen — the why behind each step. Your Daily Reps build the muscle memory.</p></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 7</span><span class="acctitle">Evaluating & Approach — the why</span><span class="accmeta">same outline — process</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><p class="gx">Same sections as Week 1, run live on screen — the why behind each step. Your Daily Reps build the muscle memory.</p></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 8</span><span class="acctitle">Following up on My Deals — the why</span><span class="accmeta">same outline — process</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><p class="gx">Same sections as Week 1, run live on screen — the why behind each step. Your Daily Reps build the muscle memory.</p></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 9</span><span class="acctitle">Comping & Agents — the why</span><span class="accmeta">same outline — process</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><p class="gx">Same sections as Week 1, run live on screen — the why behind each step. Your Daily Reps build the muscle memory.</p></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 10</span><span class="acctitle">Agent Search — the why</span><span class="accmeta">same outline — process</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><p class="gx">Same sections as Week 1, run live on screen — the why behind each step. Your Daily Reps build the muscle memory.</p></div></div><div class="phbar"><span class="phnum">Week 3</span><span class="phtitle">Production — coach + AM</span><span class="phmeta">chasing deals live</span></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 11</span><span class="acctitle">Today’s Tasks & My Stats</span><span class="accmeta">4 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Review yesterday’s My Stats</li><li>My Deals — AM support, when to self-represent</li><li>5 offers — find 5 deals worth an offer</li><li>5 new agents while making 5 offers</li></ul><div class="hwline"><span>Daily Reps</span>5 offers + 5 new agents.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 12</span><span class="acctitle">Distressed deals, buyers & dispo</span><span class="accmeta">5 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Review My Stats</li><li>AM not responding</li><li>5 offers — when not to waste your time</li><li>Offer negotiation by intent — wholesale / flip</li><li>5 new agents — how to find buyers / sell deals</li></ul><div class="hwline"><span>Daily Reps</span>5 offers + 5 new agents.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 13</span><span class="acctitle">Who to call vs text, roster, priority agents</span><span class="accmeta">4 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Review My Stats</li><li>My Deals — who to call, who to text</li><li>5 offers — Office Roster</li><li>5 new agents — Priority Agents</li></ul><div class="hwline"><span>Daily Reps</span>5 offers + 5 new agents.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 14</span><span class="acctitle">Roster & priority agents (live)</span><span class="accmeta">4 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Review My Stats</li><li>My Deals — who to call, who to text</li><li>5 offers — Office Roster</li><li>5 new agents — Priority Agents</li></ul><div class="hwline"><span>Daily Reps</span>5 offers + 5 new agents.</div></div></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Day 15</span><span class="acctitle">DispoPro</span><span class="accmeta">6 sections</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>Review My Stats</li><li>Scripting</li><li>Planting the seed for assignments</li><li>No Assignments</li><li>Wholesaling a deal</li><li>Finding Investors</li></ul><div class="hwline"><span>Daily Reps</span>Run a live dispo end to end.</div></div></div><div class="phbar"><span class="phnum">Week 4</span><span class="phtitle">AM Daily Management — fine-tuning</span><span class="phmeta">your AM owns the day</span></div><div class="acc"><button class="acchead" onclick="acc(this)"><span class="chev">&#9656;</span><span class="dpill">Week 4</span><span class="acctitle">AM Daily Management & fine-tuning</span><span class="accmeta">handoff to your AM</span><span class="accclose" onclick="event.stopPropagation();collapseAll()" title="Close">&times;</span></button><div class="accbody"><ul class="clist"><li>AA daily accountability & morning check-in</li><li>Yesterday’s AA report & commitment call</li><li>AM Dashboard — deal support & coaching process</li><li>EOD My Stats — check production</li><li>Follow-up support / training & request support</li></ul><div class="hwline"><span>Daily Reps</span>AM runs the daily process with the team.</div></div></div></section>
+<section class="view" id="v2">
+<div class="chatwrap">
+  <div class="chatscroll" id="chatscroll">
+    <div class="msg bot"><div class="ava">iQ</div><div class="bub">Hey Tony — I'm iQ, your training assistant. Ask me anything about today's lesson, where something lives in COMMAND, or how a process works.</div></div>
+  </div>
+  <div class="chips">
+    <button class="chip" onclick="ask(this)">What are my Daily Reps today?</button>
+    <button class="chip" onclick="ask(this)">How do I save a Daily Money Filter?</button>
+    <button class="chip" onclick="ask(this)">Explain the Deal Evaluation Waterfall</button>
+  </div>
+  <div class="chatbar">
+    <textarea id="chatin" rows="1" placeholder="Ask iQ anything..."></textarea>
+    <button class="send" onclick="send()"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg></button>
+  </div>
+</div>
+</section>
+
+<div class="modal-bg" id="mbg" onclick="closeM(event)">
+  <div class="modal">
+    <button class="mx" onclick="closeM()">&times;</button>
+        <div id="m-pass" class="mc">
+      <div class="m-h">Request a Pass</div>
+      <p class="m-sub">This is <b>one strike and you’re out.</b> Tell us <b>24 hours before</b> the session (or as soon as a real emergency allows). You can make up <b>one class per week.</b> Pick what fits — each option has a cost and a make-up.</p>
+      <label class="opt"><input type="radio" name="passtype" value="ontime"><div><b>On-time reschedule</b><span class="opt-c free">No charge</span><p>You’re telling us ahead of time. Move the session to another slot this week.</p></div></label>
+      <label class="opt"><input type="radio" name="passtype" value="excused"><div><b>Excused reschedule</b><span class="opt-c">$125 / hr</span><p>Last-minute but valid reason. Coach re-runs the session 1-on-1.</p></div></label>
+      <label class="opt"><input type="radio" name="passtype" value="async"><div><b>Async make-up</b><span class="opt-c">$50 / 15 min</span><p>Watch the recording, do the Daily Reps, then a 15-min check with your coach ($50) to make up the class.</p></div></label>
+      <p class="warn-note">No pass and no notice is a <b>strike</b> — one strike and you’re out.</p>
+      <textarea class="m-note" id="passreason" placeholder="Reason / which session (optional)"></textarea>
+      <label class="ack"><input type="checkbox" id="passack"> I understand the cost and that I still owe the work.</label>
+      <button class="primary full" onclick="submitPass()">Submit pass request</button>
+      <div class="m-done" id="passdone"></div>
+    </div>
+        <div id="m-sched" class="mc" style="display:none">
+      <div class="m-h">Schedule a meeting</div>
+      <p class="m-sub">Reach out to your coach directly, or book a time on their calendar.</p>
+      <div class="coach2">
+        <div class="coachcard">
+          <div class="cc-av">R</div>
+          <div class="cc-name">Ramy</div>
+          <div class="cc-title">Customer Success Manager</div>
+          <div class="cc-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L14 12l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z"/></svg>(555) 000-0000</div>
+          <div class="cc-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Mon–Fri, 9–5 [hours]</div>
+          <a class="cc-book" href="https://calendly.com/flipiq-ramy" target="_blank" rel="noopener">Book on Calendly <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+        </div>
+        <div class="coachcard">
+          <div class="cc-av">S</div>
+          <div class="cc-name">Sergio</div>
+          <div class="cc-title">Acquisition Jedi</div>
+          <div class="cc-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L14 12l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2z"/></svg>(555) 000-0000</div>
+          <div class="cc-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Mon–Fri, 9–5 [hours]</div>
+          <a class="cc-book" href="https://calendly.com/flipiq-sergio" target="_blank" rel="noopener">Book on Calendly <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+        </div>
+      </div>
+      <div class="m-done" id="schdone"></div>
+    </div></div>
+</div>
+</div>
+</main>
+<script>
+function sw(i){document.querySelectorAll('.tab').forEach((t,n)=>t.classList.toggle('on',n===i));document.querySelectorAll('.view').forEach((v,n)=>v.classList.toggle('on',n===i));if(i===1){try{collapseAll();}catch(e){}}window.scrollTo(0,0);}
+function tog(a){var t=a.parentElement.parentElement.querySelector('.trans');if(t)t.classList.toggle('show');}
+function checkAll(){document.querySelectorAll('.ccb:not(.fcb)').forEach(c=>c.checked=true);}
+function unlockDay1(){var g=document.getElementById('gatecard');if(g)g.remove();var d=document.getElementById('day1');if(d){d.classList.remove('locked');var lp=d.querySelector('.lockpill');if(lp)lp.remove();}}
+function stamp(){var n=document.getElementById('agname').value.trim();var boxes=[...document.querySelectorAll('.ccb:not(.fcb)')];var all=boxes.every(b=>b.checked);if(!all){alert('Please check all commitments to agree.');return;}if(!n){document.getElementById('agname').focus();return;}var dt=new Date().toLocaleString();var b=document.querySelector('.agreebtn');b.textContent='Agreed';b.disabled=true;document.getElementById('stamped').textContent='\u2713 Agreed by '+n+' \u00b7 '+dt+' \u2014 taking you to Today\u2026';try{window.name='ACAD_AGREED';}catch(e){}unlockDay1();setTimeout(function(){sw(0);},1100);}
+function add(role,txt){var s=document.getElementById('chatscroll');var d=document.createElement('div');d.className='msg '+role;d.innerHTML='<div class="ava">'+(role==='user'?'TD':'iQ')+'</div><div class="bub">'+txt+'</div>';s.appendChild(d);s.scrollTop=s.scrollHeight;}
+function reply(q){add('user',q);setTimeout(function(){add('bot','(demo) I\'d walk you through \u201c'+q+'\u201d with the exact COMMAND steps and a short clip.');},250);}
+function ask(b){reply(b.textContent);}
+function send(){var i=document.getElementById('chatin');var v=i.value.trim();if(!v)return;i.value='';reply(v);}
+document.addEventListener('DOMContentLoaded',function(){if(window.name==='ACAD_AGREED'){try{step(4);}catch(e){}}var i=document.getElementById('chatin');if(i)i.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});});
+
+function acc(h){var me=h.parentElement;var wasOpen=me.classList.contains('open');
+ var all=document.querySelectorAll('#v1 .acc, #v1 .phbar');
+ if(wasOpen){ all.forEach(function(el){el.style.display='';}); me.classList.remove('open'); }
+ else { document.querySelectorAll('#v1 .acc.open').forEach(function(a){a.classList.remove('open');});
+        all.forEach(function(el){ el.style.display = (el===me)?'':'none'; });
+        me.classList.add('open'); try{if(me.querySelector('#dn1'))d1step(1);else if(me.querySelector('.tsrail'))tstep(1);}catch(e){} me.scrollIntoView({block:'start',behavior:'smooth'}); } }
+function openCommit(){sw(1);var g=document.querySelector(".acc.gate");if(g){g.classList.add("open");g.scrollIntoView({behavior:"smooth",block:"start"});}}
+
+function step(n){document.querySelectorAll('.wz-panel').forEach(p=>p.style.display=(p.getAttribute('data-step')==n?'block':'none'));
+ [1,2,3,4].forEach(i=>{var el=document.getElementById('ws'+i);if(!el)return;el.classList.toggle('on',i==n);el.classList.toggle('done',i<n);});window.scrollTo(0,0);}
+function checkAll(){document.querySelectorAll('.ccb').forEach(c=>c.checked=true);}
+function agree(){var n=document.getElementById('agname').value.trim();var all=[...document.querySelectorAll('.ccb')].every(b=>b.checked);if(!all){alert('Please check all commitments to agree.');return;}if(!n){document.getElementById('agname').focus();return;}document.getElementById('stamp').textContent='\u2713 Agreed by '+n+' \u00b7 '+new Date().toLocaleString();try{window.name='ACAD_AGREED';}catch(e){}setTimeout(function(){step(3);},500);}
+function openCommit(){sw(0);step(2);}
+function tog(a){var t=a.closest('.tk,.it').querySelector('.trans');if(t)t.classList.toggle('show');}
+
+function openPass(){document.getElementById('m-pass').style.display='block';document.getElementById('m-sched').style.display='none';document.getElementById('mbg').classList.add('show');}
+function openSched(){document.getElementById('m-sched').style.display='block';document.getElementById('m-pass').style.display='none';document.getElementById('mbg').classList.add('show');}
+function closeM(e){if(e&&e.target&&!e.target.classList.contains('modal-bg')&&!e.target.classList.contains('mx'))return;document.getElementById('mbg').classList.remove('show');}
+
+function checkAll2(){document.querySelectorAll('.ccb2').forEach(c=>c.checked=true);}
+function agree2(){var n=document.getElementById('agname2').value.trim();var all=[...document.querySelectorAll('.ccb2')].every(b=>b.checked);if(!all){alert('Please check all commitments to agree.');return;}if(!n){document.getElementById('agname2').focus();return;}document.getElementById('stamp2').textContent='\u2713 Agreed by '+n+' \u00b7 '+new Date().toLocaleString();try{window.name='ACAD_AGREED';}catch(e){}try{tstep(3);}catch(e){} /* mirror into wizard step2 */ try{var s=document.getElementById('stamp');if(s)s.textContent=document.getElementById('stamp2').textContent;document.querySelectorAll('.ccb').forEach(c=>c.checked=true);var a1=document.getElementById('agname');if(a1)a1.value=n;}catch(e){}}
+
+function submitPass(){var t=document.querySelector('input[name=passtype]:checked');var ack=document.getElementById('passack').checked;if(!t){alert('Pick a pass type.');return;}if(t.value!=='noshow'&&!ack){alert('Please acknowledge the cost.');return;}var d=document.getElementById('passdone');d.textContent=(t.value==='noshow')?'Logged. This counts as a strike.':'\u2713 Pass requested \u2014 your coach will confirm.';}
+var _selDay=null,_selSlot=null,_selCoach='Ramy';
+function buildCal(){var c=document.getElementById('cal');if(!c)return;c.innerHTML='';['S','M','T','W','T','F','S'].forEach(function(x){var e=document.createElement('div');e.className='cdow';e.textContent=x;c.appendChild(e);});
+ var now=new Date();var y=now.getFullYear(),m=now.getMonth();var first=new Date(y,m,1).getDay();var days=new Date(y,m+1,0).getDate();
+ for(var i=0;i<first;i++){var e=document.createElement('div');e.className='cday dim';c.appendChild(e);}
+ for(var d=1;d<=days;d++){(function(d){var e=document.createElement('div');e.className='cday';if(d<now.getDate())e.className='cday dim';e.textContent=d;if(d>=now.getDate())e.onclick=function(){document.querySelectorAll('.cday.sel').forEach(x=>x.classList.remove('sel'));e.classList.add('sel');_selDay=d;buildSlots();chk();};c.appendChild(e);})(d);}}
+function buildSlots(){var s=document.getElementById('slots');s.innerHTML='';['9:00 AM','10:30 AM','1:00 PM','3:00 PM','4:30 PM'].forEach(function(t){var e=document.createElement('div');e.className='slot';e.textContent=t;e.onclick=function(){document.querySelectorAll('.slot.sel').forEach(x=>x.classList.remove('sel'));e.classList.add('sel');_selSlot=t;chk();};s.appendChild(e);});}
+function chk(){var b=document.getElementById('schbtn');if(_selDay&&_selSlot){b.disabled=false;b.textContent='Book '+_selDay+' at '+_selSlot;}else{b.disabled=true;b.textContent='Pick a day & time';}}
+function pickCoach(c){_selCoach=c;document.getElementById('cb-ramy').classList.toggle('sel',c==='Ramy');document.getElementById('cb-sergio').classList.toggle('sel',c==='Sergio');var l=document.getElementById('calendlyLink');if(l)l.href=(c==='Sergio')?'https://calendly.com/flipiq-sergio':'https://calendly.com/flipiq-ramy';}
+function submitSched(){document.getElementById('schdone').textContent='\u2713 Meeting requested with '+_selCoach+' on the '+_selDay+' at '+_selSlot+' \u2014 pending confirmation.';}
+function collapseAll(){var all=document.querySelectorAll('#v1 .acc, #v1 .phbar');all.forEach(function(el){el.style.display='';});document.querySelectorAll('#v1 .acc.open').forEach(function(a){a.classList.remove('open');});window.scrollTo({top:0,behavior:'smooth'});}
+function tstep(n){document.querySelectorAll(".tstep").forEach(function(p){p.style.display=(p.getAttribute("data-t")==n?"block":"none");});[1,2,3].forEach(function(i){var el=document.getElementById("tn"+i);if(!el)return;el.classList.toggle("on",i==n);el.classList.toggle("done",i<n);});window.scrollTo({top:0,behavior:"smooth"});}
+function startTraining(){try{collapseAll();}catch(e){}var heads=document.querySelectorAll('#v1 .acchead');for(var i=0;i<heads.length;i++){var t=heads[i].querySelector('.acctitle');if(t&&t.textContent.indexOf('System Intro')>-1){acc(heads[i]);break;}}}
+function d1step(n){document.querySelectorAll(".d1s").forEach(function(p){p.style.display=(p.getAttribute("data-d")==n?"block":"none");});[1,2,3].forEach(function(i){var el=document.getElementById("dn"+i);if(!el)return;el.classList.toggle("on",i==n);el.classList.toggle("done",i<n);});}
+function subtog(h){h.parentElement.classList.toggle("open");}
+</script></body></html>
