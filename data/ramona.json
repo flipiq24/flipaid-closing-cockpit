@@ -2,7 +2,7 @@
   "deal": {
     "id": "4595-bronson",
     "address": "4595 Bronson St, San Bernardino, CA 92407",
-    "apn": "",
+    "apn": "0440-071-20",
     "county": "San Bernardino",
     "status": "Estimated Closing",
     "_statusOptions": [
@@ -95,8 +95,8 @@
     "_comment": "EDITABLE. Drives transfer tax, county proration, and supplemental. Verify the rate against the actual county secured bill for APN 0440-071-20.",
     "transferTaxRatePer1000": 1.1,
     "transferTaxSource": "CA documentary transfer tax, county base. $1.10 per $1,000. Apple Valley adds no city transfer tax. Verified: $460,000 x 1.10/1000 = $506.00, matches sell-side statement.",
-    "annualTaxRatePct": 1.1,
-    "annualTaxRateSource": "PLACEHOLDER 1.10% base. 92307 effective rate ~1.14% incl. bonds per assessor area. Confirm TRA rate off the actual secured bill. Tooltip shows APN 0440-071-20, San Bernardino County.",
+    "annualTaxRatePct": 1.14,
+    "annualTaxRateSource": "1.14% effective rate incl. bonds for TRA area, ZIP 92307. Verify against the secured bill for APN 0440-071-20 at the San Bernardino County Assessor portal.",
     "dayCount": "30/360",
     "dayCountSource": "Escrows used 30/360. Verified: $1,562.40 semi-annual / 180 x 54 days (11/7->1/1) = $468.72 exact; /180 x 12 days (6/18->6/30) = $104.16 exact.",
     "semiAnnualBill": 2783.27,

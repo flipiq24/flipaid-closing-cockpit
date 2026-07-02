@@ -292,13 +292,21 @@
   table.stmt th.cred{color:#166534}
   table.stmt td.deb b{color:#9a4a28}
   table.stmt td.cred b{color:#166534}
-  /* Side-by-side PDF viewer */
-  .stmt-split{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  /* Side-by-side PDF viewer — document left, interactive parsed table right.
+     The table is the working area, so it gets the larger share; the doc pane is capped.
+     The lines pane owns a horizontal scrollbar so the table never crushes its columns. */
+  .stmt-split{display:grid;grid-template-columns:minmax(280px,40%) minmax(0,1fr);gap:18px;align-items:start}
   .stmt-split-doc{position:sticky;top:4px}
-  .stmt-split-doc embed,.stmt-split-doc iframe{width:100%;height:calc(100vh - 80px);border:none;border-radius:8px;display:block;background:#f8fafc}
+  .stmt-split-doc embed,.stmt-split-doc iframe{width:100%;height:calc(100vh - 80px);border:1px solid var(--line);border-radius:8px;display:block;background:#f8fafc}
   .stmt-split-doc img{width:100%;border-radius:8px;display:block}
-  .stmt-split-lines{min-width:0}
-  @media(max-width:900px){.stmt-split{grid-template-columns:1fr}.stmt-split-doc embed,.stmt-split-doc iframe{height:55vw}}
+  .stmt-split-lines{min-width:0;overflow-x:auto}
+  .stmt-split-lines table.stmt{min-width:760px}
+  /* Stack below 1100px: doc on top (fixed height), full-width table below — no more squeeze. */
+  @media(max-width:1100px){
+    .stmt-split{grid-template-columns:1fr}
+    .stmt-split-doc{position:static}
+    .stmt-split-doc embed,.stmt-split-doc iframe{height:70vh}
+  }
   table.stmt.stmt-total td{border-top:2px solid var(--ink);border-bottom:none;padding-top:10px;font-size:14px}
   table.stmt.stmt-total td.deb,table.stmt.stmt-total td.cred{border-top:2px solid var(--ink)}
   .bal-ok{color:var(--green);font-weight:700}
@@ -696,9 +704,14 @@ async function persistStmt(side, f){
 function withPdfViewer(sideKey, content){
   const src=srcState(sideKey); if(!src.filePath) return content;
   const isImg=/\.(png|jpe?g|webp|gif)$/i.test(src.filePath);
+  const isPdf=/\.pdf$/i.test(src.filePath);
+  // Only browsers can preview PDFs/images. Spreadsheets (xlsx/csv) can't be embedded —
+  // showing a blank half-width pane just squeezes the parsed table, so render full-width instead.
+  if(!isImg && !isPdf) return content;
   const fp=src.filePath.replace(/"/g,'&quot;');
+  // iframe (not embed) so the PDF opens fit-to-width instead of a tiny default zoom.
   const viewer=isImg?`<img src="${fp}" alt="Statement">`:
-    `<embed src="${fp}" type="application/pdf">`;
+    `<iframe src="${fp}#view=FitH&toolbar=1" title="Settlement statement"></iframe>`;
   return `<div class="stmt-split"><div class="stmt-split-doc">${viewer}</div><div class="stmt-split-lines">${content}</div></div>`;
 }
 function fileStmt(side, inp){ const f=inp.files&&inp.files[0]; if(!f) return; window.__stmtFiles=window.__stmtFiles||{}; window.__stmtFiles[side]=f; applyAttach(side,'file',f.name,''); persistStmt(side,f); }
@@ -973,28 +986,28 @@ function resaleTaxBlock(){
     <table class="stmt"><colgroup><col class="c-desc"><col class="c-num"><col class="c-cat"><col class="c-cat"><col class="c-cf"></colgroup>
     <thead><tr><th>Tax (with math)</th><th class="num">Amount</th><th>Category</th><th>Sub-category</th><th class="cf">Conf.</th></tr></thead>
     <tbody>${body}</tbody></table>
-    <div class=”tax-params” style=”margin-top:12px;display:grid;gap:6px”>
-      <div class=”pr”>
-        <span class=”lp” title=”${esc(t.annualTaxRateSource)}”>Annual Tax Rate %
-          <span class=”help muted” style=”font-size:11px” title=”${esc(t.annualTaxRateSource)}”>(?)</span>
+    <div class="tax-params" style="margin-top:12px;display:grid;gap:6px">
+      <div class="pr">
+        <span class="lp" title="${esc(t.annualTaxRateSource)}">Annual Tax Rate %
+          <span class="help muted" style="font-size:11px" title="${esc(t.annualTaxRateSource)}">(?)</span>
         </span>
-        <input type=”number” step=”0.01” min=”0” max=”5” class=”num” style=”width:90px”
-          value=”${t.annualTaxRatePct}”
-          onchange=”setTaxInput('annualTaxRatePct',this.value)”
-          title=”Effective rate incl. bonds for this APN's tax rate area. Verify at the county assessor portal.”>
-        <span class=”muted” style=”font-size:11.5px;margin-left:6px”>% — verify for <b>${esc(D.deal.apn||'APN')}</b> at the ${esc(D.deal.county||'county')} County Assessor portal</span>
+        <input type="number" step="0.01" min="0" max="5" class="num" style="width:90px"
+          value="${t.annualTaxRatePct}"
+          onchange="setTaxInput('annualTaxRatePct',this.value)"
+          title="Effective rate incl. bonds for this APN's tax rate area. Verify at the county assessor portal.">
+        <span class="muted" style="font-size:11.5px;margin-left:6px">% — verify for <b>${esc(D.deal.apn||'APN')}</b> at the ${esc(D.deal.county||'county')} County Assessor portal</span>
       </div>
-      <div class=”pr”>
-        <span class=”lp”>Prior Assessed Value</span>
-        <input type=”number” step=”1” min=”0” class=”num” style=”width:120px”
-          value=”${t.priorAssessedValue!=null?t.priorAssessedValue:''}”
-          placeholder=”from secured bill”
-          onchange=”setTaxInput('priorAssessedValue',this.value)”
-          title=”Land + improvement value from the county secured tax bill before the sale reassessment. Leave blank to estimate as 60% of purchase price.”>
-        <span class=”muted” style=”font-size:11.5px;margin-left:6px”>${t.priorAssessedValue==null?'estimated as 60% of purchase price — enter actual from the secured bill':'from secured bill'}</span>
+      <div class="pr">
+        <span class="lp">Prior Assessed Value</span>
+        <input type="number" step="1" min="0" class="num" style="width:120px"
+          value="${t.priorAssessedValue!=null?t.priorAssessedValue:''}"
+          placeholder="from secured bill"
+          onchange="setTaxInput('priorAssessedValue',this.value)"
+          title="Land + improvement value from the county secured tax bill before the sale reassessment. Leave blank to estimate as 60% of purchase price.">
+        <span class="muted" style="font-size:11.5px;margin-left:6px">${t.priorAssessedValue==null?'estimated as 60% of purchase price — enter actual from the secured bill':'from secured bill'}</span>
       </div>
     </div>
-    <div class=”note” style=”margin-top:8px”>County vs. Supplemental are split deliberately: the supplemental reassessment bite is most of this deal's remaining margin. These are auto-calculated cross-checks: left as “Don't Map” (default) they stay informational and do not post to QuickBooks — the actual sell-side statement lines already carry these taxes.</div>
+    <div class="note" style="margin-top:8px">County vs. Supplemental are split deliberately: the supplemental reassessment bite is most of this deal's remaining margin. These are auto-calculated cross-checks: left as "Don't Map" (default) they stay informational and do not post to QuickBooks — the actual sell-side statement lines already carry these taxes.</div>
   </div>`;
 }
 
@@ -1004,6 +1017,9 @@ function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000)
 function daysInMonth(dateStr){ const p=(''+(dateStr||'')).split('-'); const y=+p[0], m=+p[1]; if(!y||!m) return 30; return new Date(y, m, 0).getDate(); }
 
 // Port of every MASTER IA formula. Returns all derived values. (Cells noted for traceability.)
+// ⚠️ CANONICAL SOURCE is src/calc.js (that's what the Golden Test runs). This inline copy exists
+// only because index.html has no build step. If you edit this function you MUST make the identical
+// change in src/calc.js — test/calc-sync.test.js fails the build if the two drift apart.
 function computeIA(i, taxInputs){
   if(taxInputs==null) taxInputs=D.taxInputs;
   const ttRate=(taxInputs.transferTaxRatePer1000!=null)?taxInputs.transferTaxRatePer1000:1.1;
@@ -1248,6 +1264,11 @@ function hasActualStmt(side){
   return false;
 }
 function iaActuals(){
+  // Strict mode gating (spec: lefttodo.md §2). Estimated = no actuals at all; Acquired = buy-side
+  // only (Purchase + Lender); Sold = both sides. Mirrors qbActuals(), which is Sold-gated.
+  const mode=(D.ia.inputs&&D.ia.inputs.mode)||'';
+  if(mode==='Estimated') return {};
+  const sides = mode==='Sold' ? ['buySide','sellSide'] : ['buySide'];
   const ov={};
   const addv=(key,amt)=>{ if(!key||amt==null) return; ov[key]=(ov[key]||0)+(+amt||0); };
   // A loan disbursement / payoff is PRINCIPAL (a financing flow), not an IA cost — even
@@ -1262,7 +1283,7 @@ function iaActuals(){
     if(isPrincipal(s)){ const amt=s.debit!=null?s.debit:(s.credit!=null?s.credit:null); if(amt!=null) ov.overrideLoanAmt=Math.max(+ov.overrideLoanAmt||0, Math.abs(amt)); return; }
     if(s.debit!=null) addv(key, s.debit);   // costs book as debits; ignore credits (deposits / refunds)
   };
-  ['buySide','sellSide'].forEach(side=>{
+  sides.forEach(side=>{
     if(!hasActualStmt(side)) return;
     (D[side].lines||[]).forEach((l,idx)=> take(lineState(side,idx)));
     additions(side).forEach(a=> take({category:a.category, sub:a.sub, label:a.label, debit:a.debit, credit:a.credit}));

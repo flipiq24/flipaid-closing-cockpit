@@ -6,7 +6,10 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import Anthropic from '@anthropic-ai/sdk';
 import * as XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
 import { parseQbWorkbook, isQbSummaryLabel } from './qb-parse.js';
+import { fillIaTemplate } from './ia-export.js';
 import { pool, ensureSchema, getSessionSecret } from './db.js';
 import { buildRouter, requireAuth } from './routes.js';
 
@@ -37,6 +40,8 @@ app.use((req, res, next) => {
 // Static assets only — the deal template (data/ramona.json). The HTML pages are served
 // through gated routes below so the cockpit/portfolio require a valid session.
 app.use('/data', express.static('data'));
+// Uploaded statement files (PDFs/images) stored per property — served for the PDF viewer.
+app.use('/uploads', express.static('uploads'));
 
 // requireAuthPage: gate a full HTML page behind a session; redirect to /login if signed out.
 function requireAuthPage(req, res, next) {
@@ -235,6 +240,124 @@ app.post('/api/parse', requireAuth, upload.single('file'), async (req, res) => {
     res.json(parsed);
   } catch (e) {
     res.status(500).json({ error: String(e) });
+  }
+});
+
+// POST /api/export — fill the MASTER IA xlsx template with live deal numbers and stream it back.
+// The client sends { ia, r, cashToSeller, address }; the server writes to specific cells of the
+// IA sheet in templates/ia_template.xlsx (preserving all formatting) and returns the file.
+app.post('/api/export', requireAuth, async (req, res) => {
+  const templatePath = path.join('.', 'templates', 'ia_template.xlsx');
+  if (!fs.existsSync(templatePath)) {
+    return res.status(404).json({ error: 'Template not found. Place ia_template.xlsx in the templates/ folder.' });
+  }
+  try {
+    const { ia = {}, r = {}, cashToSeller, address = '' } = req.body || {};
+    // Neither SheetJS nor ExcelJS can safely rewrite this template: SheetJS (community) can't WRITE
+    // styles (strips the MASTER IA formatting), and ExcelJS doesn't round-trip the template's drawings
+    // and threaded comments (Excel then prompts to "recover" the file). So we patch ONLY the IA sheet's
+    // cell values inside the raw .xlsx zip via fillIaTemplate() — every other part stays byte-identical.
+    const values = {};
+    const set = (addr, val) => {
+      const num = +val;
+      if (val == null || isNaN(num)) return;
+      values[addr] = num;
+    };
+
+    // Purchase section
+    set('B4', ia.purchasePrice);
+    set('B5', ia.dueDiligence);
+    set('B6', ia.insurance);
+    set('B7', ia.cashForKeys || 0);
+    set('B8', ia.escrowTitlePurchase);
+    set('B9', ia.proratedPropTaxPurchase || 0);
+    set('B10', r.totalPurchase);
+
+    // 1st Loan
+    set('B13', r.prepaidInt1st);
+    set('B14', r.intOnNewLoan1st);
+    set('B15', r.loanOrig1st);
+    set('B16', r.loanFeesAppr1st);
+    set('B17', ia.additional1stPayments || 0);
+    set('B18', ia.unused1stCredit || 0);
+    set('B19', ia.interestFrom1stPayoff || 0);
+    // 2nd Loan
+    set('B24', r.intOnNewLoan2nd);
+    set('B25', r.loanOrig2nd);
+    set('B26', r.loanFees2nd);
+    set('B27', ia.additional2ndPayments || 0);
+    set('B28', ia.unused2ndCredit || 0);
+    set('B29', ia.interestFrom2ndPayoff || 0);
+    set('B30', r.totalLender);
+
+    // Rehab
+    set('B32', ia.estimatedRepairs || 0);
+    set('B34', r.totalRehab);
+
+    // Gross Profits / Sales
+    set('B45', ia.arv);
+    set('B46', r.escrowTitleResale);
+    set('B47', r.proratedTaxResale);
+    set('B48', r.concessions);
+    set('B49', r.buyersComm);
+    set('B50', r.listingComm);
+    set('B51', r.perDiem || 0);
+    set('B52', r.assetMgmt || 0);
+    set('B53', r.grossProfit);
+
+    // Net Profits / Metrics
+    set('B55', r.netProfit);
+    set('B56', r.cashOnCashROI);
+    set('B57', r.cashOnCashIRR);
+    set('B58', r.returnOnCash);
+    set('B59', r.returnOnCashAnnual);
+
+    // F column — loan sizing
+    set('F14', r.loan1st);
+    set('F15', r.pct75ARV);
+    set('F16', r.pct90Cost);
+    set('F17', r.moPayment);
+    set('F20', r.proratedPayment);
+    set('F21', r.shortFunds);
+    set('F25', r.f25equity);
+
+    // E column — dev cost summary
+    set('E47', r.totalPurchase);
+    set('E48', r.totalLender);
+    set('E49', r.totalRehab);
+    set('E50', r.miscLessInterest);
+    set('E51', r.totalDevCost);
+
+    // G column — escrow reconciliation
+    set('G55', cashToSeller);
+    set('G56', r.cashOutEscrow);
+    set('G57', (+cashToSeller || 0) - (+r.cashOutEscrow || 0));
+
+    const buf = await fillIaTemplate(fs.readFileSync(templatePath), { values, address });
+    const safeAddr = address.replace(/[^a-z0-9 ,-]/gi, '_').trim() || 'investment-analysis';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeAddr}.xlsx"`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).json({ error: 'Export failed: ' + String(e) });
+  }
+});
+
+// POST /api/statements/:side — persist an uploaded statement file to disk for the side-by-side PDF viewer.
+// The file is stored at uploads/<propertyId>/<side>.<ext> and served via the /uploads static route.
+app.post('/api/statements/:side', requireAuth, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
+  const side = req.params.side;
+  const propId = (req.body.propertyId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const ext = path.extname(req.file.originalname) || '.pdf';
+  const dir = path.join('uploads', propId);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, side + ext);
+    fs.writeFileSync(dest, req.file.buffer);
+    res.json({ filePath: '/uploads/' + propId + '/' + side + ext });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not save file: ' + String(e) });
   }
 });
 
